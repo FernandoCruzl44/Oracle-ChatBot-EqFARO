@@ -19,7 +19,7 @@ public class ToDoItemController {
     // @CrossOrigin
     @GetMapping(value = "/debug")
     public ResponseEntity<String> debug() {
-        return new ResponseEntity<>("{\"message\": \"Ok buddy\"}", HttpStatus.OK);
+        return new ResponseEntity<>("{\"message\": \"Ok buddy prod\"}", HttpStatus.OK);
     }
 
     // @CrossOrigin

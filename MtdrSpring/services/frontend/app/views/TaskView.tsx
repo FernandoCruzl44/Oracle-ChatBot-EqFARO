@@ -14,7 +14,9 @@ export default function TaskView() {
   const totalPages = Math.ceil(tasks.length / tasksPerPage);
 
   useEffect(() => {
-    fetch("http://localhost:8080/debug/")
+    // No en dev, probando fetch a API de Springboot
+    console.log("[DEV] Fetching data from API");
+    fetch("/debug")
       .then((response) => response.json())
       .then((data) => console.log(data))
       .catch((error) => console.error("Error fetching data:", error));

@@ -31,10 +31,8 @@ public class MyTodoListApplication implements CommandLineRunner {
 	private String botName;
 
 	public static void main(String[] args) {
-		// Load the .env file and set each property as a system property.
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 		dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
-
 		SpringApplication.run(MyTodoListApplication.class, args);
 	}
 
