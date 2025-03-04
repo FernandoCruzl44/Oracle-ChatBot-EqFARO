@@ -1,5 +1,6 @@
 package com.springboot.MyTodoList;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +24,17 @@ public class MyTodoListApplication implements CommandLineRunner {
 	@Autowired
 	private ToDoItemService toDoItemService;
 
-	@Value("${telegram.bot.token}")
+	@Value("${TELEGRAM_BOT_TOKEN}")
 	private String telegramBotToken;
 
-	@Value("${telegram.bot.name}")
+	@Value("${TELEGRAM_BOT_NAME}")
 	private String botName;
 
 	public static void main(String[] args) {
+		// Load the .env file and set each property as a system property.
+		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+		dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
+
 		SpringApplication.run(MyTodoListApplication.class, args);
 	}
 
@@ -37,7 +42,8 @@ public class MyTodoListApplication implements CommandLineRunner {
 	public void run(String... args) throws Exception {
 		try {
 			TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
-			telegramBotsApi.registerBot(new ToDoItemBotController(telegramBotToken, botName, toDoItemService));
+			telegramBotsApi.registerBot(
+					new ToDoItemBotController(telegramBotToken, botName, toDoItemService));
 			logger.info(BotMessages.BOT_REGISTERED_STARTED.getMessage());
 		} catch (TelegramApiException e) {
 			e.printStackTrace();

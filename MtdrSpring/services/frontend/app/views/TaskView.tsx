@@ -1,5 +1,5 @@
 // app/views/TaskView.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { mockTasks } from "../constants/mockData";
 import type { Task } from "../constants/mockData";
 
@@ -12,6 +12,13 @@ export default function TaskView() {
   const startIndex = (currentPage - 1) * tasksPerPage;
   const paginatedTasks = tasks.slice(startIndex, startIndex + tasksPerPage);
   const totalPages = Math.ceil(tasks.length / tasksPerPage);
+
+  useEffect(() => {
+    fetch("http://localhost:8080/debug/")
+      .then((response) => response.json())
+      .then((data) => console.log(data))
+      .catch((error) => console.error("Error fetching data:", error));
+  }, []);
 
   const handleTaskSelection = (taskId: number) => {
     if (selectedTasks.includes(taskId)) {
