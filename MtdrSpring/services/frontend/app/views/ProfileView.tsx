@@ -1,4 +1,4 @@
-// views/ProfileView.jsx (placeholder)
+// views/ProfileView.tsx
 function ProfileView() {
   return (
     <div className="p-6 bg-oc-neutral h-full">

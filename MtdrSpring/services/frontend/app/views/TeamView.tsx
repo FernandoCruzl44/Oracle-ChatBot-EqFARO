@@ -1,4 +1,4 @@
-// views/TeamView.jsx (placeholder)
+// views/TeamView.tsx
 function TeamView() {
   return (
     <div className="p-6 bg-oc-neutral h-full">

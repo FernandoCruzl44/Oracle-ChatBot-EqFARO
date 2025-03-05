@@ -1,4 +1,4 @@
-// views/ProductivityView.jsx (placeholder)
+// views/ProductivityView.tsx
 function ProductivityView() {
   return (
     <div className="p-6 bg-oc-neutral h-full">

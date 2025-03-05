@@ -1,17 +1,101 @@
 // app/components/SidebarProfile.tsx
+import { useState, useEffect } from "react";
+
+interface User {
+  id: number;
+  nombre: string;
+  email: string;
+  role: string;
+}
+
 export default function SidebarProfile() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/users/")
+      .then((res) => res.json())
+      .then((data) => {
+        setUsers(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching users:", error);
+        setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/identity/current")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.message !== "No identity set") {
+          setCurrentUser(data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching current user:", error);
+      });
+  }, []);
+
+  const handleChangeUser = (userId: number) => {
+    if (!userId) return;
+
+    const selectedUser = users.find((user) => user.id === Number(userId));
+    if (!selectedUser) return;
+
+    fetch(`/api/identity/set/${userId}`, {
+      method: "POST",
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setCurrentUser(selectedUser);
+
+        window.location.reload();
+      })
+      .catch((error) => {
+        console.error("Error changing user:", error);
+      });
+  };
+
   return (
-    <div className="p-3 flex items-center hover:bg-oc-amber/12 cursor-pointer m-3 rounded-xl transition-colors">
+    <div className="p-3 flex items-center m-3 rounded-xl transition-colors">
       <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
         <i className="fa fa-user text-gray-600"></i>
       </div>
-      <div className="flex-1">
-        <div className="font-medium">Rodolfo</div>
-        <div className="text-xs text-gray-400">rodolfo@aol.com</div>
-      </div>
-      <button className="text-gray-400">
+
+      {isLoading ? (
+        <div className="flex-1">
+          <div className="font-medium text-gray-400">Cargando...</div>
+        </div>
+      ) : (
+        <div className="flex-1">
+          <select
+            className="w-full bg-transparent border-none p-0 focus:outline-none cursor-pointer"
+            value={currentUser?.id || ""}
+            onChange={(e) => handleChangeUser(Number(e.target.value))}
+          >
+            <option value="" disabled>
+              Selecciona usuario
+            </option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.nombre} (
+                {user.role === "manager" ? "Manager" : "Developer"})
+              </option>
+            ))}
+          </select>
+
+          {currentUser && (
+            <div className="text-xs text-gray-400">{currentUser.email}</div>
+          )}
+        </div>
+      )}
+
+      <div className="text-gray-400">
         <i className="fa fa-exchange-alt"></i>
-      </button>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// app/constants/mockData.ts
+// app/types/task.ts
 export interface Task {
   id: number;
   title: string;
@@ -6,5 +6,9 @@ export interface Task {
   status: string;
   startDate: string;
   endDate: string | null;
-  createdBy: string;
+  created_by: string;
+  createdBy?: string;
+  description?: string;
+  team?: string;
+  assignees?: string[];
 }

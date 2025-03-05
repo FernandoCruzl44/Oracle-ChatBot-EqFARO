@@ -12,6 +12,11 @@ interface DropdownPosition {
   left: number;
 }
 
+interface Team {
+  id: number;
+  nombre: string;
+}
+
 export default function TaskView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
@@ -20,6 +25,10 @@ export default function TaskView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   const [openStatusMenu, setOpenStatusMenu] = useState<DropdownPosition | null>(
     null
@@ -41,15 +50,74 @@ export default function TaskView() {
     Math.ceil(filteredTasks.length / tasksPerPage)
   );
 
+  const isManager = currentUser?.role === "manager";
+
   useEffect(() => {
     console.log("[DEV] Fetching data from API");
-    fetch("/api/debug")
-      .then((response) => response.json())
-      .then((data) => console.log(data))
-      .catch((error) => console.error("Error fetching data:", error));
 
-    fetchTasks();
+    fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchTeams();
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchTasks();
+    }
+  }, [currentUser, activeTab]);
+
+  const fetchCurrentUser = () => {
+    setIsLoading(true);
+    fetch("/api/identity/current")
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 404) {
+            throw new Error(
+              "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
+            );
+          }
+          throw new Error("Error al obtener usuario actual");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data.message !== "No identity set") {
+          setCurrentUser(data);
+        } else {
+          setError(
+            "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
+          );
+          setIsLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching current user:", error);
+        setError(error.message || "Error al obtener usuario actual");
+        setIsLoading(false);
+      });
+  };
+
+  const fetchTeams = () => {
+    if (isManager) {
+      fetch("/api/teams/")
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("Error al obtener equipos");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          setTeams(data);
+        })
+        .catch((error) => {
+          console.error("Error fetching teams:", error);
+        });
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,14 +137,45 @@ export default function TaskView() {
 
   const fetchTasks = () => {
     setIsLoading(true);
-    fetch("/api/tasks/")
-      .then((res) => res.json())
+    setError(null);
+
+    let url = "/api/tasks/?";
+
+    if (isManager) {
+      if (activeTab === "all") {
+        url += "view_mode=assigned";
+      } else {
+        url += `view_mode=team&team_id=${activeTab}`;
+      }
+    } else {
+      if (activeTab === "all") {
+        url += "view_mode=assigned";
+      } else if (activeTab === "team") {
+        url += "view_mode=team";
+      }
+    }
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error(
+              "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
+            );
+          }
+          throw new Error("Error al cargar las tareas");
+        }
+        return res.json();
+      })
       .then((data) => {
         setTasks(data);
         setIsLoading(false);
+        setCurrentPage(1);
+        setSelectedTasks([]);
       })
       .catch((error) => {
         console.error("Error fetching tasks:", error);
+        setError(error.message || "Error al cargar las tareas");
         setIsLoading(false);
       });
   };
@@ -197,13 +296,43 @@ export default function TaskView() {
     setCurrentPage(1);
   };
 
+  const changeTab = (tab: string) => {
+    setActiveTab(tab);
+    setSearchTerm("");
+    setSelectedTasks([]);
+  };
+
   return (
     <div className="p-6 bg-oc-neutral h-full">
       <div className="h-full overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center pb-2 gap-2">
-          <i className="fa fa-chevron-right text-2xl text-black"></i>
-          <h1 className="text-xl font-medium text-black">Tareas</h1>
+        <div className="flex justify-between items-center pb-2 gap-2">
+          <div className="flex items-center">
+            <i className="fa fa-chevron-right text-2xl text-black"></i>
+            <h1 className="text-xl font-medium text-black">Tareas</h1>
+          </div>
+          {currentUser && (
+            <div className="text-sm text-gray-600 flex items-center">
+              <span className="mr-2">Usuario:</span>
+              <span className="font-medium">{currentUser.nombre}</span>
+              <span className="mx-2">•</span>
+              <span
+                className={`${
+                  isManager ? "text-blue-500" : "text-green-500"
+                } font-medium`}
+              >
+                {isManager ? "Manager" : "Developer"}
+              </span>
+              {!isManager && currentUser.team && (
+                <>
+                  <span className="mx-2">•</span>
+                  <span className="text-purple-500 font-medium">
+                    {currentUser.team.nombre}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Search and filters */}
@@ -248,22 +377,61 @@ export default function TaskView() {
               )}
             </div>
           </div>
-
-          {/* <div className="flex">
-            <button className="px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm">
-              <i className="fa fa-sort mr-2"></i>
-              <span>Ordenar</span>
-            </button>
-          </div> */}
         </div>
 
         <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm">
           {/* Tabs */}
-          <div className="flex px-4 py-2 border-b pb-0 border-oc-outline-light/60">
-            <button className="px-4 py-2 font-medium text-gray-800 border-b-2 border-gray-800">
-              Mis tareas
-            </button>
-            <button className="px-4 py-2 text-gray-600">Proyecto</button>
+          <div className="flex px-4 py-2 border-b pb-0 border-oc-outline-light/60 overflow-x-auto hide-scrollbar">
+            {isManager ? (
+              <>
+                <button
+                  className={`px-4 py-2 font-medium whitespace-nowrap ${
+                    activeTab === "all"
+                      ? "text-gray-800 border-b-2 border-gray-800"
+                      : "text-gray-600"
+                  }`}
+                  onClick={() => changeTab("all")}
+                >
+                  Todas las tareas
+                </button>
+                {teams.map((team) => (
+                  <button
+                    key={team.id}
+                    className={`px-4 py-2 font-medium whitespace-nowrap ${
+                      activeTab === String(team.id)
+                        ? "text-gray-800 border-b-2 border-gray-800"
+                        : "text-gray-600"
+                    }`}
+                    onClick={() => changeTab(String(team.id))}
+                  >
+                    {team.nombre}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                <button
+                  className={`px-4 py-2 font-medium ${
+                    activeTab === "all"
+                      ? "text-gray-800 border-b-2 border-gray-800"
+                      : "text-gray-600"
+                  }`}
+                  onClick={() => changeTab("all")}
+                >
+                  Mis tareas
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium ${
+                    activeTab === "team"
+                      ? "text-gray-800 border-b-2 border-gray-800"
+                      : "text-gray-600"
+                  }`}
+                  onClick={() => changeTab("team")}
+                >
+                  Proyecto
+                </button>
+              </>
+            )}
           </div>
 
           {/* Task table */}
@@ -294,13 +462,62 @@ export default function TaskView() {
                   <td className="py-3 w-32 font-bold">Fecha Inicio</td>
                   <td className="py-3 w-32 font-bold">Fecha Final</td>
                   <td className="py-3 w-32 font-bold">Creada por</td>
+                  {(isManager && activeTab !== "all") ||
+                  (!isManager && activeTab === "team") ? (
+                    <td className="py-3 w-32 font-bold">Asignada a</td>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
-                {paginatedTasks.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="py-4 px-6 text-center">
-                      No hay tareas
+                    <td
+                      colSpan={
+                        (isManager && activeTab !== "all") ||
+                        (!isManager && activeTab === "team")
+                          ? 8
+                          : 7
+                      }
+                      className="py-4 px-6 text-center"
+                    >
+                      <div className="flex justify-center items-center">
+                        <i className="fa fa-spinner fa-spin mr-2"></i>
+                        Cargando tareas...
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={
+                        (isManager && activeTab !== "all") ||
+                        (!isManager && activeTab === "team")
+                          ? 8
+                          : 7
+                      }
+                      className="py-4 px-6 text-center text-red-500"
+                    >
+                      <div className="flex justify-center items-center">
+                        <i className="fa fa-exclamation-circle mr-2"></i>
+                        {error}
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedTasks.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={
+                        (isManager && activeTab !== "all") ||
+                        (!isManager && activeTab === "team")
+                          ? 8
+                          : 7
+                      }
+                      className="py-4 px-6 text-center"
+                    >
+                      <div className="flex justify-center items-center">
+                        <i className="fa fa-info-circle mr-2"></i>
+                        No hay tareas
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -323,16 +540,15 @@ export default function TaskView() {
                         />
                       </td>
                       <td className="py-3">
-                        <a
-                          href="#"
-                          className="hover:underline"
-                          onClick={(e) => {
+                        <button
+                          className="hover:underline text-left"
+                          onClick={(e: React.MouseEvent) => {
                             e.preventDefault();
                             handleTaskClick(task);
                           }}
                         >
                           {task.title}
-                        </a>
+                        </button>
                       </td>
                       <td className="py-3">
                         <span
@@ -356,7 +572,26 @@ export default function TaskView() {
                       </td>
                       <td className="py-3">{task.startDate}</td>
                       <td className="py-3">{task.endDate || "—"}</td>
-                      <td className="py-3">{task.createdBy}</td>
+                      <td className="py-3">{task.created_by}</td>
+                      {(isManager && activeTab !== "all") ||
+                      (!isManager && activeTab === "team") ? (
+                        <td className="py-3">
+                          {task.assignees && task.assignees.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {task.assignees.map((assignee, i) => (
+                                <span
+                                  key={i}
+                                  className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded"
+                                >
+                                  {assignee}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      ) : null}
                     </tr>
                   ))
                 )}
@@ -423,7 +658,18 @@ export default function TaskView() {
         />
       )}
       {isCreateModalOpen && (
-        <CreateTaskModal onClose={closeModal} onSave={handleSaveNewTask} />
+        <CreateTaskModal
+          onClose={closeModal}
+          onSave={handleSaveNewTask}
+          currentUser={currentUser}
+          selectedTeamId={
+            isManager && activeTab !== "all"
+              ? Number(activeTab)
+              : isManager
+              ? undefined
+              : currentUser?.team?.id
+          }
+        />
       )}
 
       {/* Render the status dropdown in a portal */}
@@ -437,7 +683,7 @@ export default function TaskView() {
               left: openStatusMenu.left,
               zIndex: 50,
             }}
-            className="bg-oc-primary  rounded-md overflow-hidden border shadow-sm  border-oc-outline-light/50  w-32"
+            className="bg-oc-primary rounded-md overflow-hidden border shadow-sm border-oc-outline-light/50 w-32"
           >
             <ul>
               {statuses.map((status) => (

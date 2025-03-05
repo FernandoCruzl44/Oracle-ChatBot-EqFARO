@@ -1,3 +1,4 @@
+// app/components/AppLayout.tsx
 import { Outlet } from "react-router";
 import Sidebar from "./Sidebar";
 

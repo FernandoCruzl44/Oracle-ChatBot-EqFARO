@@ -8,8 +8,10 @@ interface Task {
   status: string;
   startDate: string;
   endDate: string | null;
-  createdBy: string;
+  created_by: string;
   description?: string;
+  team?: string;
+  assignees?: string[];
 }
 
 interface Comment {
@@ -31,9 +33,21 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [editableTask, setEditableTask] = useState<Task>({ ...task });
   const [isEditing, setIsEditing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
 
   useEffect(() => {
     setIsVisible(true);
+    // Fetch current user identity
+    fetch("/api/identity/current")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.message !== "No identity set") {
+          setCurrentUser(data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching current user:", error);
+      });
   }, []);
 
   const handleClose = (e?: React.MouseEvent) => {
@@ -109,9 +123,10 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
     e.preventDefault();
     if (newComment.trim()) {
       const commentPayload = {
-        created_by: "Yo",
         content: newComment,
+        created_by_id: currentUser ? currentUser.id : undefined,
       };
+
       fetch(`/api/tasks/${task.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -246,27 +261,44 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                     </div>
                     <input
                       type="text"
-                      value={editableTask.createdBy}
-                      onChange={(e) =>
-                        handleInputChange("createdBy", e.target.value)
-                      }
-                      className="px-2 py-1"
+                      value={editableTask.created_by}
+                      readOnly
+                      className="px-2 py-1 bg-gray-100"
                     />
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-32 text-oc-brown/60">
-                      <i className="fa fa-user-plus mr-2 translate-y-1"></i>
-                      Asignación
+                  {editableTask.team && (
+                    <div className="flex items-center">
+                      <div className="w-32 text-oc-brown/60">
+                        <i className="fa fa-users mr-2 translate-y-1"></i>
+                        Equipo
+                      </div>
+                      <input
+                        type="text"
+                        value={editableTask.team}
+                        readOnly
+                        className="px-2 py-1 bg-gray-100"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={editableTask.createdBy}
-                      onChange={(e) =>
-                        handleInputChange("createdBy", e.target.value)
-                      }
-                      className="px-2 py-1"
-                    />
-                  </div>
+                  )}
+                  {editableTask.assignees &&
+                    editableTask.assignees.length > 0 && (
+                      <div className="flex items-center">
+                        <div className="w-32 text-oc-brown/60">
+                          <i className="fa fa-user-plus mr-2 translate-y-1"></i>
+                          Asignados
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {editableTask.assignees.map((assignee, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs rounded-lg bg-blue-100 text-blue-800 border border-blue-200"
+                            >
+                              {assignee}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </form>
               <div>
@@ -305,30 +337,36 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-4 pl-2">
-              {comments.map((comment, index) => (
-                <div key={index} className="flex gap-4 group">
-                  <div className="border-r border-oc-outline-light h-full"></div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 bg-oc-neutral rounded-full flex items-center justify-center border border-oc-outline-light/80">
-                          <i className="fa fa-user text-xs"></i>
-                        </span>
-                        <span className="font-medium text-base">
-                          {comment.created_by}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-sm pl-0.5">{comment.content}</p>
-                  </div>
-                  <button
-                    onClick={() => deleteComment(comment.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-500 "
-                  >
-                    <i className="fa fa-trash text-sm"></i>
-                  </button>
+              {comments.length === 0 ? (
+                <div className="text-center text-gray-500 pt-4">
+                  No hay comentarios
                 </div>
-              ))}
+              ) : (
+                comments.map((comment, index) => (
+                  <div key={index} className="flex gap-4 group">
+                    <div className="border-r border-oc-outline-light h-full"></div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 bg-oc-neutral rounded-full flex items-center justify-center border border-oc-outline-light/80">
+                            <i className="fa fa-user text-xs"></i>
+                          </span>
+                          <span className="font-medium text-base">
+                            {comment.created_by}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm pl-0.5">{comment.content}</p>
+                    </div>
+                    <button
+                      onClick={() => deleteComment(comment.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-500 "
+                    >
+                      <i className="fa fa-trash text-sm"></i>
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
             <div className="p-4 pb-7 mb-2.5">
               <form onSubmit={handleSubmitComment}>
