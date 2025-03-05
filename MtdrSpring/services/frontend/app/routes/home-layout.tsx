@@ -28,7 +28,7 @@ export default function HomeLayout() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Toaster richColors position="top-right" />
+      <Toaster richColors closeButton position="top-right" />
       <Sidebar />
       <div className="flex-1 overflow-auto">
         <Outlet />
