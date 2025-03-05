@@ -36,7 +36,7 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    tag = Column(String, nullable=False)  # e.g. "Feature" or "Issue"
+    tag = Column(String, nullable=False)  # ej. "Feature" or "Issue"
     status = Column(
         String, nullable=False, default="Backlog"
     )  # Allowed: "En progreso", "Cancelada", "Backlog", "Completada"

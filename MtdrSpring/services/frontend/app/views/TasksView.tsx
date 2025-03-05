@@ -4,6 +4,7 @@ import React from "react";
 import type { Task } from "../constants/mockData";
 import TaskModal from "../components/TaskModal";
 import Portal from "../components/Portal";
+import CreateTaskModal from "../components/CreateTaskModal";
 
 interface DropdownPosition {
   taskId: number;
@@ -18,6 +19,7 @@ export default function TaskView() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Store the dropdown's taskId and its calculated coordinates
   const [openStatusMenu, setOpenStatusMenu] = useState<DropdownPosition | null>(
@@ -26,9 +28,19 @@ export default function TaskView() {
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const tasksPerPage = 15;
 
+  const filteredTasks = tasks.filter((task) =>
+    task.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const startIndex = (currentPage - 1) * tasksPerPage;
-  const paginatedTasks = tasks.slice(startIndex, startIndex + tasksPerPage);
-  const totalPages = Math.ceil(tasks.length / tasksPerPage);
+  const paginatedTasks = filteredTasks.slice(
+    startIndex,
+    startIndex + tasksPerPage
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTasks.length / tasksPerPage)
+  );
 
   useEffect(() => {
     console.log("[DEV] Fetching data from API");
@@ -181,6 +193,17 @@ export default function TaskView() {
   // Available statuses
   const statuses = ["En progreso", "Cancelada", "Backlog", "Completada"];
 
+  const handleTaskUpdate = (updatedTask: Task) => {
+    setTasks(
+      tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+    );
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
   return (
     <div className="p-6 bg-oc-neutral h-full">
       <div className="h-full overflow-hidden flex flex-col">
@@ -197,9 +220,20 @@ export default function TaskView() {
               <input
                 type="text"
                 placeholder="Buscar"
-                className="w-full pl-8 pr-4 py-2 rounded-lg border border-oc-outline-light text-black bg-oc-primary text-sm"
+                className="w-full pl-8 pr-10 py-2 rounded-lg border border-oc-outline-light text-black bg-oc-primary text-sm"
+                value={searchTerm}
+                onChange={handleSearch}
               />
               <i className="fa fa-search absolute left-3 top-3 text-black"></i>
+              {searchTerm && (
+                <i
+                  className="fa fa-times-circle absolute right-3 top-3 text-oc-brown/80 cursor-pointer -translate-y-[1px]"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
+                ></i>
+              )}
             </div>
 
             <div className="flex">
@@ -222,12 +256,12 @@ export default function TaskView() {
             </div>
           </div>
 
-          <div className="flex">
+          {/* <div className="flex">
             <button className="px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm">
               <i className="fa fa-sort mr-2"></i>
               <span>Ordenar</span>
             </button>
-          </div>
+          </div> */}
         </div>
 
         <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm">
@@ -250,23 +284,23 @@ export default function TaskView() {
                   className="sticky top-0 z-10 bg-oc-primary"
                   style={{ boxShadow: "0 1px 0px #D1D0CE" }}
                 >
-                  <th className="w-12 py-3">
+                  <td className="w-12 px-5 py-3 translate-y-0.5">
                     <input
                       type="checkbox"
+                      className="w-4 h-4"
                       onChange={handleSelectAll}
                       checked={
                         selectedTasks.length === paginatedTasks.length &&
                         paginatedTasks.length > 0
                       }
-                      className="w-4 h-4 translate-y-0.5"
                     />
-                  </th>
-                  <th className="w-96 py-3 text-left">Título</th>
-                  <th className="w-24 py-3 text-left">Tag</th>
-                  <th className="w-42 py-3 text-left">Estatus</th>
-                  <th className="w-42 py-3 text-left">Inicio</th>
-                  <th className="w-42 py-3 text-left">Fin</th>
-                  <th className="w-42 py-3 text-left">Creada por</th>
+                  </td>
+                  <td className="py-3 w-96 font-bold">Titulo</td>
+                  <td className="py-3 w-32 font-bold">Tag</td>
+                  <td className="py-3 w-32 font-bold">Estatus</td>
+                  <td className="py-3 w-32 font-bold">Fecha Inicio</td>
+                  <td className="py-3 w-32 font-bold">Fecha Final</td>
+                  <td className="py-3 w-32 font-bold">Creada por</td>
                 </tr>
               </thead>
               <tbody>
@@ -309,7 +343,7 @@ export default function TaskView() {
                       </td>
                       <td className="py-3">
                         <span
-                          className={`px-2 py-1 text-xs rounded-full ${
+                          className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
                             task.tag === "Feature"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
@@ -343,21 +377,22 @@ export default function TaskView() {
           <div>{selectedTasks.length} seleccionadas</div>
           <div className="flex items-center">
             <span className="mr-4">
-              Página {currentPage} de {totalPages}
+              Página {filteredTasks.length > 0 ? currentPage : 0} de{" "}
+              {totalPages}
             </span>
             <span className="mr-4">{tasksPerPage} tareas por página</span>
             <div className="flex">
               <button
                 className="w-8 h-8 flex items-center justify-center border rounded-l border-oc-outline-light"
                 onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || filteredTasks.length === 0}
               >
                 <i className="fa fa-angle-double-left"></i>
               </button>
               <button
                 className="w-8 h-8 flex items-center justify-center border-t border-r border-b border-oc-outline-light"
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || filteredTasks.length === 0}
               >
                 <i className="fa fa-angle-left"></i>
               </button>
@@ -366,14 +401,18 @@ export default function TaskView() {
                 onClick={() =>
                   setCurrentPage(Math.min(totalPages, currentPage + 1))
                 }
-                disabled={currentPage === totalPages}
+                disabled={
+                  currentPage === totalPages || filteredTasks.length === 0
+                }
               >
                 <i className="fa fa-angle-right"></i>
               </button>
               <button
                 className="w-8 h-8 flex items-center justify-center border rounded-r border-oc-outline-light"
                 onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
+                disabled={
+                  currentPage === totalPages || filteredTasks.length === 0
+                }
               >
                 <i className="fa fa-angle-double-right"></i>
               </button>
@@ -383,9 +422,15 @@ export default function TaskView() {
       </div>
 
       {/* Task Modals */}
-      {selectedTask && <TaskModal task={selectedTask} onClose={closeModal} />}
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          onClose={closeModal}
+          onUpdate={handleTaskUpdate}
+        />
+      )}
       {isCreateModalOpen && (
-        <TaskModal onClose={closeModal} isNewTask onSave={handleSaveNewTask} />
+        <CreateTaskModal onClose={closeModal} onSave={handleSaveNewTask} />
       )}
 
       {/* Render the status dropdown in a portal */}
