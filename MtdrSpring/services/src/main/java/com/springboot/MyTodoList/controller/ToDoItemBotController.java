@@ -22,12 +22,35 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import com.springboot.MyTodoList.model.ToDoItem;
 import com.springboot.MyTodoList.service.ToDoItemService;
-import com.springboot.MyTodoList.util.BotCommands;
-import com.springboot.MyTodoList.util.BotHelper;
-import com.springboot.MyTodoList.util.BotLabels;
-import com.springboot.MyTodoList.util.BotMessages;
 
 public class ToDoItemBotController extends TelegramLongPollingBot {
+
+  // Was in utils/BotHelper.java, could be moved back if it obstructs
+  public void sendMessageToTelegram(Long chatId, String text) {
+
+    try {
+      // prepare message
+      SendMessage messageToTelegram = new SendMessage();
+      messageToTelegram.setChatId(chatId);
+      messageToTelegram.setText(text);
+
+      // hide keyboard
+      ReplyKeyboardRemove keyboardMarkup = new ReplyKeyboardRemove(true);
+      messageToTelegram.setReplyMarkup(keyboardMarkup);
+
+      // send message
+      this.execute(messageToTelegram);
+
+    } catch (Exception e) {
+      logger.error(e.getLocalizedMessage(), e);
+    }
+  }
+	
+	private static final String MAIN_SCREEN_MESSAGE = "Show Main Screen";
+	private static final String LIST_ITEMS_MESSAGE = "List All Items";
+	private static final String HIDE_MAIN_MESSAGE = "Hide Main Screen";
+	private static final String ADD_ITEM_MESSAGE = "Add New Item";
+	private static final String MY_TODO_MESSAGE = "MY TODO LIST";
 
 	private static final Logger logger = LoggerFactory.getLogger(ToDoItemBotController.class);
 	private ToDoItemService toDoItemService;
@@ -49,27 +72,27 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 			String messageTextFromTelegram = update.getMessage().getText();
 			long chatId = update.getMessage().getChatId();
 
-			if (messageTextFromTelegram.equals(BotCommands.START_COMMAND.getCommand())
-					|| messageTextFromTelegram.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) {
+			if (messageTextFromTelegram.equals("/start")
+					|| messageTextFromTelegram.equals(MAIN_SCREEN_MESSAGE)) {
 
 				SendMessage messageToTelegram = new SendMessage();
 				messageToTelegram.setChatId(chatId);
-				messageToTelegram.setText(BotMessages.HELLO_MYTODO_BOT.getMessage());
+				messageToTelegram.setText("Hello! I'm MyTodoList Bot!\nType a new todo item below and press the send button (blue arrow), or select an option below:");
 
 				ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
 				List<KeyboardRow> keyboard = new ArrayList<>();
 
 				// first row
 				KeyboardRow row = new KeyboardRow();
-				row.add(BotLabels.LIST_ALL_ITEMS.getLabel());
-				row.add(BotLabels.ADD_NEW_ITEM.getLabel());
+				row.add(LIST_ITEMS_MESSAGE);
+				row.add(ADD_ITEM_MESSAGE);
 				// Add the first row to the keyboard
 				keyboard.add(row);
 
 				// second row
 				row = new KeyboardRow();
-				row.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
-				row.add(BotLabels.HIDE_MAIN_SCREEN.getLabel());
+				row.add(MAIN_SCREEN_MESSAGE);
+				row.add(HIDE_MAIN_MESSAGE);
 				keyboard.add(row);
 
 				// Set the keyboard
@@ -84,10 +107,11 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 					logger.error(e.getLocalizedMessage(), e);
 				}
 
-			} else if (messageTextFromTelegram.indexOf(BotLabels.DONE.getLabel()) != -1) {
+				// If done is found...
+			} else if (messageTextFromTelegram.indexOf("DONE") != -1) {
 
 				String done = messageTextFromTelegram.substring(0,
-						messageTextFromTelegram.indexOf(BotLabels.DASH.getLabel()));
+						messageTextFromTelegram.indexOf("-"));
 				Integer id = Integer.valueOf(done);
 
 				try {
@@ -95,16 +119,17 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 					ToDoItem item = getToDoItemById(id).getBody();
 					item.setDone(true);
 					updateToDoItem(item, id);
-					BotHelper.sendMessageToTelegram(chatId, BotMessages.ITEM_DONE.getMessage(), this);
+					sendMessageToTelegram(chatId, "Item done! Select /todolist to return to the list of todo items, or /start to go to the main screen.");
 
 				} catch (Exception e) {
 					logger.error(e.getLocalizedMessage(), e);
 				}
 
-			} else if (messageTextFromTelegram.indexOf(BotLabels.UNDO.getLabel()) != -1) {
+				// If "UNDO" is found
+			} else if (messageTextFromTelegram.indexOf("UNDO") != -1) {
 
 				String undo = messageTextFromTelegram.substring(0,
-						messageTextFromTelegram.indexOf(BotLabels.DASH.getLabel()));
+						messageTextFromTelegram.indexOf("-"));
 				Integer id = Integer.valueOf(undo);
 
 				try {
@@ -112,35 +137,35 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 					ToDoItem item = getToDoItemById(id).getBody();
 					item.setDone(false);
 					updateToDoItem(item, id);
-					BotHelper.sendMessageToTelegram(chatId, BotMessages.ITEM_UNDONE.getMessage(), this);
+					sendMessageToTelegram(chatId, "Item undone! Select /todolist to return to the list of todo items, or /start to go to the main screen.");
 
 				} catch (Exception e) {
 					logger.error(e.getLocalizedMessage(), e);
 				}
 
-			} else if (messageTextFromTelegram.indexOf(BotLabels.DELETE.getLabel()) != -1) {
+			} else if (messageTextFromTelegram.indexOf("DELETE") != -1) {
 
 				String delete = messageTextFromTelegram.substring(0,
-						messageTextFromTelegram.indexOf(BotLabels.DASH.getLabel()));
+						messageTextFromTelegram.indexOf("-"));
 				Integer id = Integer.valueOf(delete);
 
 				try {
 
 					deleteToDoItem(id).getBody();
-					BotHelper.sendMessageToTelegram(chatId, BotMessages.ITEM_DELETED.getMessage(), this);
+					sendMessageToTelegram(chatId, "Item deleted! Select /todolist to return to the list of todo items, or /start to go to the main screen.");
 
 				} catch (Exception e) {
 					logger.error(e.getLocalizedMessage(), e);
 				}
 
-			} else if (messageTextFromTelegram.equals(BotCommands.HIDE_COMMAND.getCommand())
-					|| messageTextFromTelegram.equals(BotLabels.HIDE_MAIN_SCREEN.getLabel())) {
+			} else if (messageTextFromTelegram.equals("/hide")
+					|| messageTextFromTelegram.equals(HIDE_MAIN_MESSAGE)) {
 
-				BotHelper.sendMessageToTelegram(chatId, BotMessages.BYE.getMessage(), this);
+				sendMessageToTelegram(chatId, "Bye! Select /start to resume!");
 
-			} else if (messageTextFromTelegram.equals(BotCommands.TODO_LIST.getCommand())
-					|| messageTextFromTelegram.equals(BotLabels.LIST_ALL_ITEMS.getLabel())
-					|| messageTextFromTelegram.equals(BotLabels.MY_TODO_LIST.getLabel())) {
+			} else if (messageTextFromTelegram.equals("/todolist")
+					|| messageTextFromTelegram.equals(LIST_ITEMS_MESSAGE)
+					|| messageTextFromTelegram.equals(MY_TODO_MESSAGE)) {
 
 				List<ToDoItem> allItems = getAllToDoItems();
 				ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
@@ -148,15 +173,15 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 
 				// command back to main screen
 				KeyboardRow mainScreenRowTop = new KeyboardRow();
-				mainScreenRowTop.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+				mainScreenRowTop.add(MAIN_SCREEN_MESSAGE);
 				keyboard.add(mainScreenRowTop);
 
 				KeyboardRow firstRow = new KeyboardRow();
-				firstRow.add(BotLabels.ADD_NEW_ITEM.getLabel());
+				firstRow.add(ADD_ITEM_MESSAGE);
 				keyboard.add(firstRow);
 
 				KeyboardRow myTodoListTitleRow = new KeyboardRow();
-				myTodoListTitleRow.add(BotLabels.MY_TODO_LIST.getLabel());
+				myTodoListTitleRow.add(MY_TODO_MESSAGE);
 				keyboard.add(myTodoListTitleRow);
 
 				List<ToDoItem> activeItems = allItems.stream().filter(item -> item.isDone() == false)
@@ -166,7 +191,7 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 
 					KeyboardRow currentRow = new KeyboardRow();
 					currentRow.add(item.getDescription());
-					currentRow.add(item.getID() + BotLabels.DASH.getLabel() + BotLabels.DONE.getLabel());
+					currentRow.add(item.getID() + "-" + "DONE");
 					keyboard.add(currentRow);
 				}
 
@@ -176,21 +201,21 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 				for (ToDoItem item : doneItems) {
 					KeyboardRow currentRow = new KeyboardRow();
 					currentRow.add(item.getDescription());
-					currentRow.add(item.getID() + BotLabels.DASH.getLabel() + BotLabels.UNDO.getLabel());
-					currentRow.add(item.getID() + BotLabels.DASH.getLabel() + BotLabels.DELETE.getLabel());
+					currentRow.add(item.getID() + "-" + "UNDO");
+					currentRow.add(item.getID() + "-" + "DELETE");
 					keyboard.add(currentRow);
 				}
 
 				// command back to main screen
 				KeyboardRow mainScreenRowBottom = new KeyboardRow();
-				mainScreenRowBottom.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+				mainScreenRowBottom.add(MAIN_SCREEN_MESSAGE);
 				keyboard.add(mainScreenRowBottom);
 
 				keyboardMarkup.setKeyboard(keyboard);
 
 				SendMessage messageToTelegram = new SendMessage();
 				messageToTelegram.setChatId(chatId);
-				messageToTelegram.setText(BotLabels.MY_TODO_LIST.getLabel());
+				messageToTelegram.setText(MY_TODO_MESSAGE);
 				messageToTelegram.setReplyMarkup(keyboardMarkup);
 
 				try {
@@ -199,12 +224,12 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 					logger.error(e.getLocalizedMessage(), e);
 				}
 
-			} else if (messageTextFromTelegram.equals(BotCommands.ADD_ITEM.getCommand())
-					|| messageTextFromTelegram.equals(BotLabels.ADD_NEW_ITEM.getLabel())) {
+			} else if (messageTextFromTelegram.equals("/additem")
+					|| messageTextFromTelegram.equals(ADD_ITEM_MESSAGE)) {
 				try {
 					SendMessage messageToTelegram = new SendMessage();
 					messageToTelegram.setChatId(chatId);
-					messageToTelegram.setText(BotMessages.TYPE_NEW_TODO_ITEM.getMessage());
+					messageToTelegram.setText("Type a new todo item below and press the send button (blue arrow) on the rigth-hand side.");
 					// hide keyboard
 					ReplyKeyboardRemove keyboardMarkup = new ReplyKeyboardRemove(true);
 					messageToTelegram.setReplyMarkup(keyboardMarkup);
@@ -228,7 +253,7 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 
 					SendMessage messageToTelegram = new SendMessage();
 					messageToTelegram.setChatId(chatId);
-					messageToTelegram.setText(BotMessages.NEW_ITEM_ADDED.getMessage());
+					messageToTelegram.setText("New item added! Select /todolist to return to the list of todo items, or /start to go to the main screen.");
 
 					execute(messageToTelegram);
 				} catch (Exception e) {
