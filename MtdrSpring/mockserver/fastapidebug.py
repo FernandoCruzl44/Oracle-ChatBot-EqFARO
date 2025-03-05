@@ -36,7 +36,7 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    tag = Column(String, nullable=False)  # ej. "Feature" or "Issue"
+    tag = Column(String, nullable=False)  # e.g. "Feature" or "Issue"
     status = Column(
         String, nullable=False, default="Backlog"
     )  # Allowed: "En progreso", "Cancelada", "Backlog", "Completada"
@@ -115,8 +115,7 @@ class TaskResponse(TaskBase):
     id: int
     status: str
 
-    class Config:
-        orm_mode = True
+    model_config = {'from_attributes': True}
 
 
 class StatusUpdate(BaseModel):
@@ -137,8 +136,7 @@ class CommentResponse(CommentBase):
     created_by: str
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = {'from_attributes': True}
 
 
 class UserBase(BaseModel):
@@ -157,8 +155,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = {'from_attributes': True}
 
 
 class TeamBase(BaseModel):
@@ -173,8 +170,7 @@ class TeamCreate(TeamBase):
 class TeamResponse(TeamBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = {'from_attributes': True}
 
 
 # =============================================================================
@@ -343,7 +339,17 @@ def create_comment(task_id: int,
          tags=["Comments"])
 def get_comments(task_id: int, db=Depends(get_db)):
     comments = db.query(Comment).filter(Comment.task_id == task_id).all()
-    return comments
+    return [CommentResponse.model_validate(comment) for comment in comments]
+
+
+@app.delete("/api/comments/{comment_id}", tags=["Comments"])
+def delete_comment(comment_id: int, db=Depends(get_db)):
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    db.delete(comment)
+    db.commit()
+    return {"message": "Comment deleted"}
 
 
 # ---- USERS Endpoints
