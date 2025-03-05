@@ -5,6 +5,28 @@
 - [Endpoints de Comentarios](#endpoints-de-comentarios)
 - [Otros Endpoints](#otros-endpoints)
 
+### Resumen
+```
+/api/identity/set/{user_id}
+/api/identity/current
+/api/identity/clear
+/api/users/
+/api/users/{user_id}
+/api/users/{user_id}/team
+/api/teams/
+/api/teams/{team_id}
+/api/users/me/team
+/api/tasks/
+/api/tasks/{task_id}
+/api/tasks/{task_id}/status
+/api/tasks/{task_id}/assign
+/api/tasks/{task_id}/comments
+/api/comments/{comment_id}
+/api/
+/api/debug
+/api/healthcheck
+```
+
 ## Endpoints de Identidad
 
 ### Set User Identity
