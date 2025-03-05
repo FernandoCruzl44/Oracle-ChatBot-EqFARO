@@ -1,9 +1,7 @@
 // app/views/TasksView.tsx
 import { useEffect, useState, useRef } from "react";
 import React from "react";
-import { toast } from "sonner";
-
-import type { Task } from "../constants/mockData";
+import type { Task } from "../types/task";
 import TaskModal from "../components/TaskModal";
 import Portal from "../components/Portal";
 import CreateTaskModal from "../components/CreateTaskModal";
@@ -23,7 +21,6 @@ export default function TaskView() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Store the dropdown's taskId and its calculated coordinates
   const [openStatusMenu, setOpenStatusMenu] = useState<DropdownPosition | null>(
     null
   );
@@ -54,7 +51,6 @@ export default function TaskView() {
     fetchTasks();
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -114,12 +110,10 @@ export default function TaskView() {
     setIsCreateModalOpen(true);
   };
 
-  // Called when a new task is successfully created via the modal
   const handleSaveNewTask = (newTask: Task) => {
     setTasks([...tasks, newTask]);
   };
 
-  // Delete selected tasks
   const handleDeleteTasks = () => {
     if (selectedTasks.length === 0) return;
 
@@ -146,7 +140,6 @@ export default function TaskView() {
       });
   };
 
-  // Handle task status change
   const handleStatusChange = (taskId: number, newStatus: string) => {
     fetch(`/api/tasks/${taskId}/status`, {
       method: "PUT",
@@ -173,7 +166,6 @@ export default function TaskView() {
       });
   };
 
-  // Toggle status dropdown menu and calculate its screen position
   const toggleStatusMenu = (
     task: Task,
     e: React.MouseEvent<HTMLDivElement>
@@ -192,7 +184,6 @@ export default function TaskView() {
     }
   };
 
-  // Available statuses
   const statuses = ["En progreso", "Cancelada", "Backlog", "Completada"];
 
   const handleTaskUpdate = (updatedTask: Task) => {
@@ -203,7 +194,7 @@ export default function TaskView() {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   return (

@@ -1,4 +1,4 @@
-// app/routes/_layout.tsx
+// app/routes/home-layout.tsx
 import { Outlet } from "react-router";
 import Sidebar from "../components/Sidebar";
 import { Toaster, toast } from "sonner";

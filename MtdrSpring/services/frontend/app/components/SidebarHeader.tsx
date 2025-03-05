@@ -1,3 +1,4 @@
+// app/components/SidebarHeader.tsx
 export default function SidebarHeader() {
   return (
     <div className="p-4 flex items-center">

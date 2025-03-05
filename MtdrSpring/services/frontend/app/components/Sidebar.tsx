@@ -1,3 +1,4 @@
+// app/components/Sidebar.tsx
 import SidebarHeader from "./SidebarHeader";
 import SidebarMenu from "./SidebarMenu";
 import SidebarProfile from "./SidebarProfile";

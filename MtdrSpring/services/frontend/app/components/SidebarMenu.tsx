@@ -1,3 +1,4 @@
+// app/components/SidebarMenu.tsx
 import { Link, useLocation } from "react-router";
 
 export default function SidebarMenu() {

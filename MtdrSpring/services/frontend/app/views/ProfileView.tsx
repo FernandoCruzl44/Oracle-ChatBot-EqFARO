@@ -1,4 +1,4 @@
-// views/TeamView.jsx (placeholder)
+// views/ProfileView.jsx (placeholder)
 function ProfileView() {
   return (
     <div className="p-6 bg-oc-neutral h-full">

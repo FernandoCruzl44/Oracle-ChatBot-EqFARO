@@ -1,3 +1,4 @@
+// app/components/TaskModal.tsx
 import { useState, useEffect } from "react";
 
 interface Task {
@@ -54,7 +55,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
     setEditableTask({ ...task });
   }, [task]);
 
-  // Combined keyboard shortcut handler for both Escape and Command+Enter
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -67,11 +67,10 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [editableTask]); // Add editableTask to dependency array to ensure we save the latest state
+  }, [editableTask]);
 
   const handleInputChange = (field: keyof Task, value: string) => {
     if (value !== task[field]) {
-      // Only set editing if value actually changed
       setIsEditing(true);
       setEditableTask((prev) => ({
         ...prev,
@@ -86,14 +85,13 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   };
 
   const handleSave = async () => {
-    // Modified to save all changes at once
     try {
       const response = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(editableTask), // Send the entire editableTask
+        body: JSON.stringify(editableTask),
       });
 
       if (response.ok) {
