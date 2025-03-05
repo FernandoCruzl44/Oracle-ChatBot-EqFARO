@@ -72,7 +72,7 @@ export default function CreateTaskModal({
       onClick={handleClose}
     >
       <div
-        className={`rounded-lg w-full max-w-2xl p-6 bg-[#EFEDE9] transition-transform duration-150 ${
+        className={`rounded-lg w-full max-w-2xl p-6 bg-oc-primary transition-transform duration-150 ${
           isVisible ? "translate-y-0" : "translate-y-3"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -92,13 +92,13 @@ export default function CreateTaskModal({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Título de la tarea"
-            className="w-full border border-oc-outline-light/60 rounded-lg p-3 text-sm bg-oc-primary"
+            className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
             required
           />
           <select
             value={tag}
             onChange={(e) => setTag(e.target.value as "Feature" | "Issue")}
-            className="w-full border border-oc-outline-light/60 rounded-lg p-3 text-sm bg-oc-primary"
+            className="w-full  border-r-8 border-transparent p-3 text-sm  rounded-lg outline outline-oc-outline-light/60 bg-white"
           >
             <option value="Feature">Feature</option>
             <option value="Issue">Issue</option>
@@ -108,32 +108,32 @@ export default function CreateTaskModal({
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             placeholder="Fecha de inicio"
-            className="w-full border border-oc-outline-light/60 rounded-lg p-3 text-sm bg-oc-primary"
+            className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
           />
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             placeholder="Fecha fin"
-            className="w-full border border-oc-outline-light/60 rounded-lg p-3 text-sm bg-oc-primary"
+            className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
           />
           <input
             type="text"
             value={createdBy}
             onChange={(e) => setCreatedBy(e.target.value)}
             placeholder="Creada por"
-            className="w-full border border-oc-outline-light/60 rounded-lg p-3 text-sm bg-oc-primary"
+            className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
           />
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Descripción (Opcional)"
-            className="w-full border border-oc-outline-light/60 bg-oc-primary rounded-lg p-3 text-sm min-h-[80px]"
+            className="w-full outline outline-oc-outline-light/60 bg-white rounded-lg p-3 text-sm min-h-[80px]"
           ></textarea>
           <div className="flex justify-end">
             <button
               type="submit"
-              className="px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm"
+              className="px-4 py-2 bg-white hover:bg-oc-brown rounded-lg border border-oc-outline-light flex items-center text-black hover:text-white text-sm"
             >
               Crear Tarea
             </button>

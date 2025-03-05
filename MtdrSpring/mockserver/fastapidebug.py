@@ -36,6 +36,7 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)  # New field
     tag = Column(String, nullable=False)  # e.g. "Feature" or "Issue"
     status = Column(
         String, nullable=False, default="Backlog"
@@ -92,6 +93,7 @@ Base.metadata.create_all(bind=engine)
 
 class TaskBase(BaseModel):
     title: str
+    description: Optional[str] = None  # New field
     tag: str
     startDate: str
     endDate: Optional[str] = None
@@ -104,6 +106,7 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
+    description: Optional[str] = None  # New field
     tag: Optional[str] = None
     status: Optional[str] = None
     startDate: Optional[str] = None
@@ -193,6 +196,7 @@ def task_to_response(task: Task) -> TaskResponse:
     return TaskResponse(
         id=task.id,
         title=task.title,
+        description=task.description,  # New field
         tag=task.tag,
         status=task.status,
         startDate=task.start_date,
@@ -233,6 +237,7 @@ def create_task(task: TaskCreate, db=Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid status")
     new_task = Task(
         title=task.title,
+        description=task.description,  # New field
         tag=task.tag,
         status=task.status,
         start_date=task.startDate,
@@ -252,6 +257,8 @@ def update_task(task_id: int, task_update: TaskUpdate, db=Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
     if task_update.title is not None:
         task.title = task_update.title
+    if task_update.description is not None:
+        task.description = task_update.description  # New field
     if task_update.tag is not None:
         task.tag = task_update.tag
     if task_update.status is not None:
