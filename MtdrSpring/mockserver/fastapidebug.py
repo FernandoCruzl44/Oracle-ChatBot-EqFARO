@@ -448,3 +448,9 @@ def delete_team(team_id: int, db=Depends(get_db)):
 @app.get("/api/debug", tags=["Debug"])
 def debug():
     return JSONResponse({"message": "Ok buddy dev"})
+
+
+# ---- Health Check Endpoint
+@app.get("/api/healthcheck", tags=["System"], status_code=204)
+def healthcheck():
+    return None

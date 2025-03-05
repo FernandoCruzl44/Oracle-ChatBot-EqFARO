@@ -54,17 +54,20 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
     setEditableTask({ ...task });
   }, [task]);
 
-  // Add keyboard shortcut handler
+  // Combined keyboard shortcut handler for both Escape and Command+Enter
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         handleClose();
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSave();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [editableTask]); // Add editableTask to dependency array to ensure we save the latest state
 
   const handleInputChange = (field: keyof Task, value: string) => {
     if (value !== task[field]) {
@@ -101,17 +104,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
       }
     } catch (error) {
       console.error("Error updating task:", error);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Modified to handle all fields
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === "Escape") {
-      setEditableTask({ ...task });
-      setIsEditing(false);
     }
   };
 
@@ -175,7 +167,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                 type="text"
                 value={editableTask.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                onKeyDown={handleKeyDown}
                 className="text-lg font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
               />
               <form
@@ -194,7 +185,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                     <select
                       value={editableTask.tag}
                       onChange={(e) => handleInputChange("tag", e.target.value)}
-                      onKeyDown={handleKeyDown}
                       className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
                         editableTask.tag === "Feature"
                           ? "bg-green-100 text-green-800"
@@ -215,7 +205,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("status", e.target.value)
                       }
-                      onKeyDown={handleKeyDown}
                       className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
                     >
                       <option value="En progreso">En progreso</option>
@@ -235,8 +224,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("startDate", e.target.value)
                       }
-                      onKeyDown={handleKeyDown}
-                      className="  px-2 py-1 "
+                      className="px-2 py-1"
                     />
                   </div>
                   <div className="flex items-center">
@@ -250,8 +238,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("endDate", e.target.value)
                       }
-                      onKeyDown={handleKeyDown}
-                      className="  px-2 py-1 "
+                      className="px-2 py-1"
                     />
                   </div>
                   <div className="flex items-center">
@@ -265,8 +252,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("createdBy", e.target.value)
                       }
-                      onKeyDown={handleKeyDown}
-                      className="  px-2 py-1 "
+                      className="px-2 py-1"
                     />
                   </div>
                   <div className="flex items-center">
@@ -280,8 +266,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("createdBy", e.target.value)
                       }
-                      onKeyDown={handleKeyDown}
-                      className=" px-2 py-1 "
+                      className="px-2 py-1"
                     />
                   </div>
                 </div>
@@ -290,7 +275,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                 <textarea
                   className="w-full border bg-white rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
                   placeholder="Descripción (Opcional)"
-                  onKeyDown={handleKeyDown}
                 ></textarea>
               </div>
               <div className="my-2">
