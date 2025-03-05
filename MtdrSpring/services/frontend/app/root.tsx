@@ -34,6 +34,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
+        <div id="portal-root"></div>
         {children}
         <ScrollRestoration />
         <Scripts />

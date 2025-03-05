@@ -2,7 +2,7 @@
   "items": [
     {
       "id": 1,
-      "title": "Terminar mockup de frontend de React",
+      "title": "Terminar mockup de frontend de React v1",
       "tag": "Feature",
       "status": "En Progreso",
       "startDate": "21 Feb",
@@ -11,7 +11,7 @@
     },
     {
       "id": 2,
-      "title": "Terminar mockup de bot de Telegram",
+      "title": "Terminar mockup de bot de Telegram v1",
       "tag": "Feature",
       "status": "En Progreso",
       "startDate": "23 Feb",
@@ -20,7 +20,7 @@
     },
     {
       "id": 3,
-      "title": "Arreglar contenedor de Docker",
+      "title": "Arreglar contenedor de Docker v1",
       "tag": "Issue",
       "status": "En Progreso",
       "startDate": "2 Mar",
@@ -29,7 +29,7 @@
     },
     {
       "id": 4,
-      "title": "Terminar mockup de frontend de React",
+      "title": "Terminar mockup de frontend de React v2",
       "tag": "Feature",
       "status": "En Progreso",
       "startDate": "10 Mar",
@@ -38,7 +38,7 @@
     },
     {
       "id": 5,
-      "title": "Terminar mockup de bot de Telegram",
+      "title": "Terminar mockup de bot de Telegram v2",
       "tag": "Feature",
       "status": "En Progreso",
       "startDate": "15 Mar",
@@ -47,16 +47,16 @@
     },
     {
       "id": 6,
-      "title": "Arreglar contenedor de Docker",
+      "title": "Arreglar contenedor de Docker v2",
       "tag": "Issue",
       "status": "En Progreso",
       "startDate": "20 Mar",
-      "endDate": null,
+      "endDate": "21 Mar",
       "createdBy": "Alfonso"
     },
     {
       "id": 7,
-      "title": "Terminar mockup de frontend de React",
+      "title": "Terminar mockup de frontend de React v3",
       "tag": "Feature",
       "status": "En Progreso",
       "startDate": "28 Mar",
@@ -65,11 +65,119 @@
     },
     {
       "id": 8,
-      "title": "Terminar mockup de bot de Telegram",
+      "title": "Terminar mockup de bot de Telegram v3",
       "tag": "Feature",
       "status": "En Progreso",
       "startDate": "4 Abr",
       "endDate": "10 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 21,
+      "title": "Terminar mockup de frontend de React v4",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "11 Abr",
+      "endDate": "12 Abr",
+      "createdBy": "Rodolfo (Yo)"
+    },
+    {
+      "id": 22,
+      "title": "Terminar mockup de bot de Telegram v4",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "13 Abr",
+      "endDate": "14 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 23,
+      "title": "Arreglar contenedor de Docker v3",
+      "tag": "Issue",
+      "status": "En Progreso",
+      "startDate": "15 Abr",
+      "endDate": "16 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 24,
+      "title": "Terminar mockup de frontend de React v5",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "17 Abr",
+      "endDate": "18 Abr",
+      "createdBy": "Rodolfo (Yo)"
+    },
+    {
+      "id": 25,
+      "title": "Terminar mockup de bot de Telegram v5",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "19 Abr",
+      "endDate": "20 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 26,
+      "title": "Arreglar contenedor de Docker v4",
+      "tag": "Issue",
+      "status": "En Progreso",
+      "startDate": "21 Abr",
+      "endDate": "22 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 27,
+      "title": "Terminar mockup de frontend de React v6",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "23 Abr",
+      "endDate": "24 Abr",
+      "createdBy": "Rodolfo (Yo)"
+    },
+    {
+      "id": 28,
+      "title": "Terminar mockup de bot de Telegram v6",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "25 Abr",
+      "endDate": "26 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 29,
+      "title": "Acelerar la base de datos",
+      "tag": "Issue",
+      "status": "En Progreso",
+      "startDate": "27 Abr",
+      "endDate": "28 Abr",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 30,
+      "title": "Implementar autenticacion con Google",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "29 Abr",
+      "endDate": "30 Abr",
+      "createdBy": "Rodolfo (Yo)"
+    },
+    {
+      "id": 31,
+      "title": "Crear script de deploy",
+      "tag": "Feature",
+      "status": "En Progreso",
+      "startDate": "1 May",
+      "endDate": "2 May",
+      "createdBy": "Alfonso"
+    },
+    {
+      "id": 32,
+      "title": "Sumar tests de integracion",
+      "tag": "Issue",
+      "status": "En Progreso",
+      "startDate": "3 May",
+      "endDate": "4 May",
       "createdBy": "Alfonso"
     }
   ]
