@@ -14,7 +14,6 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import com.springboot.MyTodoList.controller.ToDoItemBotController;
 import com.springboot.MyTodoList.service.ToDoItemService;
-import com.springboot.MyTodoList.util.BotMessages;
 
 @SpringBootApplication
 public class MyTodoListApplication implements CommandLineRunner {
