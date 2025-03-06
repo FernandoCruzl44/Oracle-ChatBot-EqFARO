@@ -317,7 +317,7 @@ export default function TaskView() {
               <span className="mx-2">•</span>
               <span
                 className={`${
-                  isManager ? "text-blue-500" : "text-green-500"
+                  isManager ? "text-blue-600" : "text-green-600"
                 } font-medium`}
               >
                 {isManager ? "Manager" : "Developer"}
@@ -325,7 +325,7 @@ export default function TaskView() {
               {!isManager && currentUser.team && (
                 <>
                   <span className="mx-2">•</span>
-                  <span className="text-purple-500 font-medium">
+                  <span className="text-cyan-600 font-medium">
                     {currentUser.team.nombre}
                   </span>
                 </>
@@ -334,7 +334,7 @@ export default function TaskView() {
           )}
         </div>
 
-        {/* Search and filters */}
+        {/* Busqueda y filtros */}
         <div className="py-4 flex items-center justify-between">
           <div className="flex flex-row gap-2">
             <div className="relative w-72">
@@ -433,7 +433,7 @@ export default function TaskView() {
             )}
           </div>
 
-          {/* Task table */}
+          {/* Tabla de Tasks */}
           <div
             className="overflow-y-auto"
             style={{ maxHeight: "calc(100vh - 253px)" }}
@@ -580,7 +580,7 @@ export default function TaskView() {
                               {task.assignees.map((assignee, i) => (
                                 <span
                                   key={i}
-                                  className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded"
+                                  className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-lg border border-oc-outline-light/60"
                                 >
                                   {assignee}
                                 </span>
@@ -671,7 +671,7 @@ export default function TaskView() {
         />
       )}
 
-      {/* Render the status dropdown in a portal */}
+      {/* Renderizar el status dropdown en un portal (para que estuviera por encima de todo)*/}
       {openStatusMenu && (
         <Portal>
           <div

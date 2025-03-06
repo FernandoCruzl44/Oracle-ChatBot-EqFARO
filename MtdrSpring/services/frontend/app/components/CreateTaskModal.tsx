@@ -160,7 +160,7 @@ export default function CreateTaskModal({
       description,
       team_id: teamId,
       assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
-      // Use current user's ID if available
+      // Usar user ID actual si esta disponible
       created_by_id: currentUser?.id,
     };
 
@@ -294,7 +294,7 @@ export default function CreateTaskModal({
             </div>
           )}
 
-          {/* Para desarrolladores, mostrar su equipo (información) */}
+          {/* Para desarrolladores, mostrar su equipo */}
           {!isManager && (
             <div>
               <label className="block text-sm text-gray-500 mb-1">

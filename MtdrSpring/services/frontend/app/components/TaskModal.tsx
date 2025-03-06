@@ -37,7 +37,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
 
   useEffect(() => {
     setIsVisible(true);
-    // Fetch current user identity
     fetch("/api/identity/current")
       .then((res) => res.json())
       .then((data) => {
@@ -173,7 +172,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
           >
             <i className="fa fa-times text-xl"></i>
           </button>
-          {/* Left side - Editable Task details */}
+          {/* Izq - Fields de task editables */}
           <div className="flex-1 p-8 border-r border-oc-outline-light/60 overflow-hidden">
             <div className="flex flex-col h-full">
               <input
@@ -329,7 +328,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
               </div>
             </div>
           </div>
-          {/* Right side - Comments */}
+          {/* Derecha - Comentarios */}
           <div className="w-[350px] flex flex-col bg-oc-primary">
             <div className="p-8">
               <h3 className="text-lg font-bold border-b border-oc-outline-light/60 pb-3">
