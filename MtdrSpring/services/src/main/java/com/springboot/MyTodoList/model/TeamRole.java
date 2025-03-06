@@ -15,18 +15,18 @@ public class TeamRole {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "RoleID")
+	@Column(name = "ROLEID")
 	private Long roleID;
 
 	@ManyToOne
-	@JoinColumn(name = "TeamID", nullable = false)
+	@JoinColumn(name = "TEAMID", nullable = false)
 	private Team team;
 
-	@Column(name = "RoleName", nullable = false, length = 255)
+	@Column(name = "ROLENAME", nullable = false, length = 255)
 	private String roleName;
 
 	@ManyToOne
-	@JoinColumn(name = "AssignedUserID")
+	@JoinColumn(name = "ASSIGNEDUSERID")
 	private User assignedUser;
 
 	public Long getRoleID() {

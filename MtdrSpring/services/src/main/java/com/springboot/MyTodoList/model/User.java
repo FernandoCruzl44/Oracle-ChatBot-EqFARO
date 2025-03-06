@@ -13,25 +13,25 @@ public class User {
 
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY) 
-        @Column(name = "UserID") // Explicitly mapping the column name in the database
+        @Column(name = "USERID") // Explicitly mapping the column name in the database
         private Long userID;
 
-        @Column(name = "Nombre", nullable = false, length = 255) // Mapping to 'Nombre' column
+        @Column(name = "NOMBRE", nullable = false, length = 255) // Mapping to 'Nombre' column
         private String nombre;
 
-        @Column(name = "Email", nullable = false, unique = true, length = 255) // 'Email' should be unique
+        @Column(name = "EMAIL", nullable = false, unique = true, length = 255) // 'Email' should be unique
         private String email;
 
-        @Column(name = "TelegramID", length = 255) // 'TelegramID' can be nullable
+        @Column(name = "TELEGRAMID", length = 255) // 'TelegramID' can be nullable
         private String telegramID;
 
-        @Column(name = "ChatID", length = 255) // 'ChatID' can be nullable
+        @Column(name = "CHATID", length = 255) // 'ChatID' can be nullable
         private String chatID;
 
-        @Column(name = "Phone", length = 255) // 'Phone' can be nullable
+        @Column(name = "PHONE", length = 255) // 'Phone' can be nullable
         private String phone;
 
-        @Column(name = "UserType", nullable = false, length = 20) // Enforcing non-null constraint on 'UserType'
+        @Column(name = "USERTYPE", nullable = false, length = 20) // Enforcing non-null constraint on 'UserType'
         private String userType;
 
         public Long getUserID() {

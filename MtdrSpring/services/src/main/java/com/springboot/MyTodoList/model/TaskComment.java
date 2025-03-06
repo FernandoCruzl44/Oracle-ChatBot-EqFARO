@@ -9,21 +9,21 @@ public class TaskComment {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "CommentID")
+	@Column(name = "COMMENTID")
 	private Long commentID;
 
 	@ManyToOne
-	@JoinColumn(name = "TaskID", nullable = false)
+	@JoinColumn(name = "TASKID", nullable = false)
 	private Task task;
 
 	@ManyToOne
-	@JoinColumn(name = "UserID", nullable = false)
+	@JoinColumn(name = "USERID", nullable = false)
 	private User user;
 
-	@Column(name = "CreationTime", columnDefinition = "TIMESTAMP DEFAULT SYSTIMESTAMP")
+	@Column(name = "CREATIONTIME", columnDefinition = "TIMESTAMP DEFAULT SYSTIMESTAMP")
 	private Timestamp creationTime;
 
-	@Column(name = "CommentText", length = 1000)
+	@Column(name = "COMMENTTEXT", length = 1000)
 	private String commentText;
 
 	public Long getCommentID() {

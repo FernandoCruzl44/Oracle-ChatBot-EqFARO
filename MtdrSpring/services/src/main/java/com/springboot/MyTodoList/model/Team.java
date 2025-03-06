@@ -15,17 +15,17 @@ public class Team {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "TeamID")
+	@Column(name = "TEAMID")
 	private Long teamID;
 
 	@ManyToOne
-	@JoinColumn(name = "ManagerID", nullable = false)
+	@JoinColumn(name = "MANAGERID", nullable = false)
 	private User manager;
 
-	@Column(name = "Nombre", nullable = false, length = 255)
+	@Column(name = "NOMBRE", nullable = false, length = 255)
 	private String nombre;
 
-	@Column(name = "Description", length = 255)
+	@Column(name = "DESCRIPTION", length = 255)
 	private String description;
 
 	public Long getTeamID() {

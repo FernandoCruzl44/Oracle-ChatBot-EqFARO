@@ -8,42 +8,42 @@ public class Task {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "TaskID")
+	@Column(name = "TASKID")
 	private Long taskID;
 
 	@ManyToOne
-	@JoinColumn(name = "TeamID", nullable = false)
+	@JoinColumn(name = "TEAMID", nullable = false)
 	private Team team;
 
 	@ManyToOne
-	@JoinColumn(name = "RoleID", nullable = false)
+	@JoinColumn(name = "ROLEID", nullable = false)
 	private TeamRole role;
 
-	@Column(name = "Title", nullable = false, length = 255)
+	@Column(name = "TITLE", nullable = false, length = 255)
 	private String title;
 
-	@Column(name = "Description", length = 2000)
+	@Column(name = "DESCRIPTION", length = 2000)
 	private String description;
 
-	@Column(name = "Status", length = 50)
+	@Column(name = "STATUS", length = 50)
 	private String status;
 
-	@Column(name = "Priority", length = 50)
+	@Column(name = "PRIORITY", length = 50)
 	private String priority;
 
-	@Column(name = "FechaCreacion", nullable = false)
+	@Column(name = "FECHACREACION", nullable = false)
 	private java.sql.Date fechaCreacion;
 
-	@Column(name = "FechaInicio")
+	@Column(name = "FECHAINICIO")
 	private java.sql.Date fechaInicio;
 
-	@Column(name = "FechaFin")
+	@Column(name = "FECHAFIN")
 	private java.sql.Date fechaFin;
 
-	@Column(name = "StoryPoints")
+	@Column(name = "STORYPOINTS")
 	private Long storyPoints;
 
-	@Column(name = "TiempoInvertido")
+	@Column(name = "TIEMPOINVERTIDO")
 	private Long tiempoInvertido;
 
 	public Long getTaskID() {
