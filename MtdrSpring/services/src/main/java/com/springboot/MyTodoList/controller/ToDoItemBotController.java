@@ -45,12 +45,14 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
       logger.error(e.getLocalizedMessage(), e);
     }
   }
-	
+	//Se agregaron los botones de crear equipo y asignar usuario
 	private static final String MAIN_SCREEN_MESSAGE = "Show Main Screen";
-	private static final String LIST_ITEMS_MESSAGE = "List All Items";
+	private static final String LIST_ITEMS_MESSAGE = "List All Tasks";
 	private static final String HIDE_MAIN_MESSAGE = "Hide Main Screen";
-	private static final String ADD_ITEM_MESSAGE = "Add New Item";
+	private static final String ADD_ITEM_MESSAGE = "Add New Task";
 	private static final String MY_TODO_MESSAGE = "MY TODO LIST";
+	private static final String NEW_TEAM = "Create Team";
+	private static final String ASSIGN_USER = "Assign usser";
 
 	private static final Logger logger = LoggerFactory.getLogger(ToDoItemBotController.class);
 	private ToDoItemService toDoItemService;
@@ -93,6 +95,12 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 				row = new KeyboardRow();
 				row.add(MAIN_SCREEN_MESSAGE);
 				row.add(HIDE_MAIN_MESSAGE);
+				keyboard.add(row);
+
+				//third row 
+				row = new KeyboardRow();
+				row.add(NEW_TEAM);
+				row.add(ASSIGN_USER);
 				keyboard.add(row);
 
 				// Set the keyboard
@@ -312,7 +320,7 @@ public class ToDoItemBotController extends TelegramLongPollingBot {
 		Boolean flag = false;
 		try {
 			flag = toDoItemService.deleteToDoItem(id);
-			return new ResponseEntity<>(flag, HttpStatus.OK);
+			return new ResponseEntit y<>(flag, HttpStatus.OK);
 		} catch (Exception e) {
 			logger.error(e.getLocalizedMessage(), e);
 			return new ResponseEntity<>(flag, HttpStatus.NOT_FOUND);
