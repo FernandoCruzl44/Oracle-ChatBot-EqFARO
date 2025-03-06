@@ -307,13 +307,12 @@ export default function TaskView() {
       <div className="h-full overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center pb-2 gap-2">
-          <div className="flex items-center">
+          <div className="flex items-center pb-2 gap-2">
             <i className="fa fa-chevron-right text-2xl text-black"></i>
             <h1 className="text-xl font-medium text-black">Tareas</h1>
           </div>
           {currentUser && (
             <div className="text-sm text-gray-600 flex items-center">
-              <span className="mr-2">Usuario:</span>
               <span className="font-medium">{currentUser.nombre}</span>
               <span className="mx-2">•</span>
               <span

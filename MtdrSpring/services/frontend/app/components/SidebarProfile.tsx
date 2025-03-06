@@ -60,8 +60,8 @@ export default function SidebarProfile() {
   };
 
   return (
-    <div className="p-3 flex items-center m-3 rounded-xl transition-colors">
-      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
+    <div className="p-2 flex items-center m-3 rounded-xl transition-colors">
+      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-2">
         <i className="fa fa-user text-gray-600"></i>
       </div>
 
@@ -81,21 +81,18 @@ export default function SidebarProfile() {
             </option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.nombre} (
-                {user.role === "manager" ? "Manager" : "Developer"})
+                {user.nombre}
               </option>
             ))}
           </select>
 
           {currentUser && (
-            <div className="text-xs text-gray-400">{currentUser.email}</div>
+            <div className="text-xs text-gray-400 pl-1">
+              {currentUser.email}
+            </div>
           )}
         </div>
       )}
-
-      <div className="text-gray-400">
-        <i className="fa fa-exchange-alt"></i>
-      </div>
     </div>
   );
 }
