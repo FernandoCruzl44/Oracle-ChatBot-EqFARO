@@ -1,14 +1,12 @@
+// /src/main/java/com/springboot/MyTodoList/controller/TaskController.java
 package com.springboot.MyTodoList.controller;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
-
 import javax.servlet.http.HttpServletRequest;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.User;
@@ -60,7 +57,6 @@ public class TaskController {
 			teamId = Long.valueOf(request.get("team_id").toString());
 		}
 
-		// Fix type conversion for assignee_ids
 		List<Long> assigneeIds = null;
 		if (request.containsKey("assignee_ids") && request.get("assignee_ids") != null) {
 			@SuppressWarnings("unchecked")
@@ -128,7 +124,6 @@ public class TaskController {
 			return ResponseEntity.notFound().build();
 		}
 
-		// Check access permissions
 		if (!identityService.isManager(httpRequest) &&
 				(task.getTeam() == null || !task.getTeam().getId().equals(currentUser.getTeam().getId()))) {
 			return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
@@ -159,7 +154,6 @@ public class TaskController {
 			task.setEndDate((String) request.get("endDate"));
 		}
 
-		// Fix type conversion for assignee_ids
 		List<Long> assigneeIds = null;
 		if (request.containsKey("assignee_ids") && request.get("assignee_ids") != null) {
 			@SuppressWarnings("unchecked")
@@ -188,7 +182,7 @@ public class TaskController {
 			return ResponseEntity.notFound().build();
 		}
 
-		// TODO - No hay control de acceso en la eliminación de tareas
+		// TODO: No hay control de acceso en la eliminación de tareas
 
 		taskService.deleteTask(taskId);
 
@@ -213,7 +207,6 @@ public class TaskController {
 			return ResponseEntity.notFound().build();
 		}
 
-		// Check access permissions
 		if (!identityService.isManager(httpRequest) &&
 				(task.getTeam() == null || !task.getTeam().getId().equals(currentUser.getTeam().getId()))) {
 			return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
@@ -247,7 +240,6 @@ public class TaskController {
 			return ResponseEntity.notFound().build();
 		}
 
-		// Check access permissions
 		if (!identityService.isManager(httpRequest) &&
 				(task.getTeam() == null || !task.getTeam().getId().equals(currentUser.getTeam().getId()))) {
 			return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
@@ -258,7 +250,6 @@ public class TaskController {
 			return ResponseEntity.badRequest().body(Map.of("message", "assignee_ids is required"));
 		}
 
-		// Fix type conversion
 		List<Long> assigneeIds = rawIds.stream()
 				.map(id -> Long.valueOf(id.toString()))
 				.collect(Collectors.toList());
@@ -278,9 +269,7 @@ public class TaskController {
 			return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
 		}
 
-		// All users can delete tasks they have access to
-		// Instead of checking if the user is a manager, we'll filter tasks they can
-		// access
+		// TODO: No hay control de acceso en la eliminación de tareas
 		List<Long> accessibleTaskIds = new ArrayList<>();
 
 		for (Long taskId : taskIds) {

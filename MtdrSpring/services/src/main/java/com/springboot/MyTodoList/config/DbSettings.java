@@ -1,10 +1,9 @@
+// /src/main/java/com/springboot/MyTodoList/config/DbSettings.java
 package com.springboot.MyTodoList.config;
-
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-// This is only used for local testing.
 @Configuration
 @ConfigurationProperties(prefix = "spring.datasource")
 public class DbSettings {

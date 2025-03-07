@@ -1,11 +1,10 @@
+// /src/main/java/com/springboot/MyTodoList/service/IdentityService.java
 package com.springboot.MyTodoList.service;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
 
@@ -25,10 +24,10 @@ public class IdentityService {
                         return userRepository.findById(userId).orElse(null);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
-                        return null; // Or return a default user object
+                        return null;
                     } catch (Exception e) {
                         e.printStackTrace();
-                        return null; // Or return a default user object
+                        return null;
                     }
                 }
             }

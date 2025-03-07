@@ -1,4 +1,4 @@
-// File: /services/src/main/java/com/springboot/MyTodoList/controller/TeamController.java
+// /src/main/java/com/springboot/MyTodoList/controller/TeamController.java
 package com.springboot.MyTodoList.controller;
 
 import java.util.HashMap;
@@ -63,7 +63,6 @@ public class TeamController {
             @RequestParam(defaultValue = "100") int limit,
             HttpServletRequest request) {
 
-        // Check if user is authenticated
         User currentUser = identityService.getCurrentUser(request);
         if (currentUser == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
@@ -81,7 +80,6 @@ public class TeamController {
 
     @GetMapping("/{teamId}")
     public ResponseEntity<?> getTeam(@PathVariable Long teamId, HttpServletRequest request) {
-        // Check if user is authenticated
         User currentUser = identityService.getCurrentUser(request);
         if (currentUser == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
@@ -104,7 +102,6 @@ public class TeamController {
             @RequestBody Map<String, Object> requestBody,
             HttpServletRequest request) {
 
-        // Only managers can update teams
         if (!identityService.isManager(request)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
         }
@@ -127,7 +124,6 @@ public class TeamController {
 
     @DeleteMapping("/{teamId}")
     public ResponseEntity<?> deleteTeam(@PathVariable Long teamId, HttpServletRequest request) {
-        // Only managers can delete teams
         if (!identityService.isManager(request)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
         }

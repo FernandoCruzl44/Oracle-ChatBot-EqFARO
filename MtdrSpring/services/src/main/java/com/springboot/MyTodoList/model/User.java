@@ -1,8 +1,8 @@
+// /src/main/java/com/springboot/MyTodoList/model/User.java
 package com.springboot.MyTodoList.model;
 
 import java.util.Date;
 import java.util.List;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -13,10 +13,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Entity
 @Table(name = "users")
@@ -61,9 +58,7 @@ public class User {
         private List<Task> assignedTasks;
 
         @Column(name = "team_role")
-        private String teamRole; // "lead" or "member"
-
-        // Getters and setters
+        private String teamRole; // TODO: "lead" or "miembro", cambiar a string que se pueda modificar
 
         public Long getId() {
                 return id;

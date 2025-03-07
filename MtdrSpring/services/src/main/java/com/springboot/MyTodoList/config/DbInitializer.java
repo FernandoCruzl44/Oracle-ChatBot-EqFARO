@@ -1,17 +1,16 @@
+// /src/main/java/com/springboot/MyTodoList/config/DbInitializer.java
 package com.springboot.MyTodoList.config;
 
 import javax.annotation.PostConstruct;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 import com.springboot.MyTodoList.model.Team;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.TeamRepository;
 import com.springboot.MyTodoList.repository.UserRepository;
 
 @Component
-public class DatabaseInitializer {
+public class DbInitializer {
 
     @Autowired
     private UserRepository userRepository;
@@ -21,11 +20,11 @@ public class DatabaseInitializer {
 
     @PostConstruct
     public void initializeDatabase() {
-        // Only initialize if no users exist
+        // Solo inicializa si no existen usuarios
         if (userRepository.count() == 0) {
             System.out.println("Initializing database with default users and teams...");
 
-            // Create teams
+            // Crea equipos
             Team frontendTeam = new Team();
             frontendTeam.setNombre("Equipo Frontend");
             frontendTeam.setDescription("Equipo de desarrollo frontend");
@@ -36,7 +35,7 @@ public class DatabaseInitializer {
             backendTeam.setDescription("Equipo de desarrollo backend");
             backendTeam = teamRepository.save(backendTeam);
 
-            // Create users
+            // Crea usuarios
             User managerUser = new User();
             managerUser.setNombre("Manager User");
             managerUser.setEmail("manager@example.com");

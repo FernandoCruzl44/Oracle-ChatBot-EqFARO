@@ -1,16 +1,14 @@
-// File: /services/src/main/java/com/springboot/MyTodoList/service/TaskService.java
+// /src/main/java/com/springboot/MyTodoList/service/TaskService.java
 package com.springboot.MyTodoList.service;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.Team;
 import com.springboot.MyTodoList.model.User;
@@ -63,49 +61,46 @@ public class TaskService {
 	public List<Task> getTasks(User currentUser, String viewMode, Long teamId, String status,
 			String tag, Long assignedTo, Long createdBy, int skip, int limit) {
 
-		// Check if user is a manager first
+		// Revisar si un usuario es un manager primero
 		boolean isManager = "manager".equals(currentUser.getRole());
 
-		// Special case for managers viewing all tasks
+		// Caso para los managers cuando ven todas las tareas
 		if (isManager && ("assigned".equals(viewMode) || viewMode == null) && teamId == null) {
-			// Return all tasks for the manager (across all teams)
 			return taskRepository.findAllTasksForManager(
 					status, tag, assignedTo, createdBy,
 					PageRequest.of(skip / limit, limit));
 		}
 
-		// Handle other view modes
+		// Modos de vista para tabla de tareas
 		if (viewMode != null) {
 			if ("assigned".equals(viewMode)) {
-				// Return tasks assigned to the current user
+				// Tareas asignadas al usuario actual
 				return taskRepository.findByAssigneesId(currentUser.getId());
 			} else if ("team".equals(viewMode)) {
 				if (teamId != null) {
-					// Return tasks for the specified team (for managers selecting a specific team)
+					// Tareas para el equipo especificado (para los managers que seleccionan un
+					// equipo específico)
 					return taskRepository.findByTeamId(teamId);
 				} else if (currentUser.getTeam() != null) {
-					// Return tasks for the user's team (for regular users)
+					// Tareas para el equipo del usuario (para usuarios regulares)
 					return taskRepository.findByTeamId(currentUser.getTeam().getId());
 				}
 			}
 		}
 
-		// Apply filters
 		if (isManager) {
-			// Managers can see all tasks with filters
+			// Si el usuario es un manager, puede ver todas las tareas con filtros
 			return taskRepository.findWithFilters(
 					teamId, status, tag, assignedTo, createdBy,
 					PageRequest.of(skip / limit, limit));
 		} else {
-			// Developers can only see tasks for their team
+			// Desarrolladores solo pueden ver tareas para su equipo
 			Long userTeamId = currentUser.getTeam() != null ? currentUser.getTeam().getId() : null;
 			if (userTeamId == null) {
 				return new ArrayList<>();
 			}
 
-			// Override teamId with user's team for security
 			if (teamId != null && !teamId.equals(userTeamId)) {
-				// User tried to access another team's tasks
 				return new ArrayList<>();
 			}
 
@@ -124,24 +119,24 @@ public class TaskService {
 
 		Task task = taskOpt.get();
 
-		// Managers can access any task
+		// Managers pueden acceder a cualquier tarea
 		if ("manager".equals(currentUser.getRole())) {
 			return Optional.of(task);
 		}
 
-		// For developers, check if the task belongs to their team
+		// Para devs, verificar si la tarea pertenece a su equipo
 		if (currentUser.getTeam() != null && task.getTeam() != null &&
 				currentUser.getTeam().getId().equals(task.getTeam().getId())) {
 			return Optional.of(task);
 		}
 
-		// Check if the user is assigned to the task
+		// Verificar si el usuario está asignado a la tarea
 		if (task.getAssignees() != null &&
 				task.getAssignees().stream().anyMatch(user -> user.getId().equals(currentUser.getId()))) {
 			return Optional.of(task);
 		}
 
-		// User doesn't have access
+		// El usuario no tiene acceso a la tarea
 		return Optional.empty();
 	}
 

@@ -1,12 +1,10 @@
-// File: /services/src/main/java/com/springboot/MyTodoList/controller/UserController.java
+// /src/main/java/com/springboot/MyTodoList/controller/UserController.java
 package com.springboot.MyTodoList.controller;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.servlet.http.HttpServletRequest;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.springboot.MyTodoList.model.Team;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.service.IdentityService;
@@ -37,7 +34,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody User user, HttpServletRequest request) {
-        // Only managers can create users
+        // Solo los managers pueden crear usuarios
         if (!identityService.isManager(request)) {
             return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }
@@ -58,7 +55,6 @@ public class UserController {
             @RequestParam(defaultValue = "100") int limit,
             HttpServletRequest request) {
 
-        // Check if user is authenticated
         User currentUser = identityService.getCurrentUser(request);
         if (currentUser == null) {
             List<User> users = userService.getUsers(skip, limit);
@@ -77,7 +73,6 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<?> getUser(@PathVariable Long userId, HttpServletRequest request) {
-        // Check if user is authenticated
         User currentUser = identityService.getCurrentUser(request);
         if (currentUser == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
@@ -100,7 +95,6 @@ public class UserController {
             @RequestBody User user,
             HttpServletRequest request) {
 
-        // Check access permissions
         if (!identityService.isUserOrManager(request, userId)) {
             return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }
@@ -117,7 +111,6 @@ public class UserController {
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> deleteUser(@PathVariable Long userId, HttpServletRequest request) {
-        // Only managers can delete users
         if (!identityService.isManager(request)) {
             return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }
@@ -138,7 +131,6 @@ public class UserController {
             @RequestBody Map<String, Object> requestBody,
             HttpServletRequest request) {
 
-        // Only managers can assign users to teams
         if (!identityService.isManager(request)) {
             return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }

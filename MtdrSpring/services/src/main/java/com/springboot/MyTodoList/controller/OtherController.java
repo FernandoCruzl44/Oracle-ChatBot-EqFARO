@@ -1,7 +1,7 @@
+// /src/main/java/com/springboot/MyTodoList/controller/OtherController.java
 package com.springboot.MyTodoList.controller;
 
 import java.util.Map;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

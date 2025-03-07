@@ -1,3 +1,4 @@
+// /src/main/java/com/springboot/MyTodoList/model/Task.java
 package com.springboot.MyTodoList.model;
 
 import javax.persistence.*;
@@ -42,7 +43,7 @@ public class Task {
 
 	@ManyToOne
 	@JoinColumn(name = "team_id")
-	@JsonIgnore // Hide the full team object in response
+	@JsonIgnore // Esconder el equipo en la respuesta JSON, para evitar loop al serializar
 	private Team team;
 
 	@ManyToMany
@@ -157,6 +158,4 @@ public class Task {
 	public void setComments(List<Comment> comments) {
 		this.comments = comments;
 	}
-
-	// Getters and setters
 }
