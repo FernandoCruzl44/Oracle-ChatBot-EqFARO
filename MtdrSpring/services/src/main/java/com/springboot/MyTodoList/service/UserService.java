@@ -1,6 +1,9 @@
 package com.springboot.MyTodoList.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.springboot.MyTodoList.model.User;
@@ -20,10 +23,15 @@ public class UserService {
 	}
 
 	public List<User> getUsersByUserType(String userType) {
-		return userRepository.findByUserType(userType);
+		return userRepository.findByRole(userType);
 	}
 
 	public Optional<User> getUserByEmail(String email) {
 		return userRepository.findByEmail(email);
+	}
+
+	public Page<User> getUsers(int skip, int limit) {
+		Pageable pageable = PageRequest.of(skip / limit, limit);
+		return userRepository.findAll(pageable);
 	}
 }

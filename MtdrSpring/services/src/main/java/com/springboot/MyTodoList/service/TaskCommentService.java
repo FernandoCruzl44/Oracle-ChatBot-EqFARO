@@ -15,11 +15,11 @@ public class TaskCommentService {
 	private TaskCommentRepository taskCommentRepository;
 
 	public List<TaskComment> getCommentsByTask(Long taskID) {
-		return taskCommentRepository.findByTaskTaskID(taskID);
+		return taskCommentRepository.findByTask(taskID);
 	}
 
 	public List<TaskComment> getCommentsByUser(Long userID) {
-		return taskCommentRepository.findByUserUserID(userID);
+		return taskCommentRepository.findByUser(userID);
 	}
 
 	public TaskComment createComment(TaskComment comment) {

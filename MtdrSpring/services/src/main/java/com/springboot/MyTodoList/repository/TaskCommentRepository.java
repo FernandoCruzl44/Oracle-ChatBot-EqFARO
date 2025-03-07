@@ -7,6 +7,6 @@ import com.springboot.MyTodoList.model.TaskComment;
 import java.util.List;
 
 public interface TaskCommentRepository extends JpaRepository<TaskComment, Long> {
-    List<TaskComment> findByTaskTaskID(Long taskID);
-    List<TaskComment> findByUserUserID(Long userID);
+    List<TaskComment> findByTask(Long task);
+    List<TaskComment> findByUser(Long user);
 }

@@ -14,7 +14,7 @@ public class User {
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY) 
         @Column(name = "USERID") // Explicitly mapping the column name in the database
-        private Long userID;
+        private Long id;
 
         @Column(name = "NOMBRE", nullable = false, length = 255) // Mapping to 'Nombre' column
         private String nombre;
@@ -32,14 +32,14 @@ public class User {
         private String phone;
 
         @Column(name = "USERTYPE", nullable = false, length = 20) // Enforcing non-null constraint on 'UserType'
-        private String userType;
+        private String role;
 
-        public Long getUserID() {
-                return userID;
+        public Long getId() {
+                return id;
         }
 
-        public void setUserID(Long userID) {
-                this.userID = userID;
+        public void setId(Long userID) {
+                this.id = userID;
         }
 
         public String getNombre() {
@@ -82,11 +82,11 @@ public class User {
                 this.phone = phone;
         }
 
-        public String getUserType() {
-                return userType;
+        public String getRole() {
+                return role;
         }
 
-        public void setUserType(String userType) {
-                this.userType = userType;
+        public void setRole(String userType) {
+                this.role = userType;
         }
 }

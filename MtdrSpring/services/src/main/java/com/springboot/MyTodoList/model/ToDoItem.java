@@ -30,7 +30,7 @@ public class ToDoItem {
         this.done = done;
     }
 
-    public int getID() {
+    public int getId() {
         return ID;
     }
 

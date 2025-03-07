@@ -23,7 +23,7 @@ public class TeamController {
     @GetMapping("/manager/{managerId}")
     public List<Team> getTeamsByManager(@PathVariable Long managerId) {
         User manager = new User(); // Should fetch user by ID, simplified for this example
-        manager.setUserID(managerId);
+        manager.setId(managerId);
         return teamService.getTeamsByManager(manager);
     }
 

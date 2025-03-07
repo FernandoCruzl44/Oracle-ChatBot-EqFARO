@@ -33,7 +33,7 @@ public class TeamRoleController {
     @GetMapping("/user/{userId}")
     public Optional<TeamRole> getRoleByAssignedUser(@PathVariable Long userId) {
         User user = new User(); // Simplified for this example
-        user.setUserID(userId);
+        user.setId(userId);
         return teamRoleService.getRoleByAssignedUser(user);
     }
 }
