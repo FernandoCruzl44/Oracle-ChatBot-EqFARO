@@ -34,7 +34,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # URL base de la API de tareas - se puede sobreescribir desde el .env
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:3000/api")
 
 # Estados para el ConversationHandler
 (
