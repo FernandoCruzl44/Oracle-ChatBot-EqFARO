@@ -60,12 +60,12 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
       fetch(`/api/tasks/${task.id}/comments`)
         .then((response) => response.json())
         .then((data) => {
+          console.log(data);
           const processedComments = data.map((comment: any) => ({
             ...comment,
-            created_by:
-              typeof comment.created_by === "object"
-                ? comment.created_by.nombre
-                : comment.created_by,
+            created_by: comment.creator
+              ? comment.creator.nombre
+              : comment.createdBy,
           }));
           setComments(processedComments);
         })
