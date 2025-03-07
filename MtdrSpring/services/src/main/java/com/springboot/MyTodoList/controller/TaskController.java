@@ -3,6 +3,7 @@ package com.springboot.MyTodoList.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -277,12 +278,21 @@ public class TaskController {
 			return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
 		}
 
-		// Check access permissions (only manager can delete multiple tasks)
-		if (!identityService.isManager(request)) {
-			return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+		// All users can delete tasks they have access to
+		// Instead of checking if the user is a manager, we'll filter tasks they can
+		// access
+		List<Long> accessibleTaskIds = new ArrayList<>();
+
+		for (Long taskId : taskIds) {
+			Task task = taskService.getTask(taskId, currentUser).orElse(null);
+			if (task != null) {
+				accessibleTaskIds.add(taskId);
+			}
 		}
 
-		taskService.deleteMultipleTasks(taskIds);
+		if (!accessibleTaskIds.isEmpty()) {
+			taskService.deleteMultipleTasks(accessibleTaskIds);
+		}
 
 		return ResponseEntity.ok(Map.of("message", "Tasks deleted"));
 	}

@@ -52,3 +52,5 @@ frontend/yarn-error.log*
 .env
 
 .no_env
+
+MtdrSpring/services/wallet/

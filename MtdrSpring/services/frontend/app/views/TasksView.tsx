@@ -218,7 +218,21 @@ export default function TaskView() {
   };
 
   const handleSaveNewTask = (newTask: Task) => {
-    setTasks([...tasks, newTask]);
+    const processedNewTask = {
+      ...newTask,
+      created_by:
+        typeof newTask.created_by === "object"
+          ? (newTask.created_by as { nombre: string }).nombre
+          : newTask.created_by ||
+            newTask.creator?.nombre ||
+            currentUser?.nombre ||
+            "Usuario",
+      assignees: newTask.assignees?.map((assignee: any) =>
+        typeof assignee === "object" ? assignee.nombre : assignee
+      ),
+    };
+
+    setTasks([...tasks, processedNewTask]);
   };
 
   const handleDeleteTasks = () => {

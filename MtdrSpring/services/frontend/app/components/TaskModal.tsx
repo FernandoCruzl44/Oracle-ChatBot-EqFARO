@@ -60,7 +60,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
       fetch(`/api/tasks/${task.id}/comments`)
         .then((response) => response.json())
         .then((data) => {
-          // Process comments to ensure created_by is a string
           const processedComments = data.map((comment: any) => ({
             ...comment,
             created_by:
@@ -75,7 +74,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   }, [task]);
 
   useEffect(() => {
-    // Process task data to ensure assignees are strings
     const processedTask = {
       ...task,
       assignees: task.assignees?.map((assignee: any) =>
@@ -126,7 +124,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
 
       if (response.ok) {
         const updatedTask = await response.json();
-        // Process the updated task before passing to onUpdate
         const processedUpdatedTask = {
           ...updatedTask,
           assignees: updatedTask.assignees?.map((assignee: any) =>
@@ -157,7 +154,14 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
       })
         .then((response) => response.json())
         .then((data) => {
-          setComments([...comments, data]);
+          const processedComment = {
+            ...data,
+            created_by:
+              typeof data.created_by === "object"
+                ? data.created_by.nombre
+                : data.created_by,
+          };
+          setComments([...comments, processedComment]);
           setNewComment("");
         })
         .catch((error) => console.error("Error adding comment:", error));
@@ -196,7 +200,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
           >
             <i className="fa fa-times text-xl"></i>
           </button>
-          {/* Izq - Fields de task editables */}
           <div className="flex-1 p-8 border-r border-oc-outline-light/60 overflow-hidden">
             <div className="flex flex-col h-full">
               <input

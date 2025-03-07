@@ -10,4 +10,5 @@ export interface Task {
   description?: string;
   team?: string;
   assignees?: string[];
+  creator?: any;
 }

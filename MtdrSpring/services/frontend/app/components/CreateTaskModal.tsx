@@ -178,7 +178,15 @@ export default function CreateTaskModal({
         return response.json();
       })
       .then((data) => {
-        onSave(data);
+        const processedTask = {
+          ...data,
+          created_by:
+            data.created_by ||
+            data.creator?.nombre ||
+            currentUser?.nombre ||
+            "Usuario",
+        };
+        onSave(processedTask);
         handleClose();
       })
       .catch((error) => {
