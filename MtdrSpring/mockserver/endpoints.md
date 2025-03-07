@@ -7,6 +7,170 @@
 
 ### Resumen
 ```
+# Constants
+class UserRole(str, Enum):
+    DEVELOPER = "developer"
+    MANAGER = "manager"
+
+# Database models
+task_assignee = Table(
+    "task_assignee",
+    Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id")),
+    Column("user_id", Integer, ForeignKey("users.id")),
+)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    email = Column(String, nullable=False, unique=True)
+    password = Column(String, nullable=False)
+    role = Column(String, nullable=False, default=UserRole.DEVELOPER)
+    telegramId = Column(String, nullable=True)
+    chatId = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    team_role = Column(String, nullable=True, default="member")
+    team = relationship("Team", back_populates="members")
+    created_tasks = relationship(
+        "Task", back_populates="creator", foreign_keys="Task.created_by_id"
+    )
+    assigned_tasks = relationship(
+        "Task", secondary=task_assignee, back_populates="assignees"
+    )
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    members = relationship("User", back_populates="team")
+    tasks = relationship("Task", back_populates="team")
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    tag = Column(String, nullable=False)
+    status = Column(
+        String, nullable=False, default="Backlog"
+    )  # Allowed: "En progreso", "Cancelada", "Backlog", "Completada"
+    start_date = Column(String, nullable=False)
+    end_date = Column(String, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    creator = relationship(
+        "User", back_populates="created_tasks", foreign_keys=[created_by_id]
+    )
+    assignees = relationship(
+        "User", secondary=task_assignee, back_populates="assigned_tasks"
+    )
+    team = relationship("Team", back_populates="tasks")
+    comments = relationship("Comment", back_populates="task", cascade="all, delete")
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    task = relationship("Task", back_populates="comments")
+    creator = relationship("User")
+
+Base.metadata.create_all(bind=engine)
+
+# Initialize default users and team
+def initialize_database():
+    db = SessionLocal()
+    try:
+        existing_users = db.query(User).all()
+        if not existing_users:
+            print("Initializing database with default users and team...")
+
+            teams = [
+                Team(nombre="Equipo Frontend", description="Equipo de desarrollo frontend"),
+                Team(nombre="Equipo Backend", description="Equipo de desarrollo backend"),
+            ]
+
+            for team in teams:
+                db.add(team)
+
+            db.commit()
+            db.refresh(teams[0])
+            db.refresh(teams[1])
+
+            users = [
+                User(
+                    nombre="Manager User",
+                    email="manager@example.com",
+                    password="manager123",
+                    role=UserRole.MANAGER,
+                    telegramId="manager_telegram",
+                ),
+                User(
+                    nombre="Dev One",
+                    email="dev1@example.com",
+                    password="dev123",
+                    role=UserRole.DEVELOPER,
+                    telegramId="dev1_telegram",
+                    team_id=teams[0].id,
+                    team_role="lead",
+                ),
+                User(
+                    nombre="Dev Two",
+                    email="dev2@example.com",
+                    password="dev123",
+                    role=UserRole.DEVELOPER,
+                    telegramId="dev2_telegram",
+                    team_id=teams[0].id,
+                    team_role="member",
+                ),
+                User(
+                    nombre="Dev Three",
+                    email="dev3@example.com",
+                    password="dev123",
+                    role=UserRole.DEVELOPER,
+                    telegramId="dev3_telegram",
+                    team_id=teams[1].id,
+                    team_role="lead",
+                ),
+                User(
+                    nombre="Dev Four",
+                    email="dev4@example.com",
+                    password="dev123",
+                    role=UserRole.DEVELOPER,
+                    telegramId="dev4_telegram",
+                    team_id=teams[1].id,
+                    team_role="member",
+                ),
+            ]
+
+            for user in users:
+                db.add(user)
+
+            db.commit()
+
+            print("Database initialization complete!")
+        else:
+            print(
+                f"Database already contains {len(existing_users)} users. Skipping"
+                " initialization."
+            )
+    finally:
+        db.close()
+
+initialize_database()
+
+
 /api/identity/set/{user_id}
 /api/identity/current
 /api/identity/clear

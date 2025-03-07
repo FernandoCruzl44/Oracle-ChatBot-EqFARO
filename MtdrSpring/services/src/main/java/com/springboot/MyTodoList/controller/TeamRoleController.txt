@@ -26,14 +26,14 @@ public class TeamRoleController {
     @GetMapping("/team/{teamId}")
     public List<TeamRole> getRolesByTeam(@PathVariable Long teamId) {
         Team team = new Team(); // Simplified for this example
-        team.setTeamID(teamId);
+        team.setId(teamId);
         return teamRoleService.getRolesByTeam(team);
     }
 
     @GetMapping("/user/{userId}")
     public Optional<TeamRole> getRoleByAssignedUser(@PathVariable Long userId) {
         User user = new User(); // Simplified for this example
-        user.setUserID(userId);
+        user.setId(userId);
         return teamRoleService.getRoleByAssignedUser(user);
     }
 }

@@ -59,13 +59,30 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
     if (task) {
       fetch(`/api/tasks/${task.id}/comments`)
         .then((response) => response.json())
-        .then((data) => setComments(data))
+        .then((data) => {
+          // Process comments to ensure created_by is a string
+          const processedComments = data.map((comment: any) => ({
+            ...comment,
+            created_by:
+              typeof comment.created_by === "object"
+                ? comment.created_by.nombre
+                : comment.created_by,
+          }));
+          setComments(processedComments);
+        })
         .catch((error) => console.error("Error fetching comments:", error));
     }
   }, [task]);
 
   useEffect(() => {
-    setEditableTask({ ...task });
+    // Process task data to ensure assignees are strings
+    const processedTask = {
+      ...task,
+      assignees: task.assignees?.map((assignee: any) =>
+        typeof assignee === "object" ? assignee.nombre : assignee
+      ),
+    };
+    setEditableTask(processedTask);
   }, [task]);
 
   useEffect(() => {
@@ -109,7 +126,14 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
 
       if (response.ok) {
         const updatedTask = await response.json();
-        onUpdate(updatedTask);
+        // Process the updated task before passing to onUpdate
+        const processedUpdatedTask = {
+          ...updatedTask,
+          assignees: updatedTask.assignees?.map((assignee: any) =>
+            typeof assignee === "object" ? assignee.nombre : assignee
+          ),
+        };
+        onUpdate(processedUpdatedTask);
         setIsEditing(false);
         handleClose();
       }

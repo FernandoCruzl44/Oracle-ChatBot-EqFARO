@@ -281,7 +281,7 @@ def set_user_identity(user_id: int, response: Response, db=Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    response.set_cookie(key="user_id", value=str(user_id), max_age=86400)  # 24 hours
+    response.set_cookie(key="user_id", value=str(user_id), max_age=86400)  
 
     return {"message": f"Identity set to: {user.nombre} ({user.role})"}
 

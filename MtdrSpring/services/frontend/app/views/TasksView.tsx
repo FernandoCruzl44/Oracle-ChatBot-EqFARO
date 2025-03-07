@@ -70,35 +70,33 @@ export default function TaskView() {
     }
   }, [currentUser, activeTab]);
 
-  const fetchCurrentUser = () => {
+  const fetchCurrentUser = async () => {
     setIsLoading(true);
-    fetch("/api/identity/current")
-      .then((res) => {
-        if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error(
-              "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
-            );
-          }
-          throw new Error("Error al obtener usuario actual");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data.message !== "No identity set") {
-          setCurrentUser(data);
-        } else {
-          setError(
+    try {
+      const res = await fetch("/api/identity/current");
+      if (!res.ok) {
+        console.error("Raw response:", res);
+        if (res.status === 404) {
+          throw new Error(
             "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
           );
-          setIsLoading(false);
         }
-      })
-      .catch((error) => {
-        console.error("Error fetching current user:", error);
-        setError(error.message || "Error al obtener usuario actual");
+        throw new Error("Error al obtener usuario actual");
+      }
+      const data = await res.json();
+      if (data.message !== "No identity set") {
+        setCurrentUser(data);
+      } else {
+        setError(
+          "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
+        );
         setIsLoading(false);
-      });
+      }
+    } catch (error: any) {
+      console.error("Error fetching current user:", error);
+      setError(error.message || "Error al obtener usuario actual");
+      setIsLoading(false);
+    }
   };
 
   const fetchTeams = () => {
@@ -106,6 +104,7 @@ export default function TaskView() {
       fetch("/api/teams/")
         .then((res) => {
           if (!res.ok) {
+            console.error("Raw response:", res);
             throw new Error("Error al obtener equipos");
           }
           return res.json();
@@ -158,6 +157,7 @@ export default function TaskView() {
     fetch(url)
       .then((res) => {
         if (!res.ok) {
+          console.error("Raw response:", res);
           if (res.status === 401) {
             throw new Error(
               "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
@@ -168,7 +168,15 @@ export default function TaskView() {
         return res.json();
       })
       .then((data) => {
-        setTasks(data);
+        console.log(data);
+        const processedData = data.map((task: any) => ({
+          ...task,
+          created_by: task.creator?.nombre,
+          assignees: task.assignees?.map((assignee: any) =>
+            typeof assignee === "object" ? assignee.nombre : assignee
+          ),
+        }));
+        setTasks(processedData);
         setIsLoading(false);
         setCurrentPage(1);
         setSelectedTasks([]);
@@ -231,6 +239,7 @@ export default function TaskView() {
           setTasks(updatedTasks);
           setSelectedTasks([]);
         } else {
+          console.error("Raw response:", response);
           console.error("Failed to delete tasks");
         }
       })
@@ -250,8 +259,10 @@ export default function TaskView() {
       .then((response) => {
         if (response.ok) {
           return response.json();
+        } else {
+          console.error("Raw response:", response);
+          throw new Error("Failed to update task status");
         }
-        throw new Error("Failed to update task status");
       })
       .then((updatedTask) => {
         const updatedTasks = tasks.map((task) =>

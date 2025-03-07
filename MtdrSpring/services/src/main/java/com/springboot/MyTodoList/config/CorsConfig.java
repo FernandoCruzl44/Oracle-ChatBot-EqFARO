@@ -20,18 +20,17 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
     Logger logger = LoggerFactory.getLogger(CorsConfig.class);
-    public CorsFilter corsFilter(){
+
+    @Bean
+    public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000","https://objectstorage.us-phoenix-1.oraclecloud.com",
+        config.setAllowedOrigins(List.of("http://localhost:3000", "https://objectstorage.us-phoenix-1.oraclecloud.com",
                 "https://petstore.swagger.io"));
-        config.setAllowedMethods(List.of("GET","POST","PUT","OPTIONS","DELETE","PATCH"));
-        config.setAllowedOrigins(Collections.singletonList("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
         config.addAllowedHeader("*");
         config.addExposedHeader("location");
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        CorsFilter filter = new CorsFilter(source);
-        return filter;
+        return new CorsFilter(source);
     }
-
 }

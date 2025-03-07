@@ -1,47 +1,49 @@
 package com.springboot.MyTodoList.model;
 
+import java.util.Date;
+import java.util.List;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
-@Entity
-@Table(name = "Teams", schema = "TODOUSER")
-public class Team {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@Entity
+@Table(name = "teams")
+public class Team {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "TEAMID")
-	private Long teamID;
+	@Column(name = "id")
+	private Long id;
 
-	@ManyToOne
-	@JoinColumn(name = "MANAGERID", nullable = false)
-	private User manager;
-
-	@Column(name = "NOMBRE", nullable = false, length = 255)
+	@Column(name = "nombre", nullable = false)
 	private String nombre;
 
-	@Column(name = "DESCRIPTION", length = 255)
+	@Column(name = "description")
 	private String description;
 
-	public Long getTeamID() {
-		return teamID;
+	@Column(name = "created_at")
+	private Date createdAt;
+
+	@OneToMany(mappedBy = "team")
+	@JsonIgnoreProperties({ "team" })
+	private List<User> members;
+
+	@OneToMany(mappedBy = "team")
+	@JsonIgnoreProperties({ "team", "assignees", "creator" })
+	private List<Task> tasks;
+
+	public Long getId() {
+		return id;
 	}
 
-	public void setTeamID(Long teamID) {
-		this.teamID = teamID;
-	}
-
-	public User getManager() {
-		return manager;
-	}
-
-	public void setManager(User manager) {
-		this.manager = manager;
+	public void setId(Long id) {
+		this.id = id;
 	}
 
 	public String getNombre() {
@@ -59,4 +61,29 @@ public class Team {
 	public void setDescription(String description) {
 		this.description = description;
 	}
+
+	public Date getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(Date createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public List<User> getMembers() {
+		return members;
+	}
+
+	public void setMembers(List<User> members) {
+		this.members = members;
+	}
+
+	public List<Task> getTasks() {
+		return tasks;
+	}
+
+	public void setTasks(List<Task> tasks) {
+		this.tasks = tasks;
+	}
+
 }

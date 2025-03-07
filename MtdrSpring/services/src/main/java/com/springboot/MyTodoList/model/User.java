@@ -1,45 +1,76 @@
 package com.springboot.MyTodoList.model;
 
+import java.util.Date;
+import java.util.List;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 @Entity
-@Table(name = "Users", schema = "TODOUSER")
+@Table(name = "users")
 public class User {
-
         @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY) 
-        @Column(name = "USERID") // Explicitly mapping the column name in the database
-        private Long userID;
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "id")
+        private Long id;
 
-        @Column(name = "NOMBRE", nullable = false, length = 255) // Mapping to 'Nombre' column
+        @Column(name = "nombre", nullable = false)
         private String nombre;
 
-        @Column(name = "EMAIL", nullable = false, unique = true, length = 255) // 'Email' should be unique
+        @Column(name = "email", nullable = false, unique = true)
         private String email;
 
-        @Column(name = "TELEGRAMID", length = 255) // 'TelegramID' can be nullable
-        private String telegramID;
+        @Column(name = "password", nullable = false)
+        private String password;
 
-        @Column(name = "CHATID", length = 255) // 'ChatID' can be nullable
-        private String chatID;
+        @Column(name = "role", nullable = false)
+        private String role; // "manager" or "developer"
 
-        @Column(name = "PHONE", length = 255) // 'Phone' can be nullable
-        private String phone;
+        @Column(name = "telegramId")
+        private String telegramId;
 
-        @Column(name = "USERTYPE", nullable = false, length = 20) // Enforcing non-null constraint on 'UserType'
-        private String userType;
+        @Column(name = "chatId")
+        private String chatId;
 
-        public Long getUserID() {
-                return userID;
+        @Column(name = "created_at")
+        private Date createdAt;
+
+        @ManyToOne
+        @JoinColumn(name = "team_id", nullable = true)
+        @JsonIgnoreProperties({ "members", "tasks" })
+        private Team team;
+
+        @OneToMany(mappedBy = "creator")
+        @JsonIgnoreProperties({ "creator", "assignees", "comments" })
+        private List<Task> createdTasks;
+
+        @ManyToMany(mappedBy = "assignees")
+        @JsonIgnoreProperties({ "creator", "assignees", "comments" })
+        private List<Task> assignedTasks;
+
+        @Column(name = "team_role")
+        private String teamRole; // "lead" or "member"
+
+        // Getters and setters
+
+        public Long getId() {
+                return id;
         }
 
-        public void setUserID(Long userID) {
-                this.userID = userID;
+        public void setId(Long id) {
+                this.id = id;
         }
 
         public String getNombre() {
@@ -58,35 +89,75 @@ public class User {
                 this.email = email;
         }
 
-        public String getTelegramID() {
-                return telegramID;
+        public String getPassword() {
+                return password;
         }
 
-        public void setTelegramID(String telegramID) {
-                this.telegramID = telegramID;
+        public void setPassword(String password) {
+                this.password = password;
         }
 
-        public String getChatID() {
-                return chatID;
+        public String getRole() {
+                return role;
         }
 
-        public void setChatID(String chatID) {
-                this.chatID = chatID;
+        public void setRole(String role) {
+                this.role = role;
         }
 
-        public String getPhone() {
-                return phone;
+        public String getTelegramId() {
+                return telegramId;
         }
 
-        public void setPhone(String phone) {
-                this.phone = phone;
+        public void setTelegramId(String telegramId) {
+                this.telegramId = telegramId;
         }
 
-        public String getUserType() {
-                return userType;
+        public String getChatId() {
+                return chatId;
         }
 
-        public void setUserType(String userType) {
-                this.userType = userType;
+        public void setChatId(String chatId) {
+                this.chatId = chatId;
+        }
+
+        public Date getCreatedAt() {
+                return createdAt;
+        }
+
+        public void setCreatedAt(Date createdAt) {
+                this.createdAt = createdAt;
+        }
+
+        public Team getTeam() {
+                return team;
+        }
+
+        public void setTeam(Team team) {
+                this.team = team;
+        }
+
+        public String getTeamRole() {
+                return teamRole;
+        }
+
+        public void setTeamRole(String teamRole) {
+                this.teamRole = teamRole;
+        }
+
+        public List<Task> getCreatedTasks() {
+                return createdTasks;
+        }
+
+        public void setCreatedTasks(List<Task> createdTasks) {
+                this.createdTasks = createdTasks;
+        }
+
+        public List<Task> getAssignedTasks() {
+                return assignedTasks;
+        }
+
+        public void setAssignedTasks(List<Task> assignedTasks) {
+                this.assignedTasks = assignedTasks;
         }
 }

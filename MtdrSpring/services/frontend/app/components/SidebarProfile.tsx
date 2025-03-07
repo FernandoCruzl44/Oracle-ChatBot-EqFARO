@@ -28,7 +28,15 @@ export default function SidebarProfile() {
 
   useEffect(() => {
     fetch("/api/identity/current")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          return res.text().then((text) => {
+            console.error("Raw error response:", text);
+            throw new Error("Network response was not ok");
+          });
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.message !== "No identity set") {
           setCurrentUser(data);

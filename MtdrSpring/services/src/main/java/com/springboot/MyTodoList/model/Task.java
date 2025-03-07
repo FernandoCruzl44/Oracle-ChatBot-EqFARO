@@ -2,72 +2,67 @@ package com.springboot.MyTodoList.model;
 
 import javax.persistence.*;
 
-@Entity
-@Table(name = "Tasks", schema = "TODOUSER")
-public class Task {
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Date;
+import java.util.List;
+
+@Entity
+@Table(name = "tasks")
+public class Task {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "TASKID")
-	private Long taskID;
+	@Column(name = "id")
+	private Long id;
 
-	@ManyToOne
-	@JoinColumn(name = "TEAMID", nullable = false)
-	private Team team;
-
-	@ManyToOne
-	@JoinColumn(name = "ROLEID", nullable = false)
-	private TeamRole role;
-
-	@Column(name = "TITLE", nullable = false, length = 255)
+	@Column(name = "title", nullable = false)
 	private String title;
 
-	@Column(name = "DESCRIPTION", length = 2000)
+	@Column(name = "description")
 	private String description;
 
-	@Column(name = "STATUS", length = 50)
-	private String status;
+	@Column(name = "tag", nullable = false)
+	private String tag;
 
-	@Column(name = "PRIORITY", length = 50)
-	private String priority;
+	@Column(name = "status", nullable = false)
+	private String status; // "Backlog", "En progreso", "Completada", "Cancelada"
 
-	@Column(name = "FECHACREACION", nullable = false)
-	private java.sql.Date fechaCreacion;
+	@Column(name = "start_date", nullable = false)
+	private String startDate;
 
-	@Column(name = "FECHAINICIO")
-	private java.sql.Date fechaInicio;
+	@Column(name = "end_date")
+	private String endDate;
 
-	@Column(name = "FECHAFIN")
-	private java.sql.Date fechaFin;
+	@ManyToOne
+	@JoinColumn(name = "created_by_id", nullable = false)
+	@JsonIgnoreProperties({ "createdTasks", "assignedTasks" })
+	private User creator;
 
-	@Column(name = "STORYPOINTS")
-	private Long storyPoints;
+	@ManyToOne
+	@JoinColumn(name = "team_id")
+	@JsonIgnore // Hide the full team object in response
+	private Team team;
 
-	@Column(name = "TIEMPOINVERTIDO")
-	private Long tiempoInvertido;
+	@ManyToMany
+	@JoinTable(name = "task_assignee", joinColumns = @JoinColumn(name = "task_id"), inverseJoinColumns = @JoinColumn(name = "user_id"))
+	@JsonIgnoreProperties({ "createdTasks", "assignedTasks" })
+	private List<User> assignees;
 
-	public Long getTaskID() {
-		return taskID;
+	@OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
+	@JsonIgnoreProperties("task")
+	private List<Comment> comments;
+
+	@Column(name = "created_at")
+	private Date createdAt;
+
+	public Long getId() {
+		return id;
 	}
 
-	public void setTaskID(Long taskID) {
-		this.taskID = taskID;
-	}
-
-	public Team getTeam() {
-		return team;
-	}
-
-	public void setTeam(Team team) {
-		this.team = team;
-	}
-
-	public TeamRole getRole() {
-		return role;
-	}
-
-	public void setRole(TeamRole role) {
-		this.role = role;
+	public void setId(Long id) {
+		this.id = id;
 	}
 
 	public String getTitle() {
@@ -86,6 +81,14 @@ public class Task {
 		this.description = description;
 	}
 
+	public String getTag() {
+		return tag;
+	}
+
+	public void setTag(String tag) {
+		this.tag = tag;
+	}
+
 	public String getStatus() {
 		return status;
 	}
@@ -94,51 +97,66 @@ public class Task {
 		this.status = status;
 	}
 
-	public String getPriority() {
-		return priority;
+	public String getStartDate() {
+		return startDate;
 	}
 
-	public void setPriority(String priority) {
-		this.priority = priority;
+	public void setStartDate(String startDate) {
+		this.startDate = startDate;
 	}
 
-	public java.sql.Date getFechaCreacion() {
-		return fechaCreacion;
+	public String getEndDate() {
+		return endDate;
 	}
 
-	public void setFechaCreacion(java.sql.Date fechaCreacion) {
-		this.fechaCreacion = fechaCreacion;
+	public void setEndDate(String endDate) {
+		this.endDate = endDate;
 	}
 
-	public java.sql.Date getFechaInicio() {
-		return fechaInicio;
+	public User getCreator() {
+		return creator;
 	}
 
-	public void setFechaInicio(java.sql.Date fechaInicio) {
-		this.fechaInicio = fechaInicio;
+	public void setCreator(User creator) {
+		this.creator = creator;
 	}
 
-	public java.sql.Date getFechaFin() {
-		return fechaFin;
+	@JsonProperty("team")
+	public String getTeamName() {
+		return team != null ? team.getNombre() : null;
 	}
 
-	public void setFechaFin(java.sql.Date fechaFin) {
-		this.fechaFin = fechaFin;
+	public Team getTeam() {
+		return team;
 	}
 
-	public Long getStoryPoints() {
-		return storyPoints;
+	public void setTeam(Team team) {
+		this.team = team;
 	}
 
-	public void setStoryPoints(Long storyPoints) {
-		this.storyPoints = storyPoints;
+	public Date getCreatedAt() {
+		return createdAt;
 	}
 
-	public Long getTiempoInvertido() {
-		return tiempoInvertido;
+	public void setCreatedAt(Date createdAt) {
+		this.createdAt = createdAt;
 	}
 
-	public void setTiempoInvertido(Long tiempoInvertido) {
-		this.tiempoInvertido = tiempoInvertido;
+	public List<User> getAssignees() {
+		return assignees;
 	}
+
+	public void setAssignees(List<User> assignees) {
+		this.assignees = assignees;
+	}
+
+	public List<Comment> getComments() {
+		return comments;
+	}
+
+	public void setComments(List<Comment> comments) {
+		this.comments = comments;
+	}
+
+	// Getters and setters
 }

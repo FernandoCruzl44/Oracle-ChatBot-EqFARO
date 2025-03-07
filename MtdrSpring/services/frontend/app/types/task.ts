@@ -7,7 +7,6 @@ export interface Task {
   startDate: string;
   endDate: string | null;
   created_by: string;
-  createdBy?: string;
   description?: string;
   team?: string;
   assignees?: string[];
