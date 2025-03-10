@@ -6,8 +6,8 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.18</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<version>2.7.18</version> <!-- Esta version esta Unc, por WebSecurityConfigurerAdapter -->
+		<relativePath />
 	</parent>
 	<groupId>com.springboot</groupId>
 	<artifactId>MyTodoList</artifactId>
@@ -15,7 +15,7 @@
 	<name>MyTodoList</name>
 	<description>Todo List Application</description>
 	<properties>
-		<java.version>11</java.version>
+		<java.version>23</java.version>
 		<jdbi.version>3.48.0</jdbi.version>
 		<frontend-src-dir>${project.basedir}/frontend</frontend-src-dir>
 		<node.version>v22.14.0</node.version>
@@ -62,14 +62,14 @@
 			</exclusions>
 		</dependency>
 
-		<!-- Utilities -->
+		<!-- Utils -->
 		<dependency>
 			<groupId>io.github.cdimascio</groupId>
 			<artifactId>dotenv-java</artifactId>
 			<version>3.2.0</version>
 		</dependency>
 
-		<!-- Testing -->
+		<!-- Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -83,7 +83,7 @@
 	</dependencies>
 	<build>
 		<plugins>
-			<!-- Keeps frontend and backend separate. -->
+			<!-- Builder de Frontend -->
 			<plugin>
 				<groupId>com.github.eirslett</groupId>
 				<artifactId>frontend-maven-plugin</artifactId>

@@ -14,9 +14,13 @@ public class MyTodoListApplication {
 
 	public static void main(String[] args) {
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+
+		logger.debug("Variables de entorno:");
 		dotenv.entries().forEach(entry -> {
 			System.setProperty(entry.getKey(), entry.getValue());
-			logger.debug("Variables de entorno: {}", entry.getKey());
+
+			// TODO: Debemos quitar log en prod, por dbpassword y token
+			logger.debug("{}={}", entry.getKey(), entry.getValue());
 		});
 
 		SpringApplication.run(MyTodoListApplication.class, args);
