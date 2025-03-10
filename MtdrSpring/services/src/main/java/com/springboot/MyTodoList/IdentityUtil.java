@@ -1,4 +1,4 @@
-package com.springboot.MyTodoList.util;
+package com.springboot.MyTodoList;
 
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.stereotype.Component;
@@ -59,12 +59,12 @@ public class IdentityUtil {
 
         User user = userOpt.get();
 
-        // Managers can access any team
+        // Managers pueden acceder a cualquier equipo
         if ("manager".equals(user.getRole())) {
             return true;
         }
 
-        // Users can only access their own team
+        // Users solo pueden acceder a su equipo
         return user.getTeamId() != null && user.getTeamId().equals(teamId);
     }
 }

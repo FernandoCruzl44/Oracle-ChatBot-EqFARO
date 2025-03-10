@@ -11,24 +11,24 @@ import javax.sql.DataSource;
 @Configuration
 public class DatabaseConfig {
 
-    @Bean
-    public Jdbi jdbi(DataSource dataSource) {
-        TransactionAwareDataSourceProxy dataSourceProxy = new TransactionAwareDataSourceProxy(dataSource);
-        Jdbi jdbi = Jdbi.create(dataSourceProxy);
+        @Bean
+        public Jdbi jdbi(DataSource dataSource) {
+                TransactionAwareDataSourceProxy dataSourceProxy = new TransactionAwareDataSourceProxy(dataSource);
+                Jdbi jdbi = Jdbi.create(dataSourceProxy);
 
-        // Add SQL Object Plugin to support repositories
-        jdbi.installPlugin(new SqlObjectPlugin());
+                // (https://jdbi.org/#sql-objects)
+                jdbi.installPlugin(new SqlObjectPlugin());
 
-        // Register row mappers for our models
-        jdbi.registerRowMapper(com.springboot.MyTodoList.model.User.class,
-                new com.springboot.MyTodoList.repository.mapper.UserMapper());
-        jdbi.registerRowMapper(com.springboot.MyTodoList.model.Task.class,
-                new com.springboot.MyTodoList.repository.mapper.TaskMapper());
-        jdbi.registerRowMapper(com.springboot.MyTodoList.model.Team.class,
-                new com.springboot.MyTodoList.repository.mapper.TeamMapper());
-        jdbi.registerRowMapper(com.springboot.MyTodoList.model.Comment.class,
-                new com.springboot.MyTodoList.repository.mapper.CommentMapper());
+                // Mapeo de las filas para modelos (repository classes)
+                jdbi.registerRowMapper(com.springboot.MyTodoList.model.User.class,
+                                new com.springboot.MyTodoList.repository.UserRepository.UserMapper());
+                jdbi.registerRowMapper(com.springboot.MyTodoList.model.Task.class,
+                                new com.springboot.MyTodoList.repository.TaskRepository.TaskMapper());
+                jdbi.registerRowMapper(com.springboot.MyTodoList.model.Team.class,
+                                new com.springboot.MyTodoList.repository.TeamRepository.TeamMapper());
+                jdbi.registerRowMapper(com.springboot.MyTodoList.model.Comment.class,
+                                new com.springboot.MyTodoList.repository.CommentRepository.CommentMapper());
 
-        return jdbi;
-    }
+                return jdbi;
+        }
 }

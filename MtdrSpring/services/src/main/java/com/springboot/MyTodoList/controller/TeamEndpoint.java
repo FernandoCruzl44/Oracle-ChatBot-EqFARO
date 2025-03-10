@@ -1,4 +1,4 @@
-package com.springboot.MyTodoList.endpoint;
+package com.springboot.MyTodoList.controller;
 
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.http.HttpStatus;
@@ -40,7 +40,6 @@ public class TeamEndpoint {
         return jdbi.inTransaction(handle -> {
             List<Team> teams = handle.attach(TeamRepository.class).findAll(limit, skip);
 
-            // Fetch members for each team
             for (Team team : teams) {
                 List<User> members = handle.attach(TeamRepository.class)
                         .findMembersByTeamId(team.getId());
@@ -99,7 +98,7 @@ public class TeamEndpoint {
         }
     }
 
-    // Additional endpoints for update, delete, etc.
+    // TODO: Implemenar updateTeam y deleteTeam
 
     // Helper methods for identity management
     private Long getCurrentUserId(HttpServletRequest request) {

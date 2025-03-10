@@ -14,9 +14,8 @@ public class User {
     private String telegramId;
     private String teamRole;
     private Long teamId;
-    private String teamName; // For convenience in responses
+    private String teamName;
 
-    // Getters and setters
     public Long getId() {
         return id;
     }

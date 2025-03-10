@@ -1,5 +1,7 @@
 package com.springboot.MyTodoList.repository;
 
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
@@ -8,6 +10,8 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 import com.springboot.MyTodoList.model.User;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,4 +46,50 @@ public interface UserRepository {
 
         @SqlUpdate("DELETE FROM users WHERE id = :id")
         int delete(@Bind("id") Long id);
+
+        class UserMapper implements RowMapper<User> {
+
+                @Override
+                public User map(ResultSet rs, StatementContext ctx) throws SQLException {
+                        User user = new User();
+                        user.setId(rs.getLong("id"));
+                        user.setName(rs.getString("name"));
+                        user.setEmail(rs.getString("email"));
+
+                        try {
+                                user.setPassword(rs.getString("password"));
+                        } catch (SQLException e) {
+                                user.setPassword(null);
+                        }
+
+                        user.setRole(rs.getString("role"));
+                        user.setTelegramId(rs.getString("telegramId"));
+
+                        try {
+                                Long teamId = rs.getObject("team_id", Long.class);
+                                if (!rs.wasNull()) {
+                                        user.setTeamId(teamId);
+                                }
+                        } catch (SQLException e) {
+                                user.setTeamId(null);
+                        }
+
+                        try {
+                                user.setTeamRole(rs.getString("team_role"));
+                        } catch (SQLException e) {
+                                user.setTeamRole(null);
+                        }
+
+                        try {
+                                String teamName = rs.getString("team_name");
+                                if (!rs.wasNull()) {
+                                        user.setTeamName(teamName);
+                                }
+                        } catch (SQLException e) {
+                                user.setTeamName(null);
+                        }
+
+                        return user;
+                }
+        }
 }

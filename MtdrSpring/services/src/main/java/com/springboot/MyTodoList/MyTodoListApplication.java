@@ -16,7 +16,7 @@ public class MyTodoListApplication {
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 		dotenv.entries().forEach(entry -> {
 			System.setProperty(entry.getKey(), entry.getValue());
-			logger.debug("Setting env variable: {}", entry.getKey());
+			logger.debug("Variables de entorno: {}", entry.getKey());
 		});
 
 		SpringApplication.run(MyTodoListApplication.class, args);

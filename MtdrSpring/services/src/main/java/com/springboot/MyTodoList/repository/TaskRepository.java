@@ -1,5 +1,7 @@
 package com.springboot.MyTodoList.repository;
 
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindList;
@@ -10,6 +12,8 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.User;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -89,4 +93,31 @@ public interface TaskRepository {
 
         @SqlUpdate("DELETE FROM tasks WHERE id IN (<taskIds>)")
         int deleteMultiple(@BindList("taskIds") List<Long> taskIds);
+
+        class TaskMapper implements RowMapper<Task> {
+
+                @Override
+                public Task map(ResultSet rs, StatementContext ctx) throws SQLException {
+                        Task task = new Task();
+                        task.setId(rs.getLong("id"));
+                        task.setTitle(rs.getString("title"));
+                        task.setDescription(rs.getString("description"));
+                        task.setTag(rs.getString("tag"));
+                        task.setStatus(rs.getString("status"));
+                        task.setStartDate(rs.getString("start_date"));
+                        task.setEndDate(rs.getString("end_date"));
+                        task.setCreatorId(rs.getLong("created_by_id"));
+                        task.setCreatorName(rs.getString("creator_name"));
+
+                        // Handle nullable fields
+                        Long teamId = rs.getObject("team_id", Long.class);
+                        if (!rs.wasNull()) {
+                                task.setTeamId(teamId);
+                        }
+
+                        task.setTeamName(rs.getString("team_name"));
+
+                        return task;
+                }
+        }
 }

@@ -1,5 +1,4 @@
-// /src/main/java/com/springboot/MyTodoList/error/GlobalExceptionHandler.java
-package com.springboot.MyTodoList.error;
+package com.springboot.MyTodoList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

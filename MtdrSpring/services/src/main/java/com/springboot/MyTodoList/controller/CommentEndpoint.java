@@ -1,15 +1,15 @@
-package com.springboot.MyTodoList.endpoint;
+package com.springboot.MyTodoList.controller;
 
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import com.springboot.MyTodoList.IdentityUtil;
 import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.CommentRepository;
 import com.springboot.MyTodoList.repository.UserRepository;
-import com.springboot.MyTodoList.util.IdentityUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -41,7 +41,6 @@ public class CommentEndpoint {
         return jdbi.inTransaction(handle -> {
             CommentRepository commentRepo = handle.attach(CommentRepository.class);
 
-            // Get the comment
             Optional<Comment> commentOpt = commentRepo.findById(commentId);
             if (!commentOpt.isPresent()) {
                 return ResponseEntity.notFound().build();
@@ -49,7 +48,6 @@ public class CommentEndpoint {
 
             Comment comment = commentOpt.get();
 
-            // Check permissions
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -61,7 +59,6 @@ public class CommentEndpoint {
                 return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
             }
 
-            // Delete the comment
             commentRepo.delete(commentId);
 
             return ResponseEntity.ok(Map.of("message", "Comment deleted"));

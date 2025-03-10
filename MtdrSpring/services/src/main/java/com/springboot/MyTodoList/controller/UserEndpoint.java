@@ -1,4 +1,4 @@
-package com.springboot.MyTodoList.endpoint;
+package com.springboot.MyTodoList.controller;
 
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.http.HttpStatus;
@@ -36,10 +36,8 @@ public class UserEndpoint {
                     repository -> repository.findAll(limit, skip));
             return ResponseEntity.ok(users);
         } catch (Exception e) {
-            // Log the error
             e.printStackTrace();
 
-            // Return a more informative error response
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error retrieving users");
             errorResponse.put("message", e.getMessage());
@@ -49,7 +47,6 @@ public class UserEndpoint {
 
     @GetMapping("/{userId}")
     public ResponseEntity<?> getUser(@PathVariable Long userId, HttpServletRequest request) {
-        // Simple identity check
         Long currentUserId = getCurrentUserId(request);
         if (currentUserId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
@@ -64,7 +61,6 @@ public class UserEndpoint {
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody User user, HttpServletRequest request) {
-        // Only managers can create users
         if (!isManager(request)) {
             return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }
@@ -84,7 +80,6 @@ public class UserEndpoint {
         }
     }
 
-    // Helper methods for identity management
     private Long getCurrentUserId(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {

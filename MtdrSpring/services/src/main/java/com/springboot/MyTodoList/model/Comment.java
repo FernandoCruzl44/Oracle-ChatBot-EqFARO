@@ -13,7 +13,6 @@ public class Comment {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createdAt;
 
-    // Getters and setters
     public Long getId() {
         return id;
     }

@@ -1,17 +1,17 @@
-package com.springboot.MyTodoList.endpoint;
+package com.springboot.MyTodoList.controller;
 
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import com.springboot.MyTodoList.IdentityUtil;
 import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.CommentRepository;
 import com.springboot.MyTodoList.repository.TaskRepository;
 import com.springboot.MyTodoList.repository.UserRepository;
-import com.springboot.MyTodoList.util.IdentityUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
@@ -59,23 +59,23 @@ public class TaskEndpoint {
 
             List<Task> tasks;
 
-            // Special case for managers with view_mode=assigned
+            // Managers con view_mode=assigned
             if ("assigned".equals(view_mode)) {
                 if (isManager && (team_id == null || team_id == 0)) {
-                    // For managers with "view_mode=assigned" and no specific team,
-                    // return ALL tasks across all teams
+                    // view_mode=assigned y no un equipo especifico
+                    // retorna todas las tareas, de todos los equipos
                     tasks = taskRepo.findWithFilters(null, status, tag, created_by, limit, skip);
                 } else {
-                    // Regular case - only tasks assigned to current user
+                    // Caso regular - solo tareas asignadas al usuario actual
                     tasks = taskRepo.findTasksAssignedToUser(currentUserId);
                 }
             } else if ("team".equals(view_mode)) {
                 if (isManager && team_id == null) {
-                    // For managers with "view_mode=team" and no team_id,
-                    // return ALL tasks across all teams
+                    // Para managers con "view_mode=team" y sin team_id,
+                    // retorna TODAS las tareas de todos los equipos
                     tasks = taskRepo.findWithFilters(null, status, tag, created_by, limit, skip);
                 } else {
-                    // Team-specific tasks
+                    // Tareas específicas del equipo
                     Long effectiveTeamId = team_id;
                     if (team_id == null && currentUser.getTeamId() != null) {
                         effectiveTeamId = currentUser.getTeamId();
@@ -88,11 +88,11 @@ public class TaskEndpoint {
                     }
                 }
             } else {
-                // Apply general filters
+                // Filtros generales
                 tasks = taskRepo.findWithFilters(team_id, status, tag, created_by, limit, skip);
             }
 
-            // Fetch assignees for each task
+            // Obtiene los asignados para cada tarea
             for (Task task : tasks) {
                 List<User> assignees = taskRepo.findAssigneesByTaskId(task.getId());
                 task.setAssignees(assignees);
@@ -118,7 +118,6 @@ public class TaskEndpoint {
 
             Task task = taskOpt.get();
 
-            // Check access permission
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -129,7 +128,7 @@ public class TaskEndpoint {
                     currentUser.getTeamId().equals(task.getTeamId());
 
             if (!isManager && !isTeamMember) {
-                // Check if user is assigned to the task
+                // Revisa si el usuario está asignado a la tarea
                 List<User> assignees = handle.attach(TaskRepository.class)
                         .findAssigneesByTaskId(task.getId());
                 boolean isAssigned = assignees.stream()
@@ -140,7 +139,7 @@ public class TaskEndpoint {
                 }
             }
 
-            // Get assignees
+            // Obtiene los asignados para la tarea
             List<User> assignees = handle.attach(TaskRepository.class)
                     .findAssigneesByTaskId(task.getId());
             task.setAssignees(assignees);
@@ -161,7 +160,7 @@ public class TaskEndpoint {
         }
 
         return jdbi.inTransaction(handle -> {
-            // Create the task
+            // Crea la tarea
             Task task = new Task();
             task.setTitle((String) request.get("title"));
             task.setDescription((String) request.get("description"));
@@ -178,7 +177,7 @@ public class TaskEndpoint {
             TaskRepository taskRepo = handle.attach(TaskRepository.class);
             Long taskId = taskRepo.insert(task);
 
-            // Add assignees if provided
+            // Se agregan los asignados si se proporcionan
             if (request.containsKey("assignee_ids") && request.get("assignee_ids") != null) {
                 @SuppressWarnings("unchecked")
                 List<Object> rawIds = (List<Object>) request.get("assignee_ids");
@@ -189,7 +188,7 @@ public class TaskEndpoint {
                 }
             }
 
-            // Fetch the complete task with assignees
+            // Fetch la tarea completa con los asignados
             Optional<Task> createdTask = taskRepo.findById(taskId);
             if (createdTask.isPresent()) {
                 Task fullTask = createdTask.get();
@@ -224,7 +223,6 @@ public class TaskEndpoint {
 
             Task task = taskOpt.get();
 
-            // Check access permission
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -238,7 +236,6 @@ public class TaskEndpoint {
                 return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
             }
 
-            // Update task fields
             if (request.containsKey("title")) {
                 task.setTitle((String) request.get("title"));
             }
@@ -272,15 +269,11 @@ public class TaskEndpoint {
                 }
             }
 
-            // Update the task
             taskRepo.update(task);
 
-            // Update assignees if provided
             if (request.containsKey("assignee_ids")) {
-                // Clear existing assignees
                 taskRepo.deleteAllAssignees(taskId);
 
-                // Add new assignees
                 @SuppressWarnings("unchecked")
                 List<Object> rawIds = (List<Object>) request.get("assignee_ids");
 
@@ -292,7 +285,6 @@ public class TaskEndpoint {
                 }
             }
 
-            // Fetch the updated task with assignees
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
@@ -324,7 +316,6 @@ public class TaskEndpoint {
                 return ResponseEntity.notFound().build();
             }
 
-            // Delete the task
             taskRepo.delete(taskId);
 
             return ResponseEntity.ok(Map.of("message", "Task deleted"));
@@ -358,7 +349,6 @@ public class TaskEndpoint {
 
             Task task = taskOpt.get();
 
-            // Check access permission
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -369,7 +359,6 @@ public class TaskEndpoint {
                     currentUser.getTeamId().equals(task.getTeamId());
 
             if (!isManager && !isTeamMember) {
-                // Check if user is assigned to the task
                 List<User> assignees = taskRepo.findAssigneesByTaskId(taskId);
                 boolean isAssigned = assignees.stream()
                         .anyMatch(user -> user.getId().equals(currentUserId));
@@ -379,10 +368,8 @@ public class TaskEndpoint {
                 }
             }
 
-            // Update status
             taskRepo.updateStatus(taskId, status);
 
-            // Fetch the updated task
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
@@ -422,7 +409,6 @@ public class TaskEndpoint {
 
             Task task = taskOpt.get();
 
-            // Check access permission
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -436,16 +422,13 @@ public class TaskEndpoint {
                 return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
             }
 
-            // Clear existing assignees
             taskRepo.deleteAllAssignees(taskId);
 
-            // Add new assignees
             for (Object rawId : assigneeIdsRaw) {
                 Long userId = Long.valueOf(rawId.toString());
                 taskRepo.addAssignee(taskId, userId);
             }
 
-            // Fetch the updated task
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
@@ -474,18 +457,15 @@ public class TaskEndpoint {
         }
 
         return jdbi.inTransaction(handle -> {
-            // Check if user is a manager (simplified access control)
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             boolean isManager = "manager".equals(currentUser.getRole());
 
-            // For simplicity, only filter the tasks if the user isn't a manager
             List<Long> accessibleTaskIds = taskIds;
 
             if (!isManager) {
-                // Get only tasks from user's team
                 accessibleTaskIds = new ArrayList<>();
                 TaskRepository taskRepo = handle.attach(TaskRepository.class);
 
@@ -509,7 +489,6 @@ public class TaskEndpoint {
                         .body(Map.of("message", "No tasks available for deletion"));
             }
 
-            // Delete the tasks
             handle.attach(TaskRepository.class).deleteMultiple(accessibleTaskIds);
 
             Map<String, Object> response = new HashMap<>();
@@ -545,7 +524,6 @@ public class TaskEndpoint {
                 return ResponseEntity.notFound().build();
             }
 
-            // Create comment
             Comment comment = new Comment();
             comment.setTaskId(taskId);
             comment.setContent(content);
@@ -553,7 +531,6 @@ public class TaskEndpoint {
 
             Long commentId = handle.attach(CommentRepository.class).insert(comment);
 
-            // Fetch the created comment
             List<Comment> comments = handle.attach(CommentRepository.class)
                     .findByTaskId(taskId);
 
@@ -584,7 +561,6 @@ public class TaskEndpoint {
                 return ResponseEntity.notFound().build();
             }
 
-            // Check access permission
             Task task = taskOpt.get();
             User currentUser = handle.attach(UserRepository.class)
                     .findById(currentUserId)
@@ -596,7 +572,6 @@ public class TaskEndpoint {
                     currentUser.getTeamId().equals(task.getTeamId());
 
             if (!isManager && !isTeamMember) {
-                // Check if user is assigned to the task
                 List<User> assignees = taskRepo.findAssigneesByTaskId(taskId);
                 boolean isAssigned = assignees.stream()
                         .anyMatch(user -> user.getId().equals(currentUserId));
@@ -606,7 +581,6 @@ public class TaskEndpoint {
                 }
             }
 
-            // Get comments
             List<Comment> comments = handle.attach(CommentRepository.class)
                     .findByTaskId(taskId);
 

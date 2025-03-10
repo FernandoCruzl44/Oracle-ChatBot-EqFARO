@@ -8,7 +8,6 @@ public class Team {
     private String description;
     private List<User> members;
 
-    // Getters and setters
     public Long getId() {
         return id;
     }

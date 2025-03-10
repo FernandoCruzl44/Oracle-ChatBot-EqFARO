@@ -16,7 +16,6 @@ public class Task {
     private String teamName;
     private List<User> assignees;
 
-    // Getters and setters
     public Long getId() {
         return id;
     }

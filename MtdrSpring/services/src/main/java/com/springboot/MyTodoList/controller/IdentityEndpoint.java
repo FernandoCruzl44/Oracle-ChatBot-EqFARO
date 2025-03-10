@@ -1,12 +1,12 @@
-package com.springboot.MyTodoList.endpoint;
+package com.springboot.MyTodoList.controller;
 
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.springboot.MyTodoList.IdentityUtil;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
-import com.springboot.MyTodoList.util.IdentityUtil;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -43,7 +43,7 @@ public class IdentityEndpoint {
 
         Cookie cookie = new Cookie("user_id", userId.toString());
         cookie.setPath("/");
-        cookie.setMaxAge(24 * 60 * 60); // 1 day
+        cookie.setMaxAge(24 * 60 * 60); // 1 dia
         response.addCookie(cookie);
 
         Map<String, String> result = new HashMap<>();

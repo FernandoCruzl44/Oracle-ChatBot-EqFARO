@@ -1,4 +1,4 @@
-package com.springboot.MyTodoList.endpoint;
+package com.springboot.MyTodoList.controller;
 
 import java.util.Map;
 import org.springframework.http.HttpStatus;
