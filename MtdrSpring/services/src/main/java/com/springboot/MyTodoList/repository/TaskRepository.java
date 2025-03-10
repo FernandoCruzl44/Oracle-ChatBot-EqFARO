@@ -109,7 +109,6 @@ public interface TaskRepository {
                         task.setCreatorId(rs.getLong("created_by_id"));
                         task.setCreatorName(rs.getString("creator_name"));
 
-                        // Handle nullable fields
                         Long teamId = rs.getObject("team_id", Long.class);
                         if (!rs.wasNull()) {
                                 task.setTeamId(teamId);

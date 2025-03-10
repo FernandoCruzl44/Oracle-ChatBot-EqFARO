@@ -1,4 +1,3 @@
-// /src/main/java/com/springboot/MyTodoList/security/WebSecurityConfiguration.java
 package com.springboot.MyTodoList.config;
 
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +8,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 @SuppressWarnings("deprecation")
 @Configuration
 @EnableWebSecurity
-public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()

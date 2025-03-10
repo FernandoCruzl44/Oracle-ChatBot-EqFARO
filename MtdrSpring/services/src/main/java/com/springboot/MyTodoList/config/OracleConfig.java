@@ -1,4 +1,3 @@
-// /src/main/java/com/springboot/MyTodoList/config/OracleConfiguration.java
 package com.springboot.MyTodoList.config;
 
 import oracle.jdbc.pool.OracleDataSource;
@@ -12,13 +11,13 @@ import javax.sql.DataSource;
 import java.sql.SQLException;
 
 ///*
-//    This class grabs the appropriate values for OracleDataSource,
-//    The method that uses env, grabs it from the environment variables set
-//    in the docker container. The method that uses dbSettings is for local testing
-//    @author: peter.song@oracle.com
+// This class grabs the appropriate values for OracleDataSource,
+// The method that uses env, grabs it from the environment variables set
+// in the docker container. The method that uses dbSettings is for local testing
+// @author: peter.song@oracle.com
 // */
 @Configuration
-public class OracleConfiguration {
+public class OracleConfig {
         Logger logger = LoggerFactory.getLogger("DatabaseLogger");
         @Autowired
         private Environment env;

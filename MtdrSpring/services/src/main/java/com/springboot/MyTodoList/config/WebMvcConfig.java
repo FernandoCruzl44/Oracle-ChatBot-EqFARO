@@ -1,4 +1,3 @@
-// /src/main/java/com/springboot/MyTodoList/config/WebMvcConfig.java
 package com.springboot.MyTodoList.config;
 
 import org.springframework.context.annotation.Configuration;

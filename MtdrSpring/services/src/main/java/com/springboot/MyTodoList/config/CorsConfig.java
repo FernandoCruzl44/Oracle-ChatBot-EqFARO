@@ -1,4 +1,3 @@
-// /src/main/java/com/springboot/MyTodoList/config/CorsConfig.java
 package com.springboot.MyTodoList.config;
 
 import org.slf4j.Logger;
