@@ -9,7 +9,7 @@ import com.springboot.MyTodoList.model.Team;
 
 @Repository
 public interface TeamRepository extends JpaRepository<Team, Long> {
-    List<Team> findByNameContaining(String namePart);
+    List<Team> findByNombreContaining(String namePart);
 
     List<Team> findAllByOrderByIdAsc(Pageable pageable);
 }
