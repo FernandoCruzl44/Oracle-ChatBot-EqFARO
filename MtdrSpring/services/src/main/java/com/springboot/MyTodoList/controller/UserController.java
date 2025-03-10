@@ -17,11 +17,11 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
-public class UserEndpoint {
+public class UserController {
 
     private final Jdbi jdbi;
 
-    public UserEndpoint(Jdbi jdbi) {
+    public UserController(Jdbi jdbi) {
         this.jdbi = jdbi;
     }
 

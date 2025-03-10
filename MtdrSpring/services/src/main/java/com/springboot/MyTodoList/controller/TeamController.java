@@ -18,11 +18,11 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/teams")
-public class TeamEndpoint {
+public class TeamController {
 
     private final Jdbi jdbi;
 
-    public TeamEndpoint(Jdbi jdbi) {
+    public TeamController(Jdbi jdbi) {
         this.jdbi = jdbi;
     }
 

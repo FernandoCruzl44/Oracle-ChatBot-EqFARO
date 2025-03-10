@@ -18,12 +18,12 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/tasks")
-public class TaskEndpoint {
+public class TaskController {
 
     private final Jdbi jdbi;
     private final IdentityUtil identityUtil;
 
-    public TaskEndpoint(Jdbi jdbi, IdentityUtil identityUtil) {
+    public TaskController(Jdbi jdbi, IdentityUtil identityUtil) {
         this.jdbi = jdbi;
         this.identityUtil = identityUtil;
     }

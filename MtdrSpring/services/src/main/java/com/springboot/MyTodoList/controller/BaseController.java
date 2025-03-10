@@ -1,6 +1,6 @@
 package com.springboot.MyTodoList.controller;
 
-import org.springframework.http.HttpStatus;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
-public class HealthEndpoint {
+public class BaseController {
 
-    @GetMapping("/healthcheck")
-    public ResponseEntity<?> healthCheck() {
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    @GetMapping
+    public ResponseEntity<?> root() {
+        return ResponseEntity.ok(Map.of("message", "Faro API"));
     }
 }

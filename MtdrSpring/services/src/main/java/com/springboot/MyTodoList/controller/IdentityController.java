@@ -17,12 +17,12 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/identity")
-public class IdentityEndpoint {
+public class IdentityController {
 
     private final Jdbi jdbi;
     private final IdentityUtil identityUtil;
 
-    public IdentityEndpoint(Jdbi jdbi, IdentityUtil identityUtil) {
+    public IdentityController(Jdbi jdbi, IdentityUtil identityUtil) {
         this.jdbi = jdbi;
         this.identityUtil = identityUtil;
     }

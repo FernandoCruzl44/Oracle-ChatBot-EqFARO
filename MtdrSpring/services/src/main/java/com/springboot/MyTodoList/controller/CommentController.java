@@ -17,12 +17,12 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/comments")
-public class CommentEndpoint {
+public class CommentController {
 
     private final Jdbi jdbi;
     private final IdentityUtil identityUtil;
 
-    public CommentEndpoint(Jdbi jdbi, IdentityUtil identityUtil) {
+    public CommentController(Jdbi jdbi, IdentityUtil identityUtil) {
         this.jdbi = jdbi;
         this.identityUtil = identityUtil;
     }
