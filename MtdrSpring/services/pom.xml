@@ -15,7 +15,7 @@
 	<name>MyTodoList</name>
 	<description>Todo List Application</description>
 	<properties>
-		<java.version>23</java.version>
+		<java.version>11</java.version>
 		<jdbi.version>3.48.0</jdbi.version>
 		<frontend-src-dir>${project.basedir}/frontend</frontend-src-dir>
 		<node.version>v22.14.0</node.version>
