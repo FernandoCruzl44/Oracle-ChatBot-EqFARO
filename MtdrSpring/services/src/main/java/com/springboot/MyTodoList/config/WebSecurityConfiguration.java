@@ -1,11 +1,12 @@
 // /src/main/java/com/springboot/MyTodoList/security/WebSecurityConfiguration.java
-package com.springboot.MyTodoList.security;
+package com.springboot.MyTodoList.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 
+@SuppressWarnings("deprecation")
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {

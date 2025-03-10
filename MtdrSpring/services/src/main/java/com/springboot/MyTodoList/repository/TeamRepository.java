@@ -1,15 +1,38 @@
-// /src/main/java/com/springboot/MyTodoList/repository/TeamRepository.java
 package com.springboot.MyTodoList.repository;
 
-import java.util.List;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+
 import com.springboot.MyTodoList.model.Team;
+import com.springboot.MyTodoList.model.User;
 
-@Repository
-public interface TeamRepository extends JpaRepository<Team, Long> {
-    List<Team> findByNombreContaining(String namePart);
+import java.util.List;
+import java.util.Optional;
 
-    List<Team> findAllByOrderByIdAsc(Pageable pageable);
+public interface TeamRepository {
+
+        @SqlQuery("SELECT * FROM teams WHERE id = :id")
+        Optional<Team> findById(@Bind("id") Long id);
+
+        @SqlQuery("SELECT * FROM teams ORDER BY id " +
+                        "OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY")
+        List<Team> findAll(@Bind("limit") int limit, @Bind("offset") int offset);
+
+        @SqlQuery("SELECT u.*, t.name as team_name FROM users u " +
+                        "LEFT JOIN teams t ON u.team_id = t.id " +
+                        "WHERE u.team_id = :teamId")
+        List<User> findMembersByTeamId(@Bind("teamId") Long teamId);
+
+        @SqlUpdate("INSERT INTO teams (name, description) VALUES (:name, :description)")
+        @GetGeneratedKeys("id")
+        Long insert(@BindBean Team team);
+
+        @SqlUpdate("UPDATE teams SET name = :name, description = :description WHERE id = :id")
+        int update(@BindBean Team team);
+
+        @SqlUpdate("DELETE FROM teams WHERE id = :id")
+        int delete(@Bind("id") Long id);
 }

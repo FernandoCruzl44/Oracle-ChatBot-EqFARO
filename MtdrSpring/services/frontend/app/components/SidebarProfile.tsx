@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 interface User {
   id: number;
-  nombre: string;
+  name: string;
   email: string;
   role: string;
 }
@@ -89,7 +89,7 @@ export default function SidebarProfile() {
             </option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.nombre}
+                {user.name}
               </option>
             ))}
           </select>

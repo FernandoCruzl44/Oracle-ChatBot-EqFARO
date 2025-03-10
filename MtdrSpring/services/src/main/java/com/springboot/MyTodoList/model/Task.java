@@ -1,161 +1,115 @@
-// /src/main/java/com/springboot/MyTodoList/model/Task.java
 package com.springboot.MyTodoList.model;
 
-import javax.persistence.*;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.Date;
 import java.util.List;
 
-@Entity
-@Table(name = "tasks")
 public class Task {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "id")
-	private Long id;
+    private Long id;
+    private String title;
+    private String description;
+    private String tag;
+    private String status;
+    private String startDate;
+    private String endDate;
+    private Long creatorId;
+    private String creatorName;
+    private Long teamId;
+    private String teamName;
+    private List<User> assignees;
 
-	@Column(name = "title", nullable = false)
-	private String title;
+    // Getters and setters
+    public Long getId() {
+        return id;
+    }
 
-	@Column(name = "description")
-	private String description;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	@Column(name = "tag", nullable = false)
-	private String tag;
+    public String getTitle() {
+        return title;
+    }
 
-	@Column(name = "status", nullable = false)
-	private String status; // "Backlog", "En progreso", "Completada", "Cancelada"
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-	@Column(name = "start_date", nullable = false)
-	private String startDate;
+    public String getDescription() {
+        return description;
+    }
 
-	@Column(name = "end_date")
-	private String endDate;
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-	@ManyToOne
-	@JoinColumn(name = "created_by_id", nullable = false)
-	@JsonIgnoreProperties({ "createdTasks", "assignedTasks" })
-	private User creator;
+    public String getTag() {
+        return tag;
+    }
 
-	@ManyToOne
-	@JoinColumn(name = "team_id")
-	@JsonIgnore // Esconder el equipo en la respuesta JSON, para evitar loop al serializar
-	private Team team;
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
 
-	@ManyToMany
-	@JoinTable(name = "task_assignee", joinColumns = @JoinColumn(name = "task_id"), inverseJoinColumns = @JoinColumn(name = "user_id"))
-	@JsonIgnoreProperties({ "createdTasks", "assignedTasks" })
-	private List<User> assignees;
+    public String getStatus() {
+        return status;
+    }
 
-	@OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
-	@JsonIgnoreProperties("task")
-	private List<Comment> comments;
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-	@Column(name = "created_at")
-	private Date createdAt;
+    public String getStartDate() {
+        return startDate;
+    }
 
-	public Long getId() {
-		return id;
-	}
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public String getEndDate() {
+        return endDate;
+    }
 
-	public String getTitle() {
-		return title;
-	}
+    public void setEndDate(String endDate) {
+        this.endDate = endDate;
+    }
 
-	public void setTitle(String title) {
-		this.title = title;
-	}
+    public Long getCreatorId() {
+        return creatorId;
+    }
 
-	public String getDescription() {
-		return description;
-	}
+    public void setCreatorId(Long creatorId) {
+        this.creatorId = creatorId;
+    }
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    public String getCreatorName() {
+        return creatorName;
+    }
 
-	public String getTag() {
-		return tag;
-	}
+    public void setCreatorName(String creatorName) {
+        this.creatorName = creatorName;
+    }
 
-	public void setTag(String tag) {
-		this.tag = tag;
-	}
+    public Long getTeamId() {
+        return teamId;
+    }
 
-	public String getStatus() {
-		return status;
-	}
+    public void setTeamId(Long teamId) {
+        this.teamId = teamId;
+    }
 
-	public void setStatus(String status) {
-		this.status = status;
-	}
+    public String getTeamName() {
+        return teamName;
+    }
 
-	public String getStartDate() {
-		return startDate;
-	}
+    public void setTeamName(String teamName) {
+        this.teamName = teamName;
+    }
 
-	public void setStartDate(String startDate) {
-		this.startDate = startDate;
-	}
+    public List<User> getAssignees() {
+        return assignees;
+    }
 
-	public String getEndDate() {
-		return endDate;
-	}
-
-	public void setEndDate(String endDate) {
-		this.endDate = endDate;
-	}
-
-	public User getCreator() {
-		return creator;
-	}
-
-	public void setCreator(User creator) {
-		this.creator = creator;
-	}
-
-	@JsonProperty("team")
-	public String getTeamName() {
-		return team != null ? team.getNombre() : null;
-	}
-
-	public Team getTeam() {
-		return team;
-	}
-
-	public void setTeam(Team team) {
-		this.team = team;
-	}
-
-	public Date getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Date createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public List<User> getAssignees() {
-		return assignees;
-	}
-
-	public void setAssignees(List<User> assignees) {
-		this.assignees = assignees;
-	}
-
-	public List<Comment> getComments() {
-		return comments;
-	}
-
-	public void setComments(List<Comment> comments) {
-		this.comments = comments;
-	}
+    public void setAssignees(List<User> assignees) {
+        this.assignees = assignees;
+    }
 }

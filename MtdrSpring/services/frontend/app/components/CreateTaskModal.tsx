@@ -1,36 +1,6 @@
 // app/components/CreateTaskModal.tsx
 import { useState, useEffect } from "react";
-
-interface Task {
-  id: number;
-  title: string;
-  tag: "Feature" | "Issue";
-  status: string;
-  startDate: string;
-  endDate: string | null;
-  created_by: string;
-  description?: string;
-  team?: string;
-  assignees?: string[];
-}
-
-interface User {
-  id: number;
-  nombre: string;
-  email: string;
-  role: string;
-  team: {
-    id: number;
-    nombre: string;
-    role: string;
-  } | null;
-}
-
-interface Team {
-  id: number;
-  nombre: string;
-  description?: string;
-}
+import type { User, Task, Team } from "~/types";
 
 interface CreateTaskModalProps {
   onClose: () => void;
@@ -81,16 +51,20 @@ export default function CreateTaskModal({
           setIsLoadingTeams(false);
           setError("Error al cargar equipos");
         });
-    } else {
-      // Para desarrolladores, obtener su equipo
+    }
+    // Para desarrolladores, obtener su equipo
+    else {
       setIsLoadingUserTeam(true);
-      fetch("/api/users/me/team")
+      fetch("/api/identity/current")
         .then((res) => res.json())
-        .then((data) => {
-          setUserTeam(data);
-          // Si el usuario tiene un equipo, asignarlo automáticamente
-          if (data.id) {
-            setTeamId(data.id);
+        .then((userData) => {
+          if (userData.teamId && userData.teamName) {
+            setUserTeam({
+              id: userData.teamId,
+              name: userData.teamName,
+              role: userData.teamRole || "member",
+            });
+            setTeamId(userData.teamId);
           }
           setIsLoadingUserTeam(false);
         })
@@ -182,8 +156,8 @@ export default function CreateTaskModal({
           ...data,
           created_by:
             data.created_by ||
-            data.creator?.nombre ||
-            currentUser?.nombre ||
+            data.creator?.name ||
+            currentUser?.name ||
             "Usuario",
         };
         onSave(processedTask);
@@ -198,7 +172,7 @@ export default function CreateTaskModal({
   // Filtrar usuarios para mostrar solo los del equipo seleccionado
   const filteredUsers = teamId
     ? users.filter((user) => {
-        return user.team?.id === teamId;
+        return user.teamId === teamId;
       })
     : users;
 
@@ -294,7 +268,7 @@ export default function CreateTaskModal({
                 ) : (
                   teams.map((team) => (
                     <option key={team.id} value={team.id}>
-                      {team.nombre}
+                      {team.name}
                     </option>
                   ))
                 )}
@@ -314,7 +288,7 @@ export default function CreateTaskModal({
                 </div>
               ) : userTeam?.id ? (
                 <div className="p-3 text-sm bg-blue-50 border border-blue-100 text-blue-800 rounded-lg">
-                  {userTeam.nombre}{" "}
+                  {userTeam.name}{" "}
                   <span className="text-xs text-blue-600">
                     ({userTeam.role})
                   </span>
@@ -349,7 +323,7 @@ export default function CreateTaskModal({
                       className="mr-2"
                     />
                     <label htmlFor={`user-${user.id}`} className="text-sm">
-                      {user.nombre}{" "}
+                      {user.name}{" "}
                       <span className="text-xs text-gray-500">
                         ({user.role})
                       </span>
@@ -369,7 +343,7 @@ export default function CreateTaskModal({
 
           {currentUser && (
             <div className="text-sm text-gray-500">
-              Creando como: {currentUser.nombre}
+              Creando como: {currentUser.name}
             </div>
           )}
 

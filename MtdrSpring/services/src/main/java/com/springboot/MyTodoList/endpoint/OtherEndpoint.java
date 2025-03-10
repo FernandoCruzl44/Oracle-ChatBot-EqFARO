@@ -1,5 +1,4 @@
-// /src/main/java/com/springboot/MyTodoList/controller/OtherController.java
-package com.springboot.MyTodoList.controller;
+package com.springboot.MyTodoList.endpoint;
 
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -10,16 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
-public class OtherController {
+public class OtherEndpoint {
 
     @GetMapping
     public ResponseEntity<?> root() {
         return ResponseEntity.ok(Map.of("message", "Task Management API"));
-    }
-
-    @GetMapping("/debug")
-    public ResponseEntity<?> debug() {
-        return ResponseEntity.ok(Map.of("message", "Ok buddy dev"));
     }
 
     @GetMapping("/healthcheck")

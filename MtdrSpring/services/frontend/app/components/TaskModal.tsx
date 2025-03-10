@@ -1,25 +1,6 @@
 // app/components/TaskModal.tsx
 import { useState, useEffect } from "react";
-
-interface Task {
-  id: number;
-  title: string;
-  tag: "Feature" | "Issue";
-  status: string;
-  startDate: string;
-  endDate: string | null;
-  created_by: string;
-  description?: string;
-  team?: string;
-  assignees?: string[];
-}
-
-interface Comment {
-  id: number;
-  created_by: string;
-  content: string;
-  isCurrentUser?: boolean;
-}
+import type { Task, Comment as CommentType, User } from "~/types";
 
 interface TaskModalProps {
   task: Task;
@@ -30,12 +11,13 @@ interface TaskModalProps {
 export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<CommentType[]>([]);
   const [editableTask, setEditableTask] = useState<Task>({ ...task });
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
+    console.log("TaskModal received task:", task);
     setIsVisible(true);
     fetch("/api/identity/current")
       .then((res) => res.json())
@@ -60,27 +42,16 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
       fetch(`/api/tasks/${task.id}/comments`)
         .then((response) => response.json())
         .then((data) => {
-          console.log(data);
-          const processedComments = data.map((comment: any) => ({
-            ...comment,
-            created_by: comment.creator
-              ? comment.creator.nombre
-              : comment.createdBy,
-          }));
-          setComments(processedComments);
+          console.log("Raw comments data:", data);
+          setComments(data);
         })
         .catch((error) => console.error("Error fetching comments:", error));
     }
   }, [task]);
 
   useEffect(() => {
-    const processedTask = {
-      ...task,
-      assignees: task.assignees?.map((assignee: any) =>
-        typeof assignee === "object" ? assignee.nombre : assignee
-      ),
-    };
-    setEditableTask(processedTask);
+    setEditableTask(task);
+    console.log("Task updated:", task);
   }, [task]);
 
   useEffect(() => {
@@ -98,7 +69,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   }, [editableTask]);
 
   const handleInputChange = (field: keyof Task, value: string) => {
-    if (value !== task[field]) {
+    if (value !== task[field as keyof Task]) {
       setIsEditing(true);
       setEditableTask((prev) => ({
         ...prev,
@@ -114,23 +85,28 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
 
   const handleSave = async () => {
     try {
+      // Prepare task for API submission
+      const taskForApi = {
+        title: editableTask.title,
+        description: editableTask.description || "",
+        tag: editableTask.tag,
+        status: editableTask.status,
+        startDate: editableTask.startDate,
+        endDate: editableTask.endDate || null,
+        team_id: editableTask.teamId,
+      };
+
       const response = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(editableTask),
+        body: JSON.stringify(taskForApi),
       });
 
       if (response.ok) {
         const updatedTask = await response.json();
-        const processedUpdatedTask = {
-          ...updatedTask,
-          assignees: updatedTask.assignees?.map((assignee: any) =>
-            typeof assignee === "object" ? assignee.nombre : assignee
-          ),
-        };
-        onUpdate(processedUpdatedTask);
+        onUpdate(updatedTask);
         setIsEditing(false);
         handleClose();
       }
@@ -144,7 +120,6 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
     if (newComment.trim()) {
       const commentPayload = {
         content: newComment,
-        created_by_id: currentUser ? currentUser.id : undefined,
       };
 
       fetch(`/api/tasks/${task.id}/comments`, {
@@ -154,14 +129,8 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
       })
         .then((response) => response.json())
         .then((data) => {
-          const processedComment = {
-            ...data,
-            created_by:
-              typeof data.created_by === "object"
-                ? data.created_by.nombre
-                : data.created_by,
-          };
-          setComments([...comments, processedComment]);
+          console.log("New comment response:", data);
+          setComments([...comments, data]);
           setNewComment("");
         })
         .catch((error) => console.error("Error adding comment:", error));
@@ -223,7 +192,12 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                     </div>
                     <select
                       value={editableTask.tag}
-                      onChange={(e) => handleInputChange("tag", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "tag",
+                          e.target.value as "Feature" | "Issue"
+                        )
+                      }
                       className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
                         editableTask.tag === "Feature"
                           ? "bg-green-100 text-green-800"
@@ -287,12 +261,12 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                     </div>
                     <input
                       type="text"
-                      value={editableTask.created_by}
+                      value={editableTask.creatorName || "—"}
                       readOnly
                       className="px-2 py-1 bg-gray-100"
                     />
                   </div>
-                  {editableTask.team && (
+                  {editableTask.teamName && (
                     <div className="flex items-center">
                       <div className="w-32 text-oc-brown/60">
                         <i className="fa fa-users mr-2 translate-y-1"></i>
@@ -300,7 +274,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       </div>
                       <input
                         type="text"
-                        value={editableTask.team}
+                        value={editableTask.teamName || ""}
                         readOnly
                         className="px-2 py-1 bg-gray-100"
                       />
@@ -319,7 +293,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                               key={index}
                               className="px-2 py-1 text-xs rounded-lg bg-blue-100 text-blue-800 border border-blue-200"
                             >
-                              {assignee}
+                              {assignee.name}
                             </span>
                           ))}
                         </div>
@@ -331,7 +305,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                 <textarea
                   className="w-full border bg-white rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
                   placeholder="Descripción (Opcional)"
-                  value={editableTask.description}
+                  value={editableTask.description || ""}
                   onChange={(e) =>
                     handleInputChange("description", e.target.value)
                   }
@@ -378,7 +352,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                             <i className="fa fa-user text-xs"></i>
                           </span>
                           <span className="font-medium text-base">
-                            {comment.created_by}
+                            {comment.creatorName}
                           </span>
                         </div>
                       </div>

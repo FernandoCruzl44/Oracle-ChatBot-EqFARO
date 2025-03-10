@@ -1,98 +1,64 @@
-// /src/main/java/com/springboot/MyTodoList/model/Comment.java
 package com.springboot.MyTodoList.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.Date;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.PrePersist;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@Entity
-@Table(name = "comments")
 public class Comment {
+    private Long id;
+    private Long taskId;
+    private String content;
+    private Long creatorId;
+    private String creatorName;
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "id")
-	private Long id;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date createdAt;
 
-	@ManyToOne
-	@JoinColumn(name = "task_id", nullable = false)
-	@JsonIgnore
-	private Task task;
+    // Getters and setters
+    public Long getId() {
+        return id;
+    }
 
-	@Column(name = "content", nullable = false, columnDefinition = "TEXT")
-	private String content;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	@ManyToOne
-	@JoinColumn(name = "created_by_id", nullable = false)
-	@JsonIgnoreProperties({ "createdTasks", "assignedTasks", "comments" })
-	private User creator;
+    public Long getTaskId() {
+        return taskId;
+    }
 
-	@Column(name = "created_at")
-	@Temporal(TemporalType.TIMESTAMP)
-	private Date createdAt;
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
+    }
 
-	@PrePersist
-	protected void onCreate() {
-		createdAt = new Date();
-	}
+    public String getContent() {
+        return content;
+    }
 
-	// Getters and setters
-	public Long getId() {
-		return id;
-	}
+    public void setContent(String content) {
+        this.content = content;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public Long getCreatorId() {
+        return creatorId;
+    }
 
-	public Task getTask() {
-		return task;
-	}
+    public void setCreatorId(Long creatorId) {
+        this.creatorId = creatorId;
+    }
 
-	public void setTask(Task task) {
-		this.task = task;
-	}
+    public String getCreatorName() {
+        return creatorName;
+    }
 
-	public String getContent() {
-		return content;
-	}
+    public void setCreatorName(String creatorName) {
+        this.creatorName = creatorName;
+    }
 
-	public void setContent(String content) {
-		this.content = content;
-	}
+    public Date getCreatedAt() {
+        return createdAt;
+    }
 
-	public User getCreator() {
-		return creator;
-	}
-
-	public void setCreator(User creator) {
-		this.creator = creator;
-	}
-
-	public Date getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Date createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public Long getTaskId() {
-		return task != null ? task.getId() : null;
-	}
-
-	public String getCreatedBy() {
-		return creator != null ? creator.getNombre() : null;
-	}
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
 }

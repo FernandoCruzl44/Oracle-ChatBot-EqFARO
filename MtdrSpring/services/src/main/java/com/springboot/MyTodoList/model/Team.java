@@ -1,88 +1,43 @@
-// /src/main/java/com/springboot/MyTodoList/model/Team.java
 package com.springboot.MyTodoList.model;
 
-import java.util.Date;
 import java.util.List;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@Entity
-@Table(name = "teams")
 public class Team {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "id")
-	private Long id;
+    private Long id;
+    private String name;
+    private String description;
+    private List<User> members;
 
-	@Column(name = "nombre", nullable = false)
-	private String nombre;
+    // Getters and setters
+    public Long getId() {
+        return id;
+    }
 
-	@Column(name = "description")
-	private String description;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	@Column(name = "created_at")
-	private Date createdAt;
+    public String getName() {
+        return name;
+    }
 
-	@OneToMany(mappedBy = "team")
-	@JsonIgnoreProperties({ "team" })
-	private List<User> members;
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	@OneToMany(mappedBy = "team")
-	@JsonIgnoreProperties({ "team", "assignees", "creator" })
-	private List<Task> tasks;
+    public String getDescription() {
+        return description;
+    }
 
-	public Long getId() {
-		return id;
-	}
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public List<User> getMembers() {
+        return members;
+    }
 
-	public String getNombre() {
-		return nombre;
-	}
-
-	public void setNombre(String nombre) {
-		this.nombre = nombre;
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
-
-	public Date getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Date createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public List<User> getMembers() {
-		return members;
-	}
-
-	public void setMembers(List<User> members) {
-		this.members = members;
-	}
-
-	public List<Task> getTasks() {
-		return tasks;
-	}
-
-	public void setTasks(List<Task> tasks) {
-		this.tasks = tasks;
-	}
-
+    public void setMembers(List<User> members) {
+        this.members = members;
+    }
 }

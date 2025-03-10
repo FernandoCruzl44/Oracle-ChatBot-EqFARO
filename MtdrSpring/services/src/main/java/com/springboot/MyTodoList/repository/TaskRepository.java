@@ -1,49 +1,92 @@
-// /src/main/java/com/springboot/MyTodoList/repository/TaskRepository.java
 package com.springboot.MyTodoList.repository;
 
-import java.util.List;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+
 import com.springboot.MyTodoList.model.Task;
+import com.springboot.MyTodoList.model.User;
 
-@Repository
-public interface TaskRepository extends JpaRepository<Task, Long> {
-	List<Task> findByTeamId(Long teamId);
+import java.util.List;
+import java.util.Optional;
 
-	List<Task> findByStatus(String status);
+public interface TaskRepository {
 
-	List<Task> findByTag(String tag);
+        @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
+                        "FROM tasks t " +
+                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN teams tm ON t.team_id = tm.id " +
+                        "WHERE t.id = :id")
+        Optional<Task> findById(@Bind("id") Long id);
 
-	List<Task> findByAssigneesId(Long userId);
+        @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
+                        "FROM tasks t " +
+                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN teams tm ON t.team_id = tm.id " +
+                        "WHERE (:teamId IS NULL OR t.team_id = :teamId) " +
+                        "AND (:status IS NULL OR t.status = :status) " +
+                        "AND (:tag IS NULL OR t.tag = :tag) " +
+                        "AND (:creatorId IS NULL OR t.created_by_id = :creatorId) " +
+                        "ORDER BY t.id " +
+                        "OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY")
+        List<Task> findWithFilters(
+                        @Bind("teamId") Long teamId,
+                        @Bind("status") String status,
+                        @Bind("tag") String tag,
+                        @Bind("creatorId") Long creatorId,
+                        @Bind("limit") int limit,
+                        @Bind("offset") int offset);
 
-	List<Task> findByCreatorId(Long userId);
+        @SqlQuery("SELECT u.*, t.name as team_name FROM users u " +
+                        "JOIN task_assignee ta ON u.id = ta.user_id " +
+                        "LEFT JOIN teams t ON u.team_id = t.id " +
+                        "WHERE ta.task_id = :taskId")
+        List<User> findAssigneesByTaskId(@Bind("taskId") Long taskId);
 
-	@Query("SELECT t FROM Task t WHERE " +
-			"(:teamId IS NULL OR t.team.id = :teamId) AND " +
-			"(:status IS NULL OR t.status = :status) AND " +
-			"(:tag IS NULL OR t.tag = :tag) AND " +
-			"(:assignedTo IS NULL OR EXISTS (SELECT u FROM t.assignees u WHERE u.id = :assignedTo)) AND " +
-			"(:createdBy IS NULL OR t.creator.id = :createdBy)")
-	List<Task> findWithFilters(
-			@Param("teamId") Long teamId,
-			@Param("status") String status,
-			@Param("tag") String tag,
-			@Param("assignedTo") Long assignedTo,
-			@Param("createdBy") Long createdBy,
-			Pageable pageable);
+        @SqlUpdate("INSERT INTO tasks (title, description, tag, status, start_date, end_date, created_by_id, team_id) "
+                        +
+                        "VALUES (:title, :description, :tag, :status, :startDate, :endDate, :creatorId, :teamId)")
+        @GetGeneratedKeys("id")
+        Long insert(@BindBean Task task);
 
-	@Query("SELECT t FROM Task t WHERE " +
-			"(:status IS NULL OR t.status = :status) AND " +
-			"(:tag IS NULL OR t.tag = :tag) AND " +
-			"(:assignedTo IS NULL OR EXISTS (SELECT u FROM t.assignees u WHERE u.id = :assignedTo)) AND " +
-			"(:createdBy IS NULL OR t.creator.id = :createdBy)")
-	List<Task> findAllTasksForManager(
-			@Param("status") String status,
-			@Param("tag") String tag,
-			@Param("assignedTo") Long assignedTo,
-			@Param("createdBy") Long createdBy,
-			Pageable pageable);
+        @SqlUpdate("UPDATE tasks SET title = :title, description = :description, " +
+                        "tag = :tag, status = :status, start_date = :startDate, " +
+                        "end_date = :endDate, team_id = :teamId " +
+                        "WHERE id = :id")
+        int update(@BindBean Task task);
+
+        @SqlUpdate("DELETE FROM tasks WHERE id = :id")
+        int delete(@Bind("id") Long id);
+
+        @SqlUpdate("DELETE FROM task_assignee WHERE task_id = :taskId")
+        int deleteAllAssignees(@Bind("taskId") Long taskId);
+
+        @SqlUpdate("INSERT INTO task_assignee (task_id, user_id) VALUES (:taskId, :userId)")
+        int addAssignee(@Bind("taskId") Long taskId, @Bind("userId") Long userId);
+
+        @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
+                        "FROM tasks t " +
+                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN teams tm ON t.team_id = tm.id " +
+                        "JOIN task_assignee ta ON t.id = ta.task_id " +
+                        "WHERE ta.user_id = :userId " +
+                        "ORDER BY t.id")
+        List<Task> findTasksAssignedToUser(@Bind("userId") Long userId);
+
+        @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
+                        "FROM tasks t " +
+                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN teams tm ON t.team_id = tm.id " +
+                        "WHERE t.team_id = :teamId " +
+                        "ORDER BY t.id")
+        List<Task> findTasksByTeamId(@Bind("teamId") Long teamId);
+
+        @SqlUpdate("UPDATE tasks SET status = :status WHERE id = :taskId")
+        int updateStatus(@Bind("taskId") Long taskId, @Bind("status") String status);
+
+        @SqlUpdate("DELETE FROM tasks WHERE id IN (<taskIds>)")
+        int deleteMultiple(@BindList("taskIds") List<Long> taskIds);
 }

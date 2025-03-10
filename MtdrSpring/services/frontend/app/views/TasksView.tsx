@@ -1,7 +1,7 @@
 // app/views/TasksView.tsx
 import { useEffect, useState, useRef } from "react";
 import React from "react";
-import type { Task } from "../types/task";
+import type { Task, Team, User } from "~/types";
 import TaskModal from "../components/TaskModal";
 import Portal from "../components/Portal";
 import CreateTaskModal from "../components/CreateTaskModal";
@@ -12,11 +12,6 @@ interface DropdownPosition {
   left: number;
 }
 
-interface Team {
-  id: number;
-  nombre: string;
-}
-
 export default function TaskView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
@@ -25,7 +20,7 @@ export default function TaskView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -54,7 +49,6 @@ export default function TaskView() {
 
   useEffect(() => {
     console.log("[DEV] Fetching data from API");
-
     fetchCurrentUser();
   }, []);
 
@@ -142,7 +136,8 @@ export default function TaskView() {
 
     if (isManager) {
       if (activeTab === "all") {
-        url += "view_mode=assigned";
+        // For managers viewing "all", use a view_mode that shows all tasks
+        url += "view_mode=all";
       } else {
         url += `view_mode=team&team_id=${activeTab}`;
       }
@@ -168,15 +163,7 @@ export default function TaskView() {
         return res.json();
       })
       .then((data) => {
-        console.log(data);
-        const processedData = data.map((task: any) => ({
-          ...task,
-          created_by: task.creator?.nombre,
-          assignees: task.assignees?.map((assignee: any) =>
-            typeof assignee === "object" ? assignee.nombre : assignee
-          ),
-        }));
-        setTasks(processedData);
+        setTasks(data);
         setIsLoading(false);
         setCurrentPage(1);
         setSelectedTasks([]);
@@ -218,21 +205,8 @@ export default function TaskView() {
   };
 
   const handleSaveNewTask = (newTask: Task) => {
-    const processedNewTask = {
-      ...newTask,
-      created_by:
-        typeof newTask.created_by === "object"
-          ? (newTask.created_by as { nombre: string }).nombre
-          : newTask.created_by ||
-            newTask.creator?.nombre ||
-            currentUser?.nombre ||
-            "Usuario",
-      assignees: newTask.assignees?.map((assignee: any) =>
-        typeof assignee === "object" ? assignee.nombre : assignee
-      ),
-    };
-
-    setTasks([...tasks, processedNewTask]);
+    setTasks([...tasks, newTask]);
+    fetchTasks();
   };
 
   const handleDeleteTasks = () => {
@@ -338,7 +312,7 @@ export default function TaskView() {
           </div>
           {currentUser && (
             <div className="text-sm text-gray-600 flex items-center">
-              <span className="font-medium">{currentUser.nombre}</span>
+              <span className="font-medium">{currentUser.name}</span>
               <span className="mx-2">•</span>
               <span
                 className={`${
@@ -347,11 +321,11 @@ export default function TaskView() {
               >
                 {isManager ? "Manager" : "Developer"}
               </span>
-              {!isManager && currentUser.team && (
+              {!isManager && currentUser.teamName && (
                 <>
                   <span className="mx-2">•</span>
                   <span className="text-cyan-600 font-medium">
-                    {currentUser.team.nombre}
+                    {currentUser.teamName}
                   </span>
                 </>
               )}
@@ -428,7 +402,7 @@ export default function TaskView() {
                     }`}
                     onClick={() => changeTab(String(team.id))}
                   >
-                    {team.nombre}
+                    {team.name}
                   </button>
                 ))}
               </>
@@ -596,7 +570,7 @@ export default function TaskView() {
                       </td>
                       <td className="py-3">{task.startDate}</td>
                       <td className="py-3">{task.endDate || "—"}</td>
-                      <td className="py-3">{task.created_by}</td>
+                      <td className="py-3">{task.creatorName || "—"}</td>
                       {(isManager && activeTab !== "all") ||
                       (!isManager && activeTab === "team") ? (
                         <td className="py-3">
@@ -607,7 +581,9 @@ export default function TaskView() {
                                   key={i}
                                   className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-lg border border-oc-outline-light/60"
                                 >
-                                  {assignee}
+                                  {typeof assignee === "object"
+                                    ? assignee.name
+                                    : assignee}
                                 </span>
                               ))}
                             </div>
@@ -691,7 +667,7 @@ export default function TaskView() {
               ? Number(activeTab)
               : isManager
               ? undefined
-              : currentUser?.team?.id
+              : currentUser?.teamId
           }
         />
       )}
