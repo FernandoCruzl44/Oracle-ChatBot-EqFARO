@@ -21,7 +21,7 @@ public interface CommentRepository {
                         "FROM comments c " +
                         "JOIN users u ON c.created_by_id = u.id " +
                         "WHERE c.task_id = :taskId " +
-                        "ORDER BY c.created_at DESC")
+                        "ORDER BY c.created_at ASC")
         List<Comment> findByTaskId(@Bind("taskId") Long taskId);
 
         @SqlQuery("SELECT c.*, u.name as creator_name " +
