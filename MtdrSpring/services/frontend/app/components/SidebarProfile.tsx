@@ -68,8 +68,8 @@ export default function SidebarProfile() {
   };
 
   return (
-    <div className="p-2 flex items-center m-3 rounded-xl transition-colors">
-      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-2">
+    <div className="p-2 flex items-center my-3 mx-1 rounded-xl transition-colors">
+      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center mr-2">
         <i className="fa fa-user text-gray-600"></i>
       </div>
 
