@@ -1,7 +1,6 @@
 package com.springboot.MyTodoList.controller;
 
 import com.springboot.MyTodoList.IdentityUtil;
-import com.springboot.MyTodoList.MyTodoListApplication;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.TaskRepository;
@@ -9,8 +8,6 @@ import com.springboot.MyTodoList.repository.UserRepository;
 import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 import org.jdbi.v3.core.Jdbi;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -26,9 +23,6 @@ public class TaskController {
         this.jdbi = jdbi;
         this.identityUtil = identityUtil;
     }
-
-    private static final Logger logger = LoggerFactory.getLogger(
-            MyTodoListApplication.class);
 
     @GetMapping
     public ResponseEntity<?> getTasks(
@@ -123,7 +117,6 @@ public class TaskController {
                 task.setAssignees(assignees);
             }
 
-            logger.debug("Returning tasks: {}", tasks);
             return ResponseEntity.ok(tasks);
         });
     }

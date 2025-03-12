@@ -1,6 +1,5 @@
 package com.springboot.MyTodoList.controller;
 
-import com.springboot.MyTodoList.GlobalExceptionHandler;
 import com.springboot.MyTodoList.IdentityUtil;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
@@ -28,13 +27,11 @@ public class IdentityController {
 
     @PostMapping("/set/{userId}")
     public ResponseEntity<?> setIdentity(
-        @PathVariable Long userId,
-        HttpServletResponse response
-    ) {
+            @PathVariable Long userId,
+            HttpServletResponse response) {
         Optional<User> userOpt = jdbi.withExtension(
-            UserRepository.class,
-            repository -> repository.findById(userId)
-        );
+                UserRepository.class,
+                repository -> repository.findById(userId));
 
         if (!userOpt.isPresent()) {
             return ResponseEntity.notFound().build();
@@ -49,9 +46,8 @@ public class IdentityController {
 
         Map<String, String> result = new HashMap<>();
         result.put(
-            "message",
-            "Identity set to: " + user.getName() + " (" + user.getRole() + ")"
-        );
+                "message",
+                "Identity set to: " + user.getName() + " (" + user.getRole() + ")");
 
         return ResponseEntity.ok(result);
     }
