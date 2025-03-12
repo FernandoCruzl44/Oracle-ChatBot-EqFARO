@@ -200,7 +200,7 @@ export default function CreateTaskModal({
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-2 rounded-lg mb-4 flex items-center">
+          <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 text-sm px-4 py-3 rounded-lg mb-4 flex items-center">
             <i className="fa fa-exclamation-circle mr-2"></i>
             <span>{error}</span>
           </div>
@@ -294,7 +294,8 @@ export default function CreateTaskModal({
                   </span>
                 </div>
               ) : (
-                <div className="p-3 text-sm bg-yellow-50 border border-yellow-100 text-yellow-800 rounded-lg">
+                <div className="p-3 text-sm bg-yellow-50 border border-yellow-100 text-yellow-800 rounded-lg flex items-center">
+                  <span className="fa fas fa-warning mr-2"></span>
                   No perteneces a ningún equipo. Contacta a un administrador.
                 </div>
               )}
