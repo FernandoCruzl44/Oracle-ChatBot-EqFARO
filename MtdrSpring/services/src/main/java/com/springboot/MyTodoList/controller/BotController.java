@@ -21,26 +21,6 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Example repositories with the calls we use:
- *
- * interface UserRepository {
- * List<User> findAll();
- * Optional<User> findById(Long id);
- * }
- *
- * interface TaskRepository {
- * List<Task> findByAssignees_Id(Long userId); // Example: tasks assigned to a
- * user
- * Optional<Task> findById(Long id);
- * }
- *
- * interface CommentRepository {
- * List<Comment> findByTaskId(Long taskId);
- * void save(Comment comment);
- * }
- */
-
 public class BotController extends TelegramLongPollingBot {
 	
 	private static final Logger logger = LoggerFactory.getLogger(BotController.class);
@@ -101,24 +81,20 @@ public class BotController extends TelegramLongPollingBot {
 				// If the user is in the middle of adding a comment, process that
 				if ("ADDING_COMMENT".equals(state.currentAction)) {
 					addNewComment(chatId, state.selectedTaskId, state.loggedInUserId, text);
-					// Return to normal
 					state.currentAction = "NORMAL";
-					// Show the task's comments again
 					showComments(chatId, state.selectedTaskId);
 				} else {
-					// Any other text input can be ignored or handled as needed
 					sendTelegramMessage(chatId, "Comando no reconocido. Usa /start para comenzar.");
 				}
 			}
 		}
-		// If it's a callback query (button press)
+		
 		else if (update.hasCallbackQuery()) {
 			long chatId = update.getCallbackQuery().getMessage().getChatId();
 			String callbackData = update.getCallbackQuery().getData();
 
 			UserState state = userStates.computeIfAbsent(chatId, k -> new UserState());
 
-			// 1) Handle "login_X" prefix -> user chooses who they are
 			if (callbackData.startsWith(LOGIN_USER_PREFIX)) {
 				String userIdString = callbackData.substring(LOGIN_USER_PREFIX.length());
 				Long userId = Long.parseLong(userIdString);
@@ -127,18 +103,18 @@ public class BotController extends TelegramLongPollingBot {
 				sendTelegramMessage(chatId, "Has iniciado sesión como usuario ID: " + userIdString);
 				listTasksForUser(chatId, userId);
 			}
-			// 2) Handle "task_X" prefix -> user wants to see a specific task
+			
 			else if (callbackData.startsWith(TASK_PREFIX)) {
 				String taskIdString = callbackData.substring(TASK_PREFIX.length());
 				Long taskId = Long.parseLong(taskIdString);
 				state.selectedTaskId = taskId;
 				showTaskDetails(chatId, taskId);
 			}
-			// 3) Show comments of the currently selected task
+			
 			else if (SHOW_COMMENTS.equals(callbackData)) {
 				showComments(chatId, state.selectedTaskId);
 			}
-			// 4) Add comment flow
+			
 			else if (ADD_COMMENT.equals(callbackData)) {
 				state.currentAction = "ADDING_COMMENT";
 				promptForComment(chatId);
@@ -277,7 +253,7 @@ public class BotController extends TelegramLongPollingBot {
 		sendTelegramMessage(chatId, "Comentario agregado correctamente.");
 	}
 
-	// -------------- UTILITY METHODS --------------
+	// Utility methods
 
 	private InlineKeyboardButton createButton(String text, String callbackData) {
 		InlineKeyboardButton button = new InlineKeyboardButton();
@@ -309,7 +285,7 @@ public class BotController extends TelegramLongPollingBot {
 		return botToken;
 	}
 
-	// -------------- USER STATE CLASS --------------
+	// UserState helper class
 	private static class UserState {
 		Long loggedInUserId; // Which user is "logged in"
 		Long selectedTaskId; // Which task the user is viewing
