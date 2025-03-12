@@ -98,9 +98,11 @@ public class BotController extends TelegramLongPollingBot {
 			if (callbackData.startsWith(LOGIN_USER_PREFIX)) {
 				String userIdString = callbackData.substring(LOGIN_USER_PREFIX.length());
 				Long userId = Long.parseLong(userIdString);
+				Optional<User> user = userRepository.findById(userId);
+
 				state.loggedInUserId = userId;
 				state.currentAction = "NORMAL";
-				sendTelegramMessage(chatId, "Has iniciado sesión como usuario ID: " + userIdString);
+				sendTelegramMessage(chatId, "Has iniciado sesión como usuario: " + user.get().getName());
 				listTasksForUser(chatId, userId);
 			}
 			
