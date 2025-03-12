@@ -39,7 +39,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
 
   useEffect(() => {
     if (task) {
-      fetch(`/api/tasks/${task.id}/comments`)
+      fetch(`/api/comments/task/${task.id}`)
         .then((response) => response.json())
         .then((data) => {
           console.log("Raw comments data:", data);
@@ -122,7 +122,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
         content: newComment,
       };
 
-      fetch(`/api/tasks/${task.id}/comments`, {
+      fetch(`/api/comments/task/${task.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(commentPayload),

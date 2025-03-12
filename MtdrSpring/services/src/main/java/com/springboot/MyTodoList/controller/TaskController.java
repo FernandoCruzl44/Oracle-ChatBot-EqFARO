@@ -1,20 +1,19 @@
 package com.springboot.MyTodoList.controller;
 
+import com.springboot.MyTodoList.IdentityUtil;
+import com.springboot.MyTodoList.MyTodoListApplication;
+import com.springboot.MyTodoList.model.Task;
+import com.springboot.MyTodoList.model.User;
+import com.springboot.MyTodoList.repository.TaskRepository;
+import com.springboot.MyTodoList.repository.UserRepository;
+import java.util.*;
+import javax.servlet.http.HttpServletRequest;
 import org.jdbi.v3.core.Jdbi;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
-import com.springboot.MyTodoList.model.Comment;
-import com.springboot.MyTodoList.model.Task;
-import com.springboot.MyTodoList.model.User;
-import com.springboot.MyTodoList.repository.CommentRepository;
-import com.springboot.MyTodoList.repository.TaskRepository;
-import com.springboot.MyTodoList.repository.UserRepository;
-import com.springboot.MyTodoList.IdentityUtil;
-
-import javax.servlet.http.HttpServletRequest;
-import java.util.*;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -28,6 +27,9 @@ public class TaskController {
         this.identityUtil = identityUtil;
     }
 
+    private static final Logger logger = LoggerFactory.getLogger(
+            MyTodoListApplication.class);
+
     @GetMapping
     public ResponseEntity<?> getTasks(
             @RequestParam(required = false) String view_mode,
@@ -38,23 +40,27 @@ public class TaskController {
             @RequestParam(defaultValue = "0") int skip,
             @RequestParam(defaultValue = "100") int limit,
             HttpServletRequest request) {
-
         Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         return jdbi.inTransaction(handle -> {
-            User currentUser = handle.attach(UserRepository.class)
+            User currentUser = handle
+                    .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             boolean isManager = "manager".equals(currentUser.getRole());
             TaskRepository taskRepo = handle.attach(TaskRepository.class);
 
-            if (!isManager && team_id != null &&
-                    (currentUser.getTeamId() == null || !currentUser.getTeamId().equals(team_id))) {
-                return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+            if (!isManager &&
+                    team_id != null &&
+                    (currentUser.getTeamId() == null ||
+                            !currentUser.getTeamId().equals(team_id))) {
+                return ResponseEntity.status(403).body(
+                        Map.of("message", "Forbidden"));
             }
 
             List<Task> tasks;
@@ -64,7 +70,13 @@ public class TaskController {
                 if (isManager && (team_id == null || team_id == 0)) {
                     // view_mode=assigned y no un equipo especifico
                     // retorna todas las tareas, de todos los equipos
-                    tasks = taskRepo.findWithFilters(null, status, tag, created_by, limit, skip);
+                    tasks = taskRepo.findWithFilters(
+                            null,
+                            status,
+                            tag,
+                            created_by,
+                            limit,
+                            skip);
                 } else {
                     // Caso regular - solo tareas asignadas al usuario actual
                     tasks = taskRepo.findTasksAssignedToUser(currentUserId);
@@ -73,7 +85,13 @@ public class TaskController {
                 if (isManager && team_id == null) {
                     // Para managers con "view_mode=team" y sin team_id,
                     // retorna TODAS las tareas de todos los equipos
-                    tasks = taskRepo.findWithFilters(null, status, tag, created_by, limit, skip);
+                    tasks = taskRepo.findWithFilters(
+                            null,
+                            status,
+                            tag,
+                            created_by,
+                            limit,
+                            skip);
                 } else {
                     // Tareas específicas del equipo
                     Long effectiveTeamId = team_id;
@@ -89,28 +107,41 @@ public class TaskController {
                 }
             } else {
                 // Filtros generales
-                tasks = taskRepo.findWithFilters(team_id, status, tag, created_by, limit, skip);
+                tasks = taskRepo.findWithFilters(
+                        team_id,
+                        status,
+                        tag,
+                        created_by,
+                        limit,
+                        skip);
             }
 
             // Obtiene los asignados para cada tarea
             for (Task task : tasks) {
-                List<User> assignees = taskRepo.findAssigneesByTaskId(task.getId());
+                List<User> assignees = taskRepo.findAssigneesByTaskId(
+                        task.getId());
                 task.setAssignees(assignees);
             }
 
+            logger.debug("Returning tasks: {}", tasks);
             return ResponseEntity.ok(tasks);
         });
     }
 
     @GetMapping("/{taskId}")
-    public ResponseEntity<?> getTask(@PathVariable Long taskId, HttpServletRequest request) {
+    public ResponseEntity<?> getTask(
+            @PathVariable Long taskId,
+            HttpServletRequest request) {
         Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         return jdbi.inTransaction(handle -> {
-            Optional<Task> taskOpt = handle.attach(TaskRepository.class).findById(taskId);
+            Optional<Task> taskOpt = handle
+                    .attach(TaskRepository.class)
+                    .findById(taskId);
 
             if (!taskOpt.isPresent()) {
                 return ResponseEntity.notFound().build();
@@ -118,7 +149,8 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            User currentUser = handle.attach(UserRepository.class)
+            User currentUser = handle
+                    .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -129,18 +161,22 @@ public class TaskController {
 
             if (!isManager && !isTeamMember) {
                 // Revisa si el usuario está asignado a la tarea
-                List<User> assignees = handle.attach(TaskRepository.class)
+                List<User> assignees = handle
+                        .attach(TaskRepository.class)
                         .findAssigneesByTaskId(task.getId());
-                boolean isAssigned = assignees.stream()
+                boolean isAssigned = assignees
+                        .stream()
                         .anyMatch(user -> user.getId().equals(currentUserId));
 
                 if (!isAssigned) {
-                    return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+                    return ResponseEntity.status(403).body(
+                            Map.of("message", "Forbidden"));
                 }
             }
 
             // Obtiene los asignados para la tarea
-            List<User> assignees = handle.attach(TaskRepository.class)
+            List<User> assignees = handle
+                    .attach(TaskRepository.class)
                     .findAssigneesByTaskId(task.getId());
             task.setAssignees(assignees);
 
@@ -153,10 +189,10 @@ public class TaskController {
     public ResponseEntity<?> createTask(
             @RequestBody Map<String, Object> request,
             HttpServletRequest httpRequest) {
-
         Long currentUserId = identityUtil.getCurrentUserId(httpRequest);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         return jdbi.inTransaction(handle -> {
@@ -178,9 +214,11 @@ public class TaskController {
             Long taskId = taskRepo.insert(task);
 
             // Se agregan los asignados si se proporcionan
-            if (request.containsKey("assignee_ids") && request.get("assignee_ids") != null) {
+            if (request.containsKey("assignee_ids") &&
+                    request.get("assignee_ids") != null) {
                 @SuppressWarnings("unchecked")
-                List<Object> rawIds = (List<Object>) request.get("assignee_ids");
+                List<Object> rawIds = (List<Object>) request.get(
+                        "assignee_ids");
 
                 for (Object rawId : rawIds) {
                     Long userId = Long.valueOf(rawId.toString());
@@ -195,8 +233,8 @@ public class TaskController {
                 fullTask.setAssignees(taskRepo.findAssigneesByTaskId(taskId));
                 return ResponseEntity.ok(fullTask);
             } else {
-                return ResponseEntity.status(500)
-                        .body(Map.of("message", "Error retrieving created task"));
+                return ResponseEntity.status(500).body(
+                        Map.of("message", "Error retrieving created task"));
             }
         });
     }
@@ -207,10 +245,10 @@ public class TaskController {
             @PathVariable Long taskId,
             @RequestBody Map<String, Object> request,
             HttpServletRequest httpRequest) {
-
         Long currentUserId = identityUtil.getCurrentUserId(httpRequest);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         return jdbi.inTransaction(handle -> {
@@ -223,7 +261,8 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            User currentUser = handle.attach(UserRepository.class)
+            User currentUser = handle
+                    .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -233,7 +272,8 @@ public class TaskController {
                     currentUser.getTeamId().equals(task.getTeamId());
 
             if (!isManager && !isTeamMember) {
-                return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+                return ResponseEntity.status(403).body(
+                        Map.of("message", "Forbidden"));
             }
 
             if (request.containsKey("title")) {
@@ -275,7 +315,8 @@ public class TaskController {
                 taskRepo.deleteAllAssignees(taskId);
 
                 @SuppressWarnings("unchecked")
-                List<Object> rawIds = (List<Object>) request.get("assignee_ids");
+                List<Object> rawIds = (List<Object>) request.get(
+                        "assignee_ids");
 
                 if (rawIds != null) {
                     for (Object rawId : rawIds) {
@@ -288,11 +329,12 @@ public class TaskController {
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
-                updatedTask.setAssignees(taskRepo.findAssigneesByTaskId(taskId));
+                updatedTask.setAssignees(
+                        taskRepo.findAssigneesByTaskId(taskId));
                 return ResponseEntity.ok(updatedTask);
             } else {
-                return ResponseEntity.status(500)
-                        .body(Map.of("message", "Error retrieving updated task"));
+                return ResponseEntity.status(500).body(
+                        Map.of("message", "Error retrieving updated task"));
             }
         });
     }
@@ -302,10 +344,10 @@ public class TaskController {
     public ResponseEntity<?> deleteTask(
             @PathVariable Long taskId,
             HttpServletRequest request) {
-
         Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         return jdbi.inTransaction(handle -> {
@@ -328,15 +370,16 @@ public class TaskController {
             @PathVariable Long taskId,
             @RequestBody Map<String, String> request,
             HttpServletRequest httpRequest) {
-
         Long currentUserId = identityUtil.getCurrentUserId(httpRequest);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         String status = request.get("status");
         if (status == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Status is required"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Status is required"));
         }
 
         return jdbi.inTransaction(handle -> {
@@ -349,7 +392,8 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            User currentUser = handle.attach(UserRepository.class)
+            User currentUser = handle
+                    .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -360,11 +404,13 @@ public class TaskController {
 
             if (!isManager && !isTeamMember) {
                 List<User> assignees = taskRepo.findAssigneesByTaskId(taskId);
-                boolean isAssigned = assignees.stream()
+                boolean isAssigned = assignees
+                        .stream()
                         .anyMatch(user -> user.getId().equals(currentUserId));
 
                 if (!isAssigned) {
-                    return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+                    return ResponseEntity.status(403).body(
+                            Map.of("message", "Forbidden"));
                 }
             }
 
@@ -373,11 +419,12 @@ public class TaskController {
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
-                updatedTask.setAssignees(taskRepo.findAssigneesByTaskId(taskId));
+                updatedTask.setAssignees(
+                        taskRepo.findAssigneesByTaskId(taskId));
                 return ResponseEntity.ok(updatedTask);
             } else {
-                return ResponseEntity.status(500)
-                        .body(Map.of("message", "Error retrieving updated task"));
+                return ResponseEntity.status(500).body(
+                        Map.of("message", "Error retrieving updated task"));
             }
         });
     }
@@ -388,15 +435,16 @@ public class TaskController {
             @PathVariable Long taskId,
             @RequestBody Map<String, List<Object>> request,
             HttpServletRequest httpRequest) {
-
         Long currentUserId = identityUtil.getCurrentUserId(httpRequest);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         List<Object> assigneeIdsRaw = request.get("assignee_ids");
         if (assigneeIdsRaw == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "assignee_ids is required"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "assignee_ids is required"));
         }
 
         return jdbi.inTransaction(handle -> {
@@ -409,7 +457,8 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            User currentUser = handle.attach(UserRepository.class)
+            User currentUser = handle
+                    .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -419,7 +468,8 @@ public class TaskController {
                     currentUser.getTeamId().equals(task.getTeamId());
 
             if (!isManager && !isTeamMember) {
-                return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+                return ResponseEntity.status(403).body(
+                        Map.of("message", "Forbidden"));
             }
 
             taskRepo.deleteAllAssignees(taskId);
@@ -432,11 +482,12 @@ public class TaskController {
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
-                updatedTask.setAssignees(taskRepo.findAssigneesByTaskId(taskId));
+                updatedTask.setAssignees(
+                        taskRepo.findAssigneesByTaskId(taskId));
                 return ResponseEntity.ok(updatedTask);
             } else {
-                return ResponseEntity.status(500)
-                        .body(Map.of("message", "Error retrieving updated task"));
+                return ResponseEntity.status(500).body(
+                        Map.of("message", "Error retrieving updated task"));
             }
         });
     }
@@ -446,18 +497,20 @@ public class TaskController {
     public ResponseEntity<?> deleteMultipleTasks(
             @RequestBody List<Long> taskIds,
             HttpServletRequest request) {
-
         Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
         }
 
         if (taskIds == null || taskIds.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "No task IDs provided"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "No task IDs provided"));
         }
 
         return jdbi.inTransaction(handle -> {
-            User currentUser = handle.attach(UserRepository.class)
+            User currentUser = handle
+                    .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -485,11 +538,13 @@ public class TaskController {
             }
 
             if (accessibleTaskIds.isEmpty()) {
-                return ResponseEntity.status(403)
-                        .body(Map.of("message", "No tasks available for deletion"));
+                return ResponseEntity.status(403).body(
+                        Map.of("message", "No tasks available for deletion"));
             }
 
-            handle.attach(TaskRepository.class).deleteMultiple(accessibleTaskIds);
+            handle
+                    .attach(TaskRepository.class)
+                    .deleteMultiple(accessibleTaskIds);
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Tasks deleted");
@@ -499,92 +554,4 @@ public class TaskController {
         });
     }
 
-    @PostMapping("/{taskId}/comments")
-    @Transactional
-    public ResponseEntity<?> createComment(
-            @PathVariable Long taskId,
-            @RequestBody Map<String, String> request,
-            HttpServletRequest httpRequest) {
-
-        Long currentUserId = identityUtil.getCurrentUserId(httpRequest);
-        if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        String content = request.get("content");
-        if (content == null || content.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Content is required"));
-        }
-
-        return jdbi.inTransaction(handle -> {
-            TaskRepository taskRepo = handle.attach(TaskRepository.class);
-            Optional<Task> taskOpt = taskRepo.findById(taskId);
-
-            if (!taskOpt.isPresent()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Comment comment = new Comment();
-            comment.setTaskId(taskId);
-            comment.setContent(content);
-            comment.setCreatorId(currentUserId);
-
-            Long commentId = handle.attach(CommentRepository.class).insert(comment);
-
-            List<Comment> comments = handle.attach(CommentRepository.class)
-                    .findByTaskId(taskId);
-
-            Comment createdComment = comments.stream()
-                    .filter(c -> c.getId().equals(commentId))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Comment not found after creation"));
-
-            return ResponseEntity.ok(createdComment);
-        });
-    }
-
-    @GetMapping("/{taskId}/comments")
-    public ResponseEntity<?> getComments(
-            @PathVariable Long taskId,
-            HttpServletRequest request) {
-
-        Long currentUserId = identityUtil.getCurrentUserId(request);
-        if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        return jdbi.inTransaction(handle -> {
-            TaskRepository taskRepo = handle.attach(TaskRepository.class);
-            Optional<Task> taskOpt = taskRepo.findById(taskId);
-
-            if (!taskOpt.isPresent()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Task task = taskOpt.get();
-            User currentUser = handle.attach(UserRepository.class)
-                    .findById(currentUserId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            boolean isManager = "manager".equals(currentUser.getRole());
-            boolean isTeamMember = currentUser.getTeamId() != null &&
-                    task.getTeamId() != null &&
-                    currentUser.getTeamId().equals(task.getTeamId());
-
-            if (!isManager && !isTeamMember) {
-                List<User> assignees = taskRepo.findAssigneesByTaskId(taskId);
-                boolean isAssigned = assignees.stream()
-                        .anyMatch(user -> user.getId().equals(currentUserId));
-
-                if (!isAssigned) {
-                    return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
-                }
-            }
-
-            List<Comment> comments = handle.attach(CommentRepository.class)
-                    .findByTaskId(taskId);
-
-            return ResponseEntity.ok(comments);
-        });
-    }
 }
