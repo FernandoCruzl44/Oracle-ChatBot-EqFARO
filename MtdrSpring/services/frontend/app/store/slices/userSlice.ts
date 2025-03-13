@@ -1,12 +1,23 @@
 // app/store/slices/userSlice.ts
 import type { StateCreator } from "zustand";
-import type { UserSlice, TaskStore } from "../types";
+import type { StoreState, TaskStore } from "~/store/types";
+import type { User } from "~/types";
+
+export interface UserSlice extends StoreState {
+  users: User[];
+  currentUser: User | null;
+  isLoadingUsers: boolean;
+
+  fetchCurrentUser: () => Promise<void>;
+  fetchUsers: () => Promise<void>;
+  getCurrentUser: () => User | null;
+  handleChangeUser: (userId: number) => Promise<void>;
+}
 
 export const createUserSlice: StateCreator<TaskStore, [], [], UserSlice> = (
   set,
   get
 ) => ({
-  // Initial state
   users: [],
   currentUser: null,
   isLoadingUsers: false,
@@ -14,9 +25,7 @@ export const createUserSlice: StateCreator<TaskStore, [], [], UserSlice> = (
 
   getCurrentUser: () => get().currentUser,
 
-  // Actions - retained but deprecated in favor of initializeData
   fetchCurrentUser: async () => {
-    // Check if we already have a user
     if (get().currentUser) return;
 
     set({ isLoadingUsers: true, error: null });
@@ -57,7 +66,6 @@ export const createUserSlice: StateCreator<TaskStore, [], [], UserSlice> = (
   },
 
   fetchUsers: async () => {
-    // Check if we already have users
     if (get().users.length > 0) return;
 
     set({ isLoadingUsers: true });
@@ -75,6 +83,31 @@ export const createUserSlice: StateCreator<TaskStore, [], [], UserSlice> = (
         error:
           error instanceof Error ? error.message : "Error al cargar usuarios",
         isLoadingUsers: false,
+      });
+    }
+  },
+
+  handleChangeUser: async (userId: number) => {
+    if (!userId) return;
+
+    const users = get().users;
+    const selectedUser = users.find((user) => user.id === Number(userId));
+    if (!selectedUser) return;
+
+    try {
+      const res = await fetch(`/api/identity/set/${userId}`, {
+        method: "POST",
+      });
+      await res.json();
+
+      set({ currentUser: selectedUser });
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error changing user:", error);
+      set({
+        error:
+          error instanceof Error ? error.message : "Error al cambiar usuario",
       });
     }
   },

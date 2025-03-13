@@ -16,7 +16,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     fetchComments,
     addComment,
     deleteComment,
-    isLoadingComments, // Add the loading state getter
+    isLoadingComments,
   } = useTaskStore();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -24,9 +24,8 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
   const [editableTask, setEditableTask] = useState<Task>({ ...task });
   const [isEditing, setIsEditing] = useState(false);
 
-  // Get comments from the store
   const comments = getTaskComments(task.id);
-  const isLoading = isLoadingComments(); // Get loading state
+  const isLoading = isLoadingComments();
 
   useEffect(() => {
     console.log("TaskModal received task:", task);
@@ -34,7 +33,6 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
       setIsVisible(true);
     }, 0);
 
-    // Fetch comments for this task when modal opens
     fetchComments(task.id);
   }, [task, fetchComments]);
 
@@ -79,7 +77,6 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
 
   const handleSave = async () => {
     try {
-      // Prepare task for API submission
       const taskForApi = {
         title: editableTask.title,
         description: editableTask.description || "",
@@ -90,7 +87,6 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
         team_id: editableTask.teamId,
       };
 
-      // Use the store's updateTask action
       await updateTask(task.id, taskForApi);
       setIsEditing(false);
       handleClose();

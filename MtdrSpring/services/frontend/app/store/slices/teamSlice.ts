@@ -1,21 +1,26 @@
 // app/store/slices/teamSlice.ts
 import type { StateCreator } from "zustand";
-import type { TeamSlice, TaskStore } from "../types";
+import type { StoreState, TaskStore } from "~/store/types";
+import type { Team } from "~/types";
+
+export interface TeamSlice extends StoreState {
+  teams: Team[];
+  isLoadingTeams: boolean;
+
+  fetchTeams: () => Promise<void>;
+}
 
 export const createTeamSlice: StateCreator<TaskStore, [], [], TeamSlice> = (
   set,
   get
 ) => ({
-  // Initial state
   teams: [],
   isLoadingTeams: false,
   error: null,
 
-  // Actions - retained but deprecated in favor of initializeData
   fetchTeams: async () => {
     const { currentUser, teams } = get();
 
-    // Check if we already have teams or if the user is not a manager
     if (!currentUser || teams.length > 0 || currentUser.role !== "manager")
       return;
 

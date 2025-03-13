@@ -1,33 +1,47 @@
 // app/store/slices/taskSlice.ts
 import type { StateCreator } from "zustand";
+import type { TaskStore, StoreState } from "~/store/types";
 import type { Task } from "~/types";
-import type { TaskSlice, TaskStore } from "../types";
+
+export interface TaskSlice extends StoreState {
+  tasks: Task[];
+  isLoadingTasks: boolean;
+  isInitialized: boolean;
+  selectedTaskId: number | null;
+
+  getTaskById: (id: number) => Task | undefined;
+
+  initializeData: () => Promise<void>;
+
+  fetchTasks: (viewMode: string, teamId?: string) => Promise<void>;
+  createTask: (taskData: Partial<Task>) => Promise<Task>;
+  updateTask: (taskId: number, taskData: Partial<Task>) => Promise<Task>;
+  deleteTask: (taskId: number) => Promise<void>;
+  deleteTasks: (taskIds: number[]) => Promise<void>;
+  updateTaskStatus: (taskId: number, status: string) => Promise<void>;
+  selectTask: (taskId: number | null) => void;
+}
 
 export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   set,
   get
 ) => ({
-  // Initial state
   tasks: [],
   isLoadingTasks: false,
   isInitialized: false,
   error: null,
   selectedTaskId: null,
 
-  // Getters
   getTaskById: (id) => {
-    return get().tasks.find((task) => task.id === id);
+    return get().tasks.find((task: Task) => task.id === id);
   },
 
-  // Initialize data - load everything at once
   initializeData: async () => {
-    // Early return if already initialized or currently loading
     if (get().isInitialized || get().isLoadingTasks) return;
 
     set({ error: null, isLoadingTasks: true });
 
     try {
-      // Step 1: Fetch current user
       const userResponse = await fetch("/api/identity/current");
 
       if (!userResponse.ok) {
@@ -50,41 +64,35 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         return;
       }
 
-      // We have a user, now fetch tasks
       let tasksUrl = "/api/tasks/?view_mode=";
       tasksUrl += userData.role === "manager" ? "all" : "assigned";
 
-      // Fetch tasks and teams in parallel
       const fetchTasks = fetch(tasksUrl).then((res) =>
         res.ok ? res.json() : []
       );
 
-      // Only fetch teams if user is a manager
       const fetchTeams =
         userData.role === "manager"
           ? fetch("/api/teams/").then((res) => (res.ok ? res.json() : []))
           : Promise.resolve([]);
 
-      // Fetch users
       const fetchUsers = fetch("/api/users/").then((res) =>
         res.ok ? res.json() : []
       );
 
-      // Wait for all data to load
       const [tasks, teams, users] = await Promise.all([
         fetchTasks,
         fetchTeams,
         fetchUsers,
       ]);
 
-      // Update all state at once to avoid multiple renders
       set({
         currentUser: userData,
         tasks,
         teams,
         users,
         isLoadingTasks: false,
-        isInitialized: true, // Mark as initialized
+        isInitialized: true,
       });
     } catch (error) {
       console.error("Error initializing data:", error);
@@ -96,11 +104,9 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
     }
   },
 
-  // Actions for subsequent data loading
   fetchTasks: async (viewMode, teamId) => {
     const { currentUser, isLoadingTasks } = get();
 
-    // Don't fetch if already loading or no user
     if (!currentUser || isLoadingTasks) return;
 
     set({ isLoadingTasks: true, error: null });
@@ -160,7 +166,6 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
       const createdTask = await response.json();
 
-      // Add the creator details to the task for UI consistency
       const processedTask = {
         ...createdTask,
         created_by:
@@ -170,8 +175,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
           "Usuario",
       };
 
-      // Optimistically update the tasks list
-      set((state) => ({
+      set((state: { tasks: Task[] }) => ({
         tasks: [...state.tasks, processedTask],
       }));
 
@@ -200,9 +204,8 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
       const updatedTask = await response.json();
 
-      // Update the task in the store
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
+      set((state: { tasks: Task[] }) => ({
+        tasks: state.tasks.map((task: Task) =>
           task.id === taskId ? { ...task, ...updatedTask } : task
         ),
       }));
@@ -230,9 +233,8 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         throw new Error("Error al eliminar la tarea");
       }
 
-      // Remove the task from state
-      set((state) => ({
-        tasks: state.tasks.filter((task) => task.id !== taskId),
+      set((state: { tasks: Task[] }) => ({
+        tasks: state.tasks.filter((task: Task) => task.id !== taskId),
       }));
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -256,9 +258,8 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         throw new Error("Error al eliminar las tareas");
       }
 
-      // Remove the tasks from state
-      set((state) => ({
-        tasks: state.tasks.filter((task) => !taskIds.includes(task.id)),
+      set((state: { tasks: Task[] }) => ({
+        tasks: state.tasks.filter((task: Task) => !taskIds.includes(task.id)),
       }));
     } catch (error) {
       console.error("Error deleting tasks:", error);
@@ -284,9 +285,8 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         throw new Error("Error al actualizar el estado de la tarea");
       }
 
-      // Update the task status in the store
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
+      set((state: { tasks: Task[] }) => ({
+        tasks: state.tasks.map((task: Task) =>
           task.id === taskId ? { ...task, status } : task
         ),
       }));

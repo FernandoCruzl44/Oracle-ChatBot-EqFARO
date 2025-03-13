@@ -1,6 +1,19 @@
 // app/store/slices/commentSlice.ts
 import type { StateCreator } from "zustand";
-import type { CommentSlice, TaskStore } from "../types";
+import type { StoreState, TaskStore } from "~/store/types";
+import type { Comment } from "~/types";
+
+export interface CommentSlice extends StoreState {
+  comments: Record<number, Comment[]>;
+  loading: boolean;
+
+  getTaskComments: (taskId: number) => Comment[];
+  isLoadingComments: () => boolean;
+
+  fetchComments: (taskId: number) => Promise<void>;
+  addComment: (taskId: number, content: string) => Promise<void>;
+  deleteComment: (commentId: number, taskId: number) => Promise<void>;
+}
 
 export const createCommentSlice: StateCreator<
   TaskStore,
@@ -8,21 +21,18 @@ export const createCommentSlice: StateCreator<
   [],
   CommentSlice
 > = (set, get) => ({
-  // Initial state
   comments: {},
   error: null,
-  loading: false, // Added loading state
+  loading: false,
 
-  // Getters
   getTaskComments: (taskId) => {
     return get().comments[taskId] || [];
   },
 
-  isLoadingComments: () => get().loading, // Added getter for loading state
+  isLoadingComments: () => get().loading,
 
-  // Actions
   fetchComments: async (taskId) => {
-    set({ loading: true }); // Set loading to true when starting
+    set({ loading: true });
     try {
       const response = await fetch(`/api/comments/task/${taskId}`);
       if (!response.ok) {
@@ -35,7 +45,7 @@ export const createCommentSlice: StateCreator<
           ...state.comments,
           [taskId]: data,
         },
-        loading: false, // Set loading to false when done
+        loading: false,
       }));
     } catch (error) {
       console.error("Error fetching comments:", error);
@@ -44,7 +54,7 @@ export const createCommentSlice: StateCreator<
           error instanceof Error
             ? error.message
             : "Error al cargar los comentarios",
-        loading: false, // Set loading to false on error
+        loading: false,
       });
     }
   },
@@ -63,7 +73,6 @@ export const createCommentSlice: StateCreator<
 
       const comment = await response.json();
 
-      // Add the comment to the store
       set((state) => ({
         comments: {
           ...state.comments,
@@ -92,7 +101,6 @@ export const createCommentSlice: StateCreator<
         throw new Error("Error al eliminar el comentario");
       }
 
-      // Remove the comment from state
       set((state) => ({
         comments: {
           ...state.comments,
