@@ -12,6 +12,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
   const {
     updateTask,
     getTaskComments,
+    getCurrentUser,
     fetchComments,
     addComment,
     deleteComment,
@@ -310,7 +311,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                   <div
                     key={index}
                     className={`flex gap-4 group transition-opacity ${
-                      isLoading || comments.length === 0 ? "opacity-0" : ""
+                      isLoading || comments.length === 0 ? "opacity-10" : ""
                     }`}
                   >
                     <div className="border-r border-oc-outline-light h-full"></div>
@@ -327,16 +328,20 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       </div>
                       <p className="text-sm pl-0.5">{comment.content}</p>
                     </div>
-                    <button
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-500"
-                    >
-                      <i className="fa fa-trash text-sm"></i>
-                    </button>
+                    {comment.creatorId === getCurrentUser()?.id ? (
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-800"
+                      >
+                        <i className="fa fa-trash text-sm"></i>
+                      </button>
+                    ) : (
+                      <div className="w-5 h-5"></div>
+                    )}
                   </div>
                 ))}
                 <div
-                  className={`absolute top-0 right-0 left-0 justify-center items-center text-center text-gray-500 pt-4 transition-opacity duration-200 ${
+                  className={`absolute top-0 right-0 left-0 justify-center items-center text-center text-gray-500 pt-4 transition-opacity duration-200 pointer-events-none ${
                     comments.length === 0 && !isLoading
                       ? "opacity-100"
                       : "opacity-0"
@@ -345,12 +350,12 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                   No hay comentarios
                 </div>
                 <div
-                  className={`absolute top-5 right-0 left-0 flex justify-center items-center transition-opacity duration-200 ${
+                  className={`absolute top-5 right-0 left-0 flex justify-center items-center transition-opacity pointer-events-none duration-200   ${
                     isLoading ? "opacity-100" : "opacity-0"
                   }`}
                 >
-                  <i className="fa fa-lg fa-spinner text-oc-brown animate-spin"></i>
-                </div>{" "}
+                  <i className="fa fa-lg fa-spinner text-oc-brown animate-spin "></i>
+                </div>
               </div>
             </div>
             <div className="p-4 pb-7 mb-2.5">

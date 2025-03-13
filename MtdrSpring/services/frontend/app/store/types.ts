@@ -39,6 +39,7 @@ export interface UserSlice extends StoreState {
   // Actions - moved to initializeData in TaskSlice
   fetchCurrentUser: () => Promise<void>;
   fetchUsers: () => Promise<void>;
+  getCurrentUser: () => User | null;
 }
 
 // Team slice state and actions

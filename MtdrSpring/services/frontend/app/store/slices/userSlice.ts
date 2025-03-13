@@ -12,6 +12,8 @@ export const createUserSlice: StateCreator<TaskStore, [], [], UserSlice> = (
   isLoadingUsers: false,
   error: null,
 
+  getCurrentUser: () => get().currentUser,
+
   // Actions - retained but deprecated in favor of initializeData
   fetchCurrentUser: async () => {
     // Check if we already have a user
