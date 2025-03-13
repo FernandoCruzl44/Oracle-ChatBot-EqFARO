@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Task } from "~/types";
 import useTaskStore from "~/store/index";
+import { Toaster, toast } from "sonner";
 
 interface CreateTaskModalProps {
   onClose: () => void;
@@ -100,19 +101,19 @@ export default function CreateTaskModal({
     e.preventDefault();
 
     if (!title || !startDate) {
-      setError("El título y la fecha de inicio son obligatorios");
+      toast.error("El título y la fecha de inicio son obligatorios");
       return;
     }
 
     // For developers, if they don't have a team, show error
     if (!isManager && !userTeam?.id) {
-      setError("No tienes un equipo asignado. Contacta a un administrador.");
+      toast.error("No tienes un equipo asignado. Contacta a un administrador.");
       return;
     }
 
     // For managers, team is required
     if (isManager && !teamId) {
-      setError("Debes seleccionar un equipo");
+      toast.error("Debes seleccionar un equipo");
       return;
     }
 
@@ -136,7 +137,7 @@ export default function CreateTaskModal({
       onSave();
     } catch (error: any) {
       console.error("Error creating task:", error);
-      setError(error.message || "Error al crear la tarea");
+      toast.error(error.message || "Error al crear la tarea");
     }
   };
 
@@ -169,11 +170,14 @@ export default function CreateTaskModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Título de la tarea"
                 className="text-lg font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+                required
+                title="Este campo es obligatorio"
               />
 
               <form
                 className="pt-3 text-sm flex flex-col h-full"
                 onSubmit={handleSubmitTask}
+                noValidate={false}
               >
                 <div className="space-y-4 flex-1 overflow-y-auto transition-all duration-150">
                   <div className="flex items-center">
@@ -191,6 +195,7 @@ export default function CreateTaskModal({
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
                       }`}
+                      required
                     >
                       <option value="Feature">Feature</option>
                       <option value="Issue">Issue</option>
@@ -268,6 +273,7 @@ export default function CreateTaskModal({
                         }
                         className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
                         required
+                        title="Debes seleccionar un equipo"
                       >
                         <option value="">Selecciona un equipo</option>
                         {teams.map((team) => (
@@ -348,13 +354,6 @@ export default function CreateTaskModal({
                   </div>
                 </div>
 
-                {error && (
-                  <div className="mt-2 text-red-600 text-sm">
-                    <i className="fa fa-exclamation-circle mr-1"></i>
-                    {error}
-                  </div>
-                )}
-
                 <div className="mt-4">
                   <textarea
                     value={description}
@@ -367,7 +366,6 @@ export default function CreateTaskModal({
                 <div className="my-2">
                   <button
                     type="submit"
-                    disabled={!title || !startDate || (isManager && !teamId)}
                     className="w-full text-sm py-2.5 bg-oc-brown text-white rounded hover:bg-oc-brown/90 transition-all flex justify-center items-center"
                   >
                     <span>Crear Tarea</span>

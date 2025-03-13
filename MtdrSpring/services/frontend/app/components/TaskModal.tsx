@@ -231,7 +231,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       type="text"
                       value={editableTask.creatorName || "—"}
                       readOnly
-                      className="px-2 py-1 bg-gray-100"
+                      className="px-2 py-1 "
                     />
                   </div>
                   {editableTask.teamName && (
@@ -244,7 +244,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                         type="text"
                         value={editableTask.teamName || ""}
                         readOnly
-                        className="px-2 py-1 bg-gray-100"
+                        className="px-2 py-1 "
                       />
                     </div>
                   )}
