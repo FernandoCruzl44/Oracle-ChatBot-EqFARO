@@ -1,35 +1,41 @@
 // app/components/TaskModal.tsx
 import { useState, useEffect } from "react";
-import type { Task, Comment as CommentType, User } from "~/types";
+import type { Task } from "~/types";
+import useTaskStore from "~/store/index";
 
 interface TaskModalProps {
   task: Task;
   onClose: () => void;
-  onUpdate: (task: Task) => void;
 }
 
-export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
+export default function TaskModal({ task, onClose }: TaskModalProps) {
+  const {
+    updateTask,
+    getTaskComments,
+    fetchComments,
+    addComment,
+    deleteComment,
+    isLoadingComments, // Add the loading state getter
+  } = useTaskStore();
+
   const [isVisible, setIsVisible] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState<CommentType[]>([]);
   const [editableTask, setEditableTask] = useState<Task>({ ...task });
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Get comments from the store
+  const comments = getTaskComments(task.id);
+  const isLoading = isLoadingComments(); // Get loading state
 
   useEffect(() => {
     console.log("TaskModal received task:", task);
-    setIsVisible(true);
-    fetch("/api/identity/current")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.message !== "No identity set") {
-          setCurrentUser(data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching current user:", error);
-      });
-  }, []);
+    setTimeout(() => {
+      setIsVisible(true);
+    }, 0);
+
+    // Fetch comments for this task when modal opens
+    fetchComments(task.id);
+  }, [task, fetchComments]);
 
   const handleClose = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -38,20 +44,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   };
 
   useEffect(() => {
-    if (task) {
-      fetch(`/api/comments/task/${task.id}`)
-        .then((response) => response.json())
-        .then((data) => {
-          console.log("Raw comments data:", data);
-          setComments(data);
-        })
-        .catch((error) => console.error("Error fetching comments:", error));
-    }
-  }, [task]);
-
-  useEffect(() => {
     setEditableTask(task);
-    console.log("Task updated:", task);
   }, [task]);
 
   useEffect(() => {
@@ -96,20 +89,10 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
         team_id: editableTask.teamId,
       };
 
-      const response = await fetch(`/api/tasks/${task.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskForApi),
-      });
-
-      if (response.ok) {
-        const updatedTask = await response.json();
-        onUpdate(updatedTask);
-        setIsEditing(false);
-        handleClose();
-      }
+      // Use the store's updateTask action
+      await updateTask(task.id, taskForApi);
+      setIsEditing(false);
+      handleClose();
     } catch (error) {
       console.error("Error updating task:", error);
     }
@@ -118,35 +101,20 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
   const handleSubmitComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (newComment.trim()) {
-      const commentPayload = {
-        content: newComment,
-      };
-
-      fetch(`/api/comments/task/${task.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(commentPayload),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          console.log("New comment response:", data);
-          setComments([...comments, data]);
+      addComment(task.id, newComment)
+        .then(() => {
           setNewComment("");
         })
-        .catch((error) => console.error("Error adding comment:", error));
+        .catch((error) => {
+          console.error("Error adding comment:", error);
+        });
     }
   };
 
-  const deleteComment = (commentId: number) => {
-    fetch(`/api/comments/${commentId}`, {
-      method: "DELETE",
-    })
-      .then((response) => {
-        if (response.ok) {
-          setComments(comments.filter((comment) => comment.id !== commentId));
-        }
-      })
-      .catch((error) => console.error("Error deleting comment:", error));
+  const handleDeleteComment = (commentId: number) => {
+    deleteComment(commentId, task.id).catch((error) => {
+      console.error("Error deleting comment:", error);
+    });
   };
 
   return (
@@ -329,7 +297,7 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
               </div>
             </div>
           </div>
-          {/* Derecha - Comentarios */}
+          {/* Right - Comments */}
           <div className="w-[350px] flex flex-col bg-oc-primary">
             <div className="p-8">
               <h3 className="text-lg font-bold border-b border-oc-outline-light/60 pb-3">
@@ -337,21 +305,22 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-4 pl-2">
-              {comments.length === 0 ? (
-                <div className="text-center text-gray-500 pt-4">
-                  No hay comentarios
-                </div>
-              ) : (
-                comments.map((comment, index) => (
-                  <div key={index} className="flex gap-4 group">
+              <div className="relative space-y-5">
+                {comments.map((comment, index) => (
+                  <div
+                    key={index}
+                    className={`flex gap-4 group transition-opacity ${
+                      isLoading || comments.length === 0 ? "opacity-0" : ""
+                    }`}
+                  >
                     <div className="border-r border-oc-outline-light h-full"></div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2">
                           <span className="w-6 h-6 bg-oc-neutral rounded-full flex items-center justify-center border border-oc-outline-light/80">
-                            <i className="fa fa-user text-xs"></i>
+                            <i className="fa fa-user"></i>
                           </span>
-                          <span className="font-medium text-base">
+                          <span className="font-medium text-sm">
                             {comment.creatorName}
                           </span>
                         </div>
@@ -359,14 +328,30 @@ export default function TaskModal({ task, onClose, onUpdate }: TaskModalProps) {
                       <p className="text-sm pl-0.5">{comment.content}</p>
                     </div>
                     <button
-                      onClick={() => deleteComment(comment.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-500 "
+                      onClick={() => handleDeleteComment(comment.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-500"
                     >
                       <i className="fa fa-trash text-sm"></i>
                     </button>
                   </div>
-                ))
-              )}
+                ))}
+                <div
+                  className={`absolute top-0 right-0 left-0 justify-center items-center text-center text-gray-500 pt-4 transition-opacity duration-200 ${
+                    comments.length === 0 && !isLoading
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                >
+                  No hay comentarios
+                </div>
+                <div
+                  className={`absolute top-5 right-0 left-0 flex justify-center items-center transition-opacity duration-200 ${
+                    isLoading ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  <i className="fa fa-lg fa-spinner text-oc-brown animate-spin"></i>
+                </div>{" "}
+              </div>
             </div>
             <div className="p-4 pb-7 mb-2.5">
               <form onSubmit={handleSubmitComment}>

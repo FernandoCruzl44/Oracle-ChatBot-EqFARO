@@ -1,10 +1,12 @@
-// app/views/TasksView.tsx
+// app/views/TasksView.tsx (Refactored)
 import { useEffect, useState, useRef } from "react";
 import React from "react";
-import type { Task, Team, User } from "~/types";
+import type { Task } from "~/types";
 import TaskModal from "../components/TaskModal";
 import Portal from "../components/Portal";
 import CreateTaskModal from "../components/CreateTaskModal";
+import useTaskStore from "~/store/index";
+import TasksSkeletonLoader from "~/components/TasksSkeletonLoader";
 
 interface DropdownPosition {
   taskId: number;
@@ -13,24 +15,37 @@ interface DropdownPosition {
 }
 
 export default function TaskView() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Get data and actions from Zustand store
+  const {
+    tasks,
+    currentUser,
+    teams,
+    isLoadingTasks,
+    isInitialized,
+    error,
+    initializeData,
+    fetchTasks,
+    updateTaskStatus,
+    selectTask,
+    selectedTaskId,
+    getTaskById,
+    deleteTasks,
+  } = useTaskStore();
+
+  // Local state
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [activeTab, setActiveTab] = useState<string>("all");
-
   const [openStatusMenu, setOpenStatusMenu] = useState<DropdownPosition | null>(
     null
   );
+
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const tasksPerPage = 15;
 
+  // Derived state
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -46,72 +61,23 @@ export default function TaskView() {
   );
 
   const isManager = currentUser?.role === "manager";
+  const selectedTask = selectedTaskId ? getTaskById(selectedTaskId) : null;
 
+  // Initial data loading on component mount
   useEffect(() => {
-    console.log("[DEV] Fetching data from API");
-    fetchCurrentUser();
-  }, []);
+    if (!isInitialized) {
+      initializeData();
+    }
+  }, [initializeData, isInitialized]);
 
+  // Effect for tab changes - only fetch when necessary
   useEffect(() => {
-    if (currentUser) {
-      fetchTeams();
+    if (isInitialized && currentUser) {
+      fetchTasks(activeTab, activeTab !== "all" ? activeTab : undefined);
     }
-  }, [currentUser]);
+  }, [isInitialized, currentUser, activeTab, fetchTasks]);
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchTasks();
-    }
-  }, [currentUser, activeTab]);
-
-  const fetchCurrentUser = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/identity/current");
-      if (!res.ok) {
-        console.error("Raw response:", res);
-        if (res.status === 404) {
-          throw new Error(
-            "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
-          );
-        }
-        throw new Error("Error al obtener usuario actual");
-      }
-      const data = await res.json();
-      if (data.message !== "No identity set") {
-        setCurrentUser(data);
-      } else {
-        setError(
-          "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
-        );
-        setIsLoading(false);
-      }
-    } catch (error: any) {
-      console.error("Error fetching current user:", error);
-      setError(error.message || "Error al obtener usuario actual");
-      setIsLoading(false);
-    }
-  };
-
-  const fetchTeams = () => {
-    if (isManager) {
-      fetch("/api/teams/")
-        .then((res) => {
-          if (!res.ok) {
-            console.error("Raw response:", res);
-            throw new Error("Error al obtener equipos");
-          }
-          return res.json();
-        })
-        .then((data) => {
-          setTeams(data);
-        })
-        .catch((error) => {
-          console.error("Error fetching teams:", error);
-        });
-    }
-  };
-
+  // Click outside handler for status menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -128,53 +94,7 @@ export default function TaskView() {
     };
   }, []);
 
-  const fetchTasks = () => {
-    setIsLoading(true);
-    setError(null);
-
-    let url = "/api/tasks/?";
-
-    if (isManager) {
-      if (activeTab === "all") {
-        // For managers viewing "all", use a view_mode that shows all tasks
-        url += "view_mode=all";
-      } else {
-        url += `view_mode=team&team_id=${activeTab}`;
-      }
-    } else {
-      if (activeTab === "all") {
-        url += "view_mode=assigned";
-      } else if (activeTab === "team") {
-        url += "view_mode=team";
-      }
-    }
-
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) {
-          console.error("Raw response:", res);
-          if (res.status === 401) {
-            throw new Error(
-              "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
-            );
-          }
-          throw new Error("Error al cargar las tareas");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setTasks(data);
-        setIsLoading(false);
-        setCurrentPage(1);
-        setSelectedTasks([]);
-      })
-      .catch((error) => {
-        console.error("Error fetching tasks:", error);
-        setError(error.message || "Error al cargar las tareas");
-        setIsLoading(false);
-      });
-  };
-
+  // Task selection handlers
   const handleTaskSelection = (taskId: number) => {
     if (selectedTasks.includes(taskId)) {
       setSelectedTasks(selectedTasks.filter((id) => id !== taskId));
@@ -192,11 +112,11 @@ export default function TaskView() {
   };
 
   const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
+    selectTask(task.id);
   };
 
   const closeModal = () => {
-    setSelectedTask(null);
+    selectTask(null);
     setIsCreateModalOpen(false);
   };
 
@@ -204,32 +124,15 @@ export default function TaskView() {
     setIsCreateModalOpen(true);
   };
 
-  const handleSaveNewTask = (newTask: Task) => {
-    setTasks([...tasks, newTask]);
-    fetchTasks();
+  const handleSaveNewTask = () => {
+    setIsCreateModalOpen(false);
   };
 
   const handleDeleteTasks = () => {
     if (selectedTasks.length === 0) return;
-
-    fetch("/api/tasks/", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(selectedTasks),
-    })
-      .then((response) => {
-        if (response.ok) {
-          const updatedTasks = tasks.filter(
-            (task) => !selectedTasks.includes(task.id)
-          );
-          setTasks(updatedTasks);
-          setSelectedTasks([]);
-        } else {
-          console.error("Raw response:", response);
-          console.error("Failed to delete tasks");
-        }
+    deleteTasks(selectedTasks)
+      .then(() => {
+        setSelectedTasks([]);
       })
       .catch((error) => {
         console.error("Error deleting tasks:", error);
@@ -237,26 +140,8 @@ export default function TaskView() {
   };
 
   const handleStatusChange = (taskId: number, newStatus: string) => {
-    fetch(`/api/tasks/${taskId}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status: newStatus }),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          console.error("Raw response:", response);
-          throw new Error("Failed to update task status");
-        }
-      })
-      .then((updatedTask) => {
-        const updatedTasks = tasks.map((task) =>
-          task.id === taskId ? { ...task, status: newStatus } : task
-        );
-        setTasks(updatedTasks);
+    updateTaskStatus(taskId, newStatus)
+      .then(() => {
         setOpenStatusMenu(null);
       })
       .catch((error) => {
@@ -283,12 +168,6 @@ export default function TaskView() {
   };
 
   const statuses = ["En progreso", "Cancelada", "Backlog", "Completada"];
-
-  const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(
-      tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    );
-  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -333,7 +212,7 @@ export default function TaskView() {
           )}
         </div>
 
-        {/* Busqueda y filtros */}
+        {/* Search and filters */}
         <div className="py-4 flex items-center justify-between">
           <div className="flex flex-row gap-2">
             <div className="relative w-72">
@@ -343,6 +222,7 @@ export default function TaskView() {
                 className="w-full pl-8 pr-10 py-2 rounded-lg border border-oc-outline-light text-black bg-oc-primary text-sm"
                 value={searchTerm}
                 onChange={handleSearch}
+                disabled={isLoadingTasks}
               />
               <i className="fa fa-search absolute left-3 top-3 text-black"></i>
               {searchTerm && (
@@ -359,7 +239,10 @@ export default function TaskView() {
             <div className="flex">
               <button
                 onClick={handleAddTaskClick}
-                className="px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm"
+                className={`px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm ${
+                  isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={isLoadingTasks}
               >
                 <i className="fa fa-plus mr-2"></i>
                 <span>Agrega tarea</span>
@@ -387,8 +270,9 @@ export default function TaskView() {
                     activeTab === "all"
                       ? "text-gray-800 border-b-2 border-gray-800"
                       : "text-gray-600"
-                  }`}
-                  onClick={() => changeTab("all")}
+                  } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() => !isLoadingTasks && changeTab("all")}
+                  disabled={isLoadingTasks}
                 >
                   Todas las tareas
                 </button>
@@ -399,8 +283,11 @@ export default function TaskView() {
                       activeTab === String(team.id)
                         ? "text-gray-800 border-b-2 border-gray-800"
                         : "text-gray-600"
-                    }`}
-                    onClick={() => changeTab(String(team.id))}
+                    } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+                    onClick={() =>
+                      !isLoadingTasks && changeTab(String(team.id))
+                    }
+                    disabled={isLoadingTasks}
                   >
                     {team.name}
                   </button>
@@ -413,8 +300,9 @@ export default function TaskView() {
                     activeTab === "all"
                       ? "text-gray-800 border-b-2 border-gray-800"
                       : "text-gray-600"
-                  }`}
-                  onClick={() => changeTab("all")}
+                  } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() => !isLoadingTasks && changeTab("all")}
+                  disabled={isLoadingTasks}
                 >
                   Mis tareas
                 </button>
@@ -423,8 +311,9 @@ export default function TaskView() {
                     activeTab === "team"
                       ? "text-gray-800 border-b-2 border-gray-800"
                       : "text-gray-600"
-                  }`}
-                  onClick={() => changeTab("team")}
+                  } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() => !isLoadingTasks && changeTab("team")}
+                  disabled={isLoadingTasks}
                 >
                   Proyecto
                 </button>
@@ -432,7 +321,7 @@ export default function TaskView() {
             )}
           </div>
 
-          {/* Tabla de Tasks */}
+          {/* Tasks Table */}
           <div
             className="overflow-y-auto"
             style={{ maxHeight: "calc(100vh - 253px)" }}
@@ -452,6 +341,7 @@ export default function TaskView() {
                         selectedTasks.length === paginatedTasks.length &&
                         paginatedTasks.length > 0
                       }
+                      disabled={isLoadingTasks}
                     />
                   </td>
                   <td className="py-3 w-96 font-bold">Titulo</td>
@@ -467,23 +357,16 @@ export default function TaskView() {
                 </tr>
               </thead>
               <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td
-                      colSpan={
-                        (isManager && activeTab !== "all") ||
-                        (!isManager && activeTab === "team")
-                          ? 8
-                          : 7
-                      }
-                      className="py-4 px-6 text-center"
-                    >
-                      <div className="flex justify-center items-center">
-                        <i className="fa fa-spinner fa-spin mr-2"></i>
-                        Cargando tareas...
-                      </div>
-                    </td>
-                  </tr>
+                {isLoadingTasks ? (
+                  <TasksSkeletonLoader
+                    columns={
+                      (isManager && activeTab !== "all") ||
+                      (!isManager && activeTab === "team")
+                        ? 8
+                        : 7
+                    }
+                    rows={5}
+                  />
                 ) : error ? (
                   <tr>
                     <td
@@ -526,6 +409,7 @@ export default function TaskView() {
                         index === paginatedTasks.length - 1 ? "" : "border-b"
                       }`}
                     >
+                      {/* Task row content (unchanged) */}
                       <td
                         className="w-12 px-5 py-3 translate-y-0.5"
                         onClick={(e) => e.stopPropagation()}
@@ -613,14 +497,22 @@ export default function TaskView() {
               <button
                 className="w-8 h-8 flex items-center justify-center border rounded-l border-oc-outline-light"
                 onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1 || filteredTasks.length === 0}
+                disabled={
+                  currentPage === 1 ||
+                  filteredTasks.length === 0 ||
+                  isLoadingTasks
+                }
               >
                 <i className="fa fa-angle-double-left"></i>
               </button>
               <button
                 className="w-8 h-8 flex items-center justify-center border-t border-r border-b border-oc-outline-light"
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1 || filteredTasks.length === 0}
+                disabled={
+                  currentPage === 1 ||
+                  filteredTasks.length === 0 ||
+                  isLoadingTasks
+                }
               >
                 <i className="fa fa-angle-left"></i>
               </button>
@@ -630,7 +522,9 @@ export default function TaskView() {
                   setCurrentPage(Math.min(totalPages, currentPage + 1))
                 }
                 disabled={
-                  currentPage === totalPages || filteredTasks.length === 0
+                  currentPage === totalPages ||
+                  filteredTasks.length === 0 ||
+                  isLoadingTasks
                 }
               >
                 <i className="fa fa-angle-right"></i>
@@ -639,7 +533,9 @@ export default function TaskView() {
                 className="w-8 h-8 flex items-center justify-center border rounded-r border-oc-outline-light"
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={
-                  currentPage === totalPages || filteredTasks.length === 0
+                  currentPage === totalPages ||
+                  filteredTasks.length === 0 ||
+                  isLoadingTasks
                 }
               >
                 <i className="fa fa-angle-double-right"></i>
@@ -649,30 +545,13 @@ export default function TaskView() {
         </div>
       </div>
 
-      {/* Task Modals */}
-      {selectedTask && (
-        <TaskModal
-          task={selectedTask}
-          onClose={closeModal}
-          onUpdate={handleTaskUpdate}
-        />
-      )}
+      {/* Modals */}
+      {selectedTask && <TaskModal task={selectedTask} onClose={closeModal} />}
       {isCreateModalOpen && (
-        <CreateTaskModal
-          onClose={closeModal}
-          onSave={handleSaveNewTask}
-          currentUser={currentUser}
-          selectedTeamId={
-            isManager && activeTab !== "all"
-              ? Number(activeTab)
-              : isManager
-              ? undefined
-              : currentUser?.teamId
-          }
-        />
+        <CreateTaskModal onClose={closeModal} onSave={handleSaveNewTask} />
       )}
 
-      {/* Renderizar el status dropdown en un portal (para que estuviera por encima de todo)*/}
+      {/* Status dropdown portal */}
       {openStatusMenu && (
         <Portal>
           <div

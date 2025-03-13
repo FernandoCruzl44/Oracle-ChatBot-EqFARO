@@ -1,20 +1,19 @@
 // app/components/CreateTaskModal.tsx
 import { useState, useEffect, useRef } from "react";
-import type { User, Task, Team } from "~/types";
+import type { Task } from "~/types";
+import useTaskStore from "~/store/index";
 
 interface CreateTaskModalProps {
   onClose: () => void;
-  onSave: (task: Task) => void;
-  currentUser?: User | null;
-  selectedTeamId?: number;
+  onSave: () => void;
 }
 
 export default function CreateTaskModal({
   onClose,
   onSave,
-  currentUser,
-  selectedTeamId,
 }: CreateTaskModalProps) {
+  const { currentUser, users, teams, createTask, fetchUsers } = useTaskStore();
+
   const [isVisible, setIsVisible] = useState(false);
   const [title, setTitle] = useState("");
   const [tag, setTag] = useState<"Feature" | "Issue">("Feature");
@@ -22,27 +21,42 @@ export default function CreateTaskModal({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [description, setDescription] = useState("");
-  const [teamId, setTeamId] = useState<number | undefined>(selectedTeamId);
+  const [teamId, setTeamId] = useState<number | undefined>(currentUser?.teamId);
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const assigneesListRef = useRef<HTMLDivElement>(null);
   const [assigneesListHeight, setAssigneesListHeight] = useState<number>(0);
 
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [userTeam, setUserTeam] = useState<any | null>(null);
-  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [isLoadingUserTeam, setIsLoadingUserTeam] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const isManager = currentUser?.role === "manager";
+  const userTeam = currentUser?.teamId
+    ? {
+        id: currentUser.teamId,
+        name: currentUser.teamName || "",
+      }
+    : null;
 
   const filteredUsers = teamId
-    ? users.filter((user) => {
-        return user.teamId === teamId;
-      })
+    ? users.filter((user) => user.teamId === teamId)
     : users;
+
+  useEffect(() => {
+    setIsVisible(true);
+
+    // Set initial date to today
+    const today = new Date().toISOString().split("T")[0];
+    setStartDate(today);
+
+    // Fetch users if they haven't been loaded yet
+    if (users.length === 0) {
+      fetchUsers();
+    }
+
+    // Pre-select the user's team if they have one
+    if (currentUser?.teamId) {
+      setTeamId(currentUser.teamId);
+    }
+  }, [currentUser, fetchUsers, users.length]);
 
   useEffect(() => {
     if (assigneesListRef.current) {
@@ -53,64 +67,6 @@ export default function CreateTaskModal({
       setAssigneesListHeight(contentHeight);
     }
   }, [filteredUsers, assigneeIds]);
-
-  useEffect(() => {
-    setIsVisible(true);
-
-    // Para managers, obtener la lista de equipos
-    if (isManager) {
-      setIsLoadingTeams(true);
-      fetch("/api/teams/")
-        .then((res) => res.json())
-        .then((data) => {
-          setTeams(data);
-          setIsLoadingTeams(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching teams:", error);
-          setIsLoadingTeams(false);
-          setError("Error al cargar equipos");
-        });
-    }
-    // Para desarrolladores, obtener su equipo
-    else {
-      setIsLoadingUserTeam(true);
-      fetch("/api/identity/current")
-        .then((res) => res.json())
-        .then((userData) => {
-          if (userData.teamId && userData.teamName) {
-            setUserTeam({
-              id: userData.teamId,
-              name: userData.teamName,
-              role: userData.teamRole || "member",
-            });
-            setTeamId(userData.teamId);
-          }
-          setIsLoadingUserTeam(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching user team:", error);
-          setIsLoadingUserTeam(false);
-          setError("Error al cargar equipo del usuario");
-        });
-    }
-
-    setIsLoadingUsers(true);
-    fetch("/api/users/")
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data);
-        setIsLoadingUsers(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-        setIsLoadingUsers(false);
-        setError("Error al cargar usuarios");
-      });
-
-    const today = new Date().toISOString().split("T")[0];
-    setStartDate(today);
-  }, [isManager]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -140,26 +96,28 @@ export default function CreateTaskModal({
     }
   };
 
-  const handleSubmitTask = (e: React.FormEvent) => {
+  const handleSubmitTask = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title || !startDate) {
+      setError("El título y la fecha de inicio son obligatorios");
       return;
     }
 
-    // Para desarrolladores, si no tienen equipo, mostrar error
+    // For developers, if they don't have a team, show error
     if (!isManager && !userTeam?.id) {
       setError("No tienes un equipo asignado. Contacta a un administrador.");
       return;
     }
 
-    // Para managers, el equipo es obligatorio
+    // For managers, team is required
     if (isManager && !teamId) {
       setError("Debes seleccionar un equipo");
       return;
     }
 
-    const newTask = {
+    // Create task data
+    const newTaskData = {
       title,
       tag,
       status,
@@ -168,42 +126,19 @@ export default function CreateTaskModal({
       description,
       team_id: teamId,
       assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
-      // Usar user ID actual si esta disponible
-      created_by_id: currentUser?.id,
     };
 
-    fetch("/api/tasks/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTask),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((err) => {
-            throw new Error(err.detail || "Error al crear la tarea");
-          });
-        }
-        return response.json();
-      })
-      .then((data) => {
-        const processedTask = {
-          ...data,
-          created_by:
-            data.created_by ||
-            data.creator?.name ||
-            currentUser?.name ||
-            "Usuario",
-        };
-        onSave(processedTask);
-        handleClose();
-      })
-      .catch((error) => {
-        console.error("Error creating task:", error);
-        setError(error.message || "Error al crear la tarea");
-      });
-  };
+    try {
+      // Use the store's createTask function to add the task
+      await createTask(newTaskData);
 
-  // Filtrar usuarios para mostrar solo los del equipo seleccionado
+      // Call the onSave callback from parent component
+      onSave();
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      setError(error.message || "Error al crear la tarea");
+    }
+  };
 
   return (
     <div
@@ -319,7 +254,7 @@ export default function CreateTaskModal({
                     />
                   </div>
 
-                  {/* Selector de equipo para managers */}
+                  {/* Team selector for managers */}
                   {isManager && (
                     <div className="flex items-center">
                       <div className="w-32 text-oc-brown/60">
@@ -335,31 +270,23 @@ export default function CreateTaskModal({
                         required
                       >
                         <option value="">Selecciona un equipo</option>
-                        {isLoadingTeams ? (
-                          <option disabled>Cargando equipos...</option>
-                        ) : (
-                          teams.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
-                            </option>
-                          ))
-                        )}
+                        {teams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   )}
 
-                  {/* Muestra información del equipo para no managers */}
+                  {/* Show team info for non-managers */}
                   {!isManager && (
                     <div className="flex items-center">
                       <div className="w-32 text-oc-brown/60">
                         <i className="fa fa-users mr-2 translate-y-1"></i>
                         Equipo
                       </div>
-                      {isLoadingUserTeam ? (
-                        <span className="px-2 py-1">
-                          Cargando información de equipo...
-                        </span>
-                      ) : userTeam?.id ? (
+                      {userTeam ? (
                         <input
                           type="text"
                           value={userTeam.name || ""}
@@ -375,7 +302,7 @@ export default function CreateTaskModal({
                     </div>
                   )}
 
-                  {/* Asignados */}
+                  {/* Assignees */}
                   <div className="flex items-start">
                     <div className="w-32 text-oc-brown/60 pt-1">
                       <i className="fa fa-user-plus mr-2 translate-y-1"></i>
@@ -387,11 +314,7 @@ export default function CreateTaskModal({
                         style={{ height: `${assigneesListHeight}px` }}
                         className="bg-white p-2 min-h-[70px] overflow-y-auto rounded-lg border transition-all duration-150 ease-in-out border-oc-outline-light/60 flex flex-col items-start"
                       >
-                        {isLoadingUsers ? (
-                          <p className="text-sm text-oc-brown/50">
-                            Cargando usuarios...
-                          </p>
-                        ) : filteredUsers.length === 0 ? (
+                        {filteredUsers.length === 0 ? (
                           <p className="text-sm text-oc-brown/50">
                             No hay usuarios disponibles en este equipo
                           </p>
@@ -424,6 +347,13 @@ export default function CreateTaskModal({
                     </div>
                   </div>
                 </div>
+
+                {error && (
+                  <div className="mt-2 text-red-600 text-sm">
+                    <i className="fa fa-exclamation-circle mr-1"></i>
+                    {error}
+                  </div>
+                )}
 
                 <div className="mt-4">
                   <textarea
