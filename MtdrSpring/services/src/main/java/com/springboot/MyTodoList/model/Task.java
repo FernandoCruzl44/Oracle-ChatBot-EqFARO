@@ -1,144 +1,114 @@
 package com.springboot.MyTodoList.model;
 
-import javax.persistence.*;
+import java.util.List;
 
-@Entity
-@Table(name = "Tasks", schema = "TODOUSER")
 public class Task {
+    private Long id;
+    private String title;
+    private String description;
+    private String tag;
+    private String status;
+    private String startDate;
+    private String endDate;
+    private Long creatorId;
+    private String creatorName;
+    private Long teamId;
+    private String teamName;
+    private List<User> assignees;
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "TASKID")
-	private Long taskID;
+    public Long getId() {
+        return id;
+    }
 
-	@ManyToOne
-	@JoinColumn(name = "TEAMID", nullable = false)
-	private Team team;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	@ManyToOne
-	@JoinColumn(name = "ROLEID", nullable = false)
-	private TeamRole role;
+    public String getTitle() {
+        return title;
+    }
 
-	@Column(name = "TITLE", nullable = false, length = 255)
-	private String title;
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-	@Column(name = "DESCRIPTION", length = 2000)
-	private String description;
+    public String getDescription() {
+        return description;
+    }
 
-	@Column(name = "STATUS", length = 50)
-	private String status;
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-	@Column(name = "PRIORITY", length = 50)
-	private String priority;
+    public String getTag() {
+        return tag;
+    }
 
-	@Column(name = "FECHACREACION", nullable = false)
-	private java.sql.Date fechaCreacion;
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
 
-	@Column(name = "FECHAINICIO")
-	private java.sql.Date fechaInicio;
+    public String getStatus() {
+        return status;
+    }
 
-	@Column(name = "FECHAFIN")
-	private java.sql.Date fechaFin;
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-	@Column(name = "STORYPOINTS")
-	private Long storyPoints;
+    public String getStartDate() {
+        return startDate;
+    }
 
-	@Column(name = "TIEMPOINVERTIDO")
-	private Long tiempoInvertido;
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
 
-	public Long getTaskID() {
-		return taskID;
-	}
+    public String getEndDate() {
+        return endDate;
+    }
 
-	public void setTaskID(Long taskID) {
-		this.taskID = taskID;
-	}
+    public void setEndDate(String endDate) {
+        this.endDate = endDate;
+    }
 
-	public Team getTeam() {
-		return team;
-	}
+    public Long getCreatorId() {
+        return creatorId;
+    }
 
-	public void setTeam(Team team) {
-		this.team = team;
-	}
+    public void setCreatorId(Long creatorId) {
+        this.creatorId = creatorId;
+    }
 
-	public TeamRole getRole() {
-		return role;
-	}
+    public String getCreatorName() {
+        return creatorName;
+    }
 
-	public void setRole(TeamRole role) {
-		this.role = role;
-	}
+    public void setCreatorName(String creatorName) {
+        this.creatorName = creatorName;
+    }
 
-	public String getTitle() {
-		return title;
-	}
+    public Long getTeamId() {
+        return teamId;
+    }
 
-	public void setTitle(String title) {
-		this.title = title;
-	}
+    public void setTeamId(Long teamId) {
+        this.teamId = teamId;
+    }
 
-	public String getDescription() {
-		return description;
-	}
+    public String getTeamName() {
+        return teamName;
+    }
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    public void setTeamName(String teamName) {
+        this.teamName = teamName;
+    }
 
-	public String getStatus() {
-		return status;
-	}
+    public List<User> getAssignees() {
+        return assignees;
+    }
 
-	public void setStatus(String status) {
-		this.status = status;
-	}
-
-	public String getPriority() {
-		return priority;
-	}
-
-	public void setPriority(String priority) {
-		this.priority = priority;
-	}
-
-	public java.sql.Date getFechaCreacion() {
-		return fechaCreacion;
-	}
-
-	public void setFechaCreacion(java.sql.Date fechaCreacion) {
-		this.fechaCreacion = fechaCreacion;
-	}
-
-	public java.sql.Date getFechaInicio() {
-		return fechaInicio;
-	}
-
-	public void setFechaInicio(java.sql.Date fechaInicio) {
-		this.fechaInicio = fechaInicio;
-	}
-
-	public java.sql.Date getFechaFin() {
-		return fechaFin;
-	}
-
-	public void setFechaFin(java.sql.Date fechaFin) {
-		this.fechaFin = fechaFin;
-	}
-
-	public Long getStoryPoints() {
-		return storyPoints;
-	}
-
-	public void setStoryPoints(Long storyPoints) {
-		this.storyPoints = storyPoints;
-	}
-
-	public Long getTiempoInvertido() {
-		return tiempoInvertido;
-	}
-
-	public void setTiempoInvertido(Long tiempoInvertido) {
-		this.tiempoInvertido = tiempoInvertido;
-	}
+    public void setAssignees(List<User> assignees) {
+        this.assignees = assignees;
+    }
 }

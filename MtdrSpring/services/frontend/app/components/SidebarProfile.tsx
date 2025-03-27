@@ -1,71 +1,27 @@
 // app/components/SidebarProfile.tsx
-import { useState, useEffect } from "react";
-
-interface User {
-  id: number;
-  nombre: string;
-  email: string;
-  role: string;
-}
+import { useEffect } from "react";
+import useTaskStore from "~/store";
 
 export default function SidebarProfile() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const users = useTaskStore((state) => state.users);
+  const currentUser = useTaskStore((state) => state.currentUser);
+  const isLoadingUsers = useTaskStore((state) => state.isLoadingUsers);
+  const fetchUsers = useTaskStore((state) => state.fetchUsers);
+  const fetchCurrentUser = useTaskStore((state) => state.fetchCurrentUser);
+  const handleChangeUser = useTaskStore((state) => state.handleChangeUser);
 
   useEffect(() => {
-    fetch("/api/users/")
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data);
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-        setIsLoading(false);
-      });
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/identity/current")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.message !== "No identity set") {
-          setCurrentUser(data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching current user:", error);
-      });
-  }, []);
-
-  const handleChangeUser = (userId: number) => {
-    if (!userId) return;
-
-    const selectedUser = users.find((user) => user.id === Number(userId));
-    if (!selectedUser) return;
-
-    fetch(`/api/identity/set/${userId}`, {
-      method: "POST",
-    })
-      .then((res) => res.json())
-      .then(() => {
-        setCurrentUser(selectedUser);
-
-        window.location.reload();
-      })
-      .catch((error) => {
-        console.error("Error changing user:", error);
-      });
-  };
+    fetchUsers();
+    fetchCurrentUser();
+  }, [fetchUsers, fetchCurrentUser]);
 
   return (
-    <div className="p-2 flex items-center m-3 rounded-xl transition-colors">
-      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-2">
+    <div className="p-2 flex items-center my-3 mx-1 rounded-xl transition-colors">
+      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center mr-2">
         <i className="fa fa-user text-gray-600"></i>
       </div>
 
-      {isLoading ? (
+      {isLoadingUsers ? (
         <div className="flex-1">
           <div className="font-medium text-gray-400">Cargando...</div>
         </div>
@@ -81,7 +37,7 @@ export default function SidebarProfile() {
             </option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.nombre}
+                {user.name}
               </option>
             ))}
           </select>

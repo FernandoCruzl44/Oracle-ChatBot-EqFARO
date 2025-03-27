@@ -4,9 +4,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
-public class SpaForwardingController {
+public class FrontendForwardingController {
 
-    // Explicit mapping for SPA routes
+    // Mappeo para rutas de React Router
     @RequestMapping(value = { "/", "/team", "/productivity", "/error" })
     public String forwardSpecific() {
         return "forward:/index.html";

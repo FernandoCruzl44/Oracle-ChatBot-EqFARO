@@ -1,62 +1,42 @@
 package com.springboot.MyTodoList.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
+import java.util.List;
 
-@Entity
-@Table(name = "Teams", schema = "TODOUSER")
 public class Team {
+    private Long id;
+    private String name;
+    private String description;
+    private List<User> members;
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "TEAMID")
-	private Long teamID;
+    public Long getId() {
+        return id;
+    }
 
-	@ManyToOne
-	@JoinColumn(name = "MANAGERID", nullable = false)
-	private User manager;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	@Column(name = "NOMBRE", nullable = false, length = 255)
-	private String nombre;
+    public String getName() {
+        return name;
+    }
 
-	@Column(name = "DESCRIPTION", length = 255)
-	private String description;
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public Long getTeamID() {
-		return teamID;
-	}
+    public String getDescription() {
+        return description;
+    }
 
-	public void setTeamID(Long teamID) {
-		this.teamID = teamID;
-	}
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-	public User getManager() {
-		return manager;
-	}
+    public List<User> getMembers() {
+        return members;
+    }
 
-	public void setManager(User manager) {
-		this.manager = manager;
-	}
-
-	public String getNombre() {
-		return nombre;
-	}
-
-	public void setNombre(String nombre) {
-		this.nombre = nombre;
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    public void setMembers(List<User> members) {
+        this.members = members;
+    }
 }

@@ -1,92 +1,90 @@
 package com.springboot.MyTodoList.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Entity
-@Table(name = "Users", schema = "TODOUSER")
 public class User {
+    private Long id;
+    private String name;
+    private String email;
 
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY) 
-        @Column(name = "USERID") // Explicitly mapping the column name in the database
-        private Long userID;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String password;
 
-        @Column(name = "NOMBRE", nullable = false, length = 255) // Mapping to 'Nombre' column
-        private String nombre;
+    private String role;
+    private String telegramId;
+    private String teamRole;
+    private Long teamId;
+    private String teamName;
 
-        @Column(name = "EMAIL", nullable = false, unique = true, length = 255) // 'Email' should be unique
-        private String email;
+    public Long getId() {
+        return id;
+    }
 
-        @Column(name = "TELEGRAMID", length = 255) // 'TelegramID' can be nullable
-        private String telegramID;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-        @Column(name = "CHATID", length = 255) // 'ChatID' can be nullable
-        private String chatID;
+    public String getName() {
+        return name;
+    }
 
-        @Column(name = "PHONE", length = 255) // 'Phone' can be nullable
-        private String phone;
+    public void setName(String name) {
+        this.name = name;
+    }
 
-        @Column(name = "USERTYPE", nullable = false, length = 20) // Enforcing non-null constraint on 'UserType'
-        private String userType;
+    public String getEmail() {
+        return email;
+    }
 
-        public Long getUserID() {
-                return userID;
-        }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-        public void setUserID(Long userID) {
-                this.userID = userID;
-        }
+    public String getPassword() {
+        return password;
+    }
 
-        public String getNombre() {
-                return nombre;
-        }
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-        public void setNombre(String nombre) {
-                this.nombre = nombre;
-        }
+    public String getRole() {
+        return role;
+    }
 
-        public String getEmail() {
-                return email;
-        }
+    public void setRole(String role) {
+        this.role = role;
+    }
 
-        public void setEmail(String email) {
-                this.email = email;
-        }
+    public String getTelegramId() {
+        return telegramId;
+    }
 
-        public String getTelegramID() {
-                return telegramID;
-        }
+    public void setTelegramId(String telegramId) {
+        this.telegramId = telegramId;
+    }
 
-        public void setTelegramID(String telegramID) {
-                this.telegramID = telegramID;
-        }
+    public String getTeamRole() {
+        return teamRole;
+    }
 
-        public String getChatID() {
-                return chatID;
-        }
+    public void setTeamRole(String teamRole) {
+        this.teamRole = teamRole;
+    }
 
-        public void setChatID(String chatID) {
-                this.chatID = chatID;
-        }
+    public Long getTeamId() {
+        return teamId;
+    }
 
-        public String getPhone() {
-                return phone;
-        }
+    public void setTeamId(Long teamId) {
+        this.teamId = teamId;
+    }
 
-        public void setPhone(String phone) {
-                this.phone = phone;
-        }
+    public String getTeamName() {
+        return teamName;
+    }
 
-        public String getUserType() {
-                return userType;
-        }
-
-        public void setUserType(String userType) {
-                this.userType = userType;
-        }
+    public void setTeamName(String teamName) {
+        this.teamName = teamName;
+    }
 }

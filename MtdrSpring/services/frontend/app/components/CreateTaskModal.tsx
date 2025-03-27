@@ -1,122 +1,87 @@
 // app/components/CreateTaskModal.tsx
-import { useState, useEffect } from "react";
-
-interface Task {
-  id: number;
-  title: string;
-  tag: "Feature" | "Issue";
-  status: string;
-  startDate: string;
-  endDate: string | null;
-  created_by: string;
-  description?: string;
-  team?: string;
-  assignees?: string[];
-}
-
-interface User {
-  id: number;
-  nombre: string;
-  email: string;
-  role: string;
-  team: {
-    id: number;
-    nombre: string;
-    role: string;
-  } | null;
-}
-
-interface Team {
-  id: number;
-  nombre: string;
-  description?: string;
-}
+import { useState, useEffect, useRef } from "react";
+import type { Task } from "~/types";
+import useTaskStore from "~/store/index";
+import { Toaster, toast } from "sonner";
 
 interface CreateTaskModalProps {
   onClose: () => void;
-  onSave: (task: Task) => void;
-  currentUser?: User | null;
-  selectedTeamId?: number;
+  onSave: () => void;
 }
 
 export default function CreateTaskModal({
   onClose,
   onSave,
-  currentUser,
-  selectedTeamId,
 }: CreateTaskModalProps) {
+  const { currentUser, users, teams, createTask, fetchUsers } = useTaskStore();
+
   const [isVisible, setIsVisible] = useState(false);
   const [title, setTitle] = useState("");
   const [tag, setTag] = useState<"Feature" | "Issue">("Feature");
+  const [status, setStatus] = useState<string>("Backlog");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [description, setDescription] = useState("");
-  const [teamId, setTeamId] = useState<number | undefined>(selectedTeamId);
+  const [teamId, setTeamId] = useState<number | undefined>(currentUser?.teamId);
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
-
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [userTeam, setUserTeam] = useState<any | null>(null);
-  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [isLoadingUserTeam, setIsLoadingUserTeam] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const assigneesListRef = useRef<HTMLDivElement>(null);
+  const [assigneesListHeight, setAssigneesListHeight] = useState<number>(0);
+
   const isManager = currentUser?.role === "manager";
+  const userTeam = currentUser?.teamId
+    ? {
+        id: currentUser.teamId,
+        name: currentUser.teamName || "",
+      }
+    : null;
+
+  const filteredUsers = teamId
+    ? users.filter((user) => user.teamId === teamId)
+    : [];
 
   useEffect(() => {
     setIsVisible(true);
 
-    // Para managers, obtener la lista de equipos
-    if (isManager) {
-      setIsLoadingTeams(true);
-      fetch("/api/teams/")
-        .then((res) => res.json())
-        .then((data) => {
-          setTeams(data);
-          setIsLoadingTeams(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching teams:", error);
-          setIsLoadingTeams(false);
-          setError("Error al cargar equipos");
-        });
-    } else {
-      // Para desarrolladores, obtener su equipo
-      setIsLoadingUserTeam(true);
-      fetch("/api/users/me/team")
-        .then((res) => res.json())
-        .then((data) => {
-          setUserTeam(data);
-          // Si el usuario tiene un equipo, asignarlo automáticamente
-          if (data.id) {
-            setTeamId(data.id);
-          }
-          setIsLoadingUserTeam(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching user team:", error);
-          setIsLoadingUserTeam(false);
-          setError("Error al cargar equipo del usuario");
-        });
-    }
-
-    setIsLoadingUsers(true);
-    fetch("/api/users/")
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data);
-        setIsLoadingUsers(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-        setIsLoadingUsers(false);
-        setError("Error al cargar usuarios");
-      });
-
+    // Set initial date to today
     const today = new Date().toISOString().split("T")[0];
     setStartDate(today);
-  }, [isManager]);
+
+    // Fetch users if they haven't been loaded yet
+    if (users.length === 0) {
+      fetchUsers();
+    }
+
+    // Pre-select the user's team if they have one
+    if (currentUser?.teamId) {
+      setTeamId(currentUser.teamId);
+    }
+  }, [currentUser, fetchUsers, users.length]);
+
+  useEffect(() => {
+    if (assigneesListRef.current) {
+      const contentHeight =
+        filteredUsers.length === 0
+          ? 40
+          : Math.min(filteredUsers.length * 28, 128);
+      setAssigneesListHeight(contentHeight);
+    }
+  }, [filteredUsers, assigneeIds]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSubmitTask(e as any);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [title, startDate, teamId]);
 
   const handleClose = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -132,67 +97,49 @@ export default function CreateTaskModal({
     }
   };
 
-  const handleSubmitTask = (e: React.FormEvent) => {
+  const handleSubmitTask = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title || !startDate) {
+      toast.error("El título y la fecha de inicio son obligatorios");
       return;
     }
 
-    // Para desarrolladores, si no tienen equipo, mostrar error
+    // For developers, if they don't have a team, show error
     if (!isManager && !userTeam?.id) {
-      setError("No tienes un equipo asignado. Contacta a un administrador.");
+      toast.error("No tienes un equipo asignado. Contacta a un administrador.");
       return;
     }
 
-    // Para managers, el equipo es obligatorio
+    // For managers, team is required
     if (isManager && !teamId) {
-      setError("Debes seleccionar un equipo");
+      toast.error("Debes seleccionar un equipo");
       return;
     }
 
-    const newTask = {
+    // Create task data
+    const newTaskData = {
       title,
       tag,
-      status: "Backlog",
+      status,
       startDate,
       endDate: endDate || null,
       description,
       team_id: teamId,
       assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
-      // Usar user ID actual si esta disponible
-      created_by_id: currentUser?.id,
     };
 
-    fetch("/api/tasks/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTask),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((err) => {
-            throw new Error(err.detail || "Error al crear la tarea");
-          });
-        }
-        return response.json();
-      })
-      .then((data) => {
-        onSave(data);
-        handleClose();
-      })
-      .catch((error) => {
-        console.error("Error creating task:", error);
-        setError(error.message || "Error al crear la tarea");
-      });
-  };
+    try {
+      // Use the store's createTask function to add the task
+      await createTask(newTaskData);
 
-  // Filtrar usuarios para mostrar solo los del equipo seleccionado
-  const filteredUsers = teamId
-    ? users.filter((user) => {
-        return user.team?.id === teamId;
-      })
-    : users;
+      // Call the onSave callback from parent component
+      onSave();
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      toast.error(error.message || "Error al crear la tarea");
+    }
+  };
 
   return (
     <div
@@ -202,179 +149,240 @@ export default function CreateTaskModal({
       onClick={handleClose}
     >
       <div
-        className={`rounded-lg w-full max-w-2xl p-6 bg-oc-primary transition-transform duration-150 ${
+        className={`rounded-lg w-full max-w-[600px] flex p-2 bg-[#EFEDE9] transition-all duration-150 ease-in-out ${
           isVisible ? "translate-y-0" : "translate-y-3"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">Crear Nueva Tarea</h2>
+        <div className="bg-oc-primary border border-oc-outline-light relative rounded-lg w-full flex overflow-hidden transition-all duration-150">
           <button
             onClick={handleClose}
-            className="border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-gray-500 hover:text-gray-700"
+            className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-gray-500 hover:text-gray-700"
           >
             <i className="fa fa-times text-xl"></i>
           </button>
-        </div>
 
-        {error && (
-          <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-2 rounded-lg mb-4 flex items-center">
-            <i className="fa fa-exclamation-circle mr-2"></i>
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmitTask} className="space-y-4">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Título de la tarea"
-            className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
-            required
-          />
-          <select
-            value={tag}
-            onChange={(e) => setTag(e.target.value as "Feature" | "Issue")}
-            className="w-full border-r-8 border-transparent p-3 text-sm rounded-lg outline outline-oc-outline-light/60 bg-white"
-          >
-            <option value="Feature">Feature</option>
-            <option value="Issue">Issue</option>
-          </select>
-
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm text-gray-500 mb-1">
-                Fecha inicio*
-              </label>
+          <div className="flex-1 p-8 pb-6 overflow-hidden">
+            <div className="flex flex-col h-full">
               <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Título de la tarea"
+                className="text-lg font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
                 required
+                title="Este campo es obligatorio"
               />
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm text-gray-500 mb-1">
-                Fecha fin
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full outline outline-oc-outline-light/60 rounded-lg p-3 text-sm bg-white"
-              />
-            </div>
-          </div>
 
-          {/* Mostrar selector de equipo solo para managers */}
-          {isManager && (
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">
-                Equipo*
-              </label>
-              <select
-                value={teamId || ""}
-                onChange={(e) => setTeamId(Number(e.target.value) || undefined)}
-                className="w-full p-3 text-sm rounded-lg outline outline-oc-outline-light/60 bg-white"
-                required
+              <form
+                className="pt-3 text-sm flex flex-col h-full"
+                onSubmit={handleSubmitTask}
+                noValidate={false}
               >
-                <option value="">Selecciona un equipo</option>
-                {isLoadingTeams ? (
-                  <option disabled>Cargando equipos...</option>
-                ) : (
-                  teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.nombre}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-          )}
-
-          {/* Para desarrolladores, mostrar su equipo */}
-          {!isManager && (
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">
-                Tu equipo
-              </label>
-              {isLoadingUserTeam ? (
-                <div className="p-3 text-sm text-gray-500 bg-gray-100 rounded-lg">
-                  Cargando información de equipo...
-                </div>
-              ) : userTeam?.id ? (
-                <div className="p-3 text-sm bg-blue-50 border border-blue-100 text-blue-800 rounded-lg">
-                  {userTeam.nombre}{" "}
-                  <span className="text-xs text-blue-600">
-                    ({userTeam.role})
-                  </span>
-                </div>
-              ) : (
-                <div className="p-3 text-sm bg-yellow-50 border border-yellow-100 text-yellow-800 rounded-lg">
-                  No perteneces a ningún equipo. Contacta a un administrador.
-                </div>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm text-gray-500 mb-1">
-              Asignados
-            </label>
-            <div className="bg-white p-2 max-h-32 overflow-y-auto rounded-lg outline outline-oc-outline-light/60">
-              {isLoadingUsers ? (
-                <p className="text-sm p-2">Cargando usuarios...</p>
-              ) : filteredUsers.length === 0 ? (
-                <p className="text-sm p-2 text-gray-500">
-                  No hay usuarios disponibles en este equipo
-                </p>
-              ) : (
-                filteredUsers.map((user) => (
-                  <div key={user.id} className="flex items-center p-1">
-                    <input
-                      type="checkbox"
-                      id={`user-${user.id}`}
-                      checked={assigneeIds.includes(user.id)}
-                      onChange={() => toggleAssignee(user.id)}
-                      className="mr-2"
-                    />
-                    <label htmlFor={`user-${user.id}`} className="text-sm">
-                      {user.nombre}{" "}
-                      <span className="text-xs text-gray-500">
-                        ({user.role})
-                      </span>
-                    </label>
+                <div className="space-y-4 flex-1 overflow-y-auto transition-all duration-150">
+                  <div className="flex items-center">
+                    <div className="w-32 text-oc-brown/60">
+                      <i className="fa fa-tag mr-2 translate-y-1"></i>
+                      Tag
+                    </div>
+                    <select
+                      value={tag}
+                      onChange={(e) =>
+                        setTag(e.target.value as "Feature" | "Issue")
+                      }
+                      className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
+                        tag === "Feature"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                      required
+                    >
+                      <option value="Feature">Feature</option>
+                      <option value="Issue">Issue</option>
+                    </select>
                   </div>
-                ))
-              )}
+
+                  <div className="flex items-center">
+                    <div className="w-32 text-oc-brown/60">
+                      <i className="fa fa-info-circle mr-2 translate-y-1"></i>
+                      Estatus
+                    </div>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                    >
+                      <option value="Backlog">Backlog</option>
+                      <option value="En progreso">En progreso</option>
+                      <option value="Completada">Completada</option>
+                      <option value="Cancelada">Cancelada</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="w-32 text-oc-brown/60">
+                      <i className="fa fa-calendar mr-2 translate-y-1"></i>
+                      Fecha inicio
+                    </div>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="px-2 py-1"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="w-32 text-oc-brown/60">
+                      <i className="fa fa-calendar mr-2 translate-y-1"></i>
+                      Fecha fin
+                    </div>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="px-2 py-1"
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="w-32 text-oc-brown/60">
+                      <i className="fa fa-user mr-2 translate-y-1"></i>
+                      Creada por
+                    </div>
+                    <input
+                      type="text"
+                      value={currentUser?.name || "—"}
+                      readOnly
+                      className="px-2 py-1"
+                    />
+                  </div>
+
+                  {/* Team selector for managers */}
+                  {isManager && (
+                    <div className="flex items-center">
+                      <div className="w-32 text-oc-brown/60">
+                        <i className="fa fa-users mr-2 translate-y-1"></i>
+                        Equipo
+                      </div>
+                      <select
+                        value={teamId || ""}
+                        onChange={(e) =>
+                          setTeamId(Number(e.target.value) || undefined)
+                        }
+                        className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                        required
+                        title="Debes seleccionar un equipo"
+                      >
+                        <option value="">Selecciona un equipo</option>
+                        {teams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Show team info for non-managers */}
+                  {!isManager && (
+                    <div className="flex items-center">
+                      <div className="w-32 text-oc-brown/60">
+                        <i className="fa fa-users mr-2 translate-y-1"></i>
+                        Equipo
+                      </div>
+                      {userTeam ? (
+                        <input
+                          type="text"
+                          value={userTeam.name || ""}
+                          readOnly
+                          className="px-2 py-1"
+                        />
+                      ) : (
+                        <span className="text-xs bg-yellow-50 border border-yellow-100 text-yellow-800 rounded-lg p-1">
+                          <i className="fa fa-warning mr-1"></i>
+                          No perteneces a ningún equipo
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Assignees */}
+                  <div className="flex items-start">
+                    <div className="w-32 text-oc-brown/60 pt-1">
+                      <i className="fa fa-user-plus mr-2 translate-y-1"></i>
+                      Asignados
+                    </div>
+                    <div className="flex-1">
+                      <div
+                        ref={assigneesListRef}
+                        style={{ height: `${assigneesListHeight}px` }}
+                        className="bg-white p-2 min-h-[70px] overflow-y-auto rounded-lg border transition-all duration-150 ease-in-out border-oc-outline-light/60 flex flex-col items-start"
+                      >
+                        {teamId === null ? (
+                          <p className="text-sm text-oc-brown/50">
+                            Elige un equipo
+                          </p>
+                        ) : filteredUsers.length === 0 ? (
+                          <p className="text-sm text-oc-brown/50">
+                            No hay usuarios disponibles en este equipo
+                          </p>
+                        ) : (
+                          filteredUsers.map((user) => (
+                            <div
+                              key={user.id}
+                              className="flex items-center p-1 transition-all duration-150"
+                            >
+                              <input
+                                type="checkbox"
+                                id={`user-${user.id}`}
+                                checked={assigneeIds.includes(user.id)}
+                                onChange={() => toggleAssignee(user.id)}
+                                className="mr-2"
+                              />
+                              <label
+                                htmlFor={`user-${user.id}`}
+                                className="text-sm"
+                              >
+                                {user.name}{" "}
+                                <span className="text-xs text-oc-brown/50">
+                                  ({user.role})
+                                </span>
+                              </label>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Descripción (Opcional)"
+                    className="w-full border bg-white rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
+                  ></textarea>
+                </div>
+
+                <div className="my-2">
+                  <button
+                    type="submit"
+                    className="w-full text-sm py-2.5 bg-oc-brown text-white rounded hover:bg-oc-brown/90 transition-all flex justify-center items-center"
+                  >
+                    <span>Crear Tarea</span>
+                    <span className="ml-2 text-xs flex items-center text-oc-outline-light/80">
+                      <i className="fa fa-keyboard mr-1" aria-hidden="true"></i>
+                      ⌘ + Enter / Ctrl + Enter
+                    </span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descripción (Opcional)"
-            className="w-full outline outline-oc-outline-light/60 bg-white rounded-lg p-3 text-sm min-h-[80px]"
-          ></textarea>
-
-          {currentUser && (
-            <div className="text-sm text-gray-500">
-              Creando como: {currentUser.nombre}
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={!title || !startDate || (isManager && !teamId)}
-              className="px-4 py-2 bg-white hover:bg-oc-brown rounded-lg border border-oc-outline-light flex items-center text-black hover:text-white text-sm disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
-            >
-              Crear Tarea
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
