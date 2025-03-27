@@ -1,4 +1,4 @@
-// app/views/TasksView.tsx (Refactored)
+// app/views/TasksView.tsx
 import { useEffect, useState, useRef } from "react";
 import React from "react";
 import type { Task } from "~/types";
@@ -15,7 +15,6 @@ interface DropdownPosition {
 }
 
 export default function TaskView() {
-  // Get data and actions from Zustand store
   const {
     tasks,
     currentUser,
@@ -32,7 +31,6 @@ export default function TaskView() {
     deleteTasks,
   } = useTaskStore();
 
-  // Local state
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -43,9 +41,9 @@ export default function TaskView() {
   );
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
+  const currentToggleRef = useRef<HTMLDivElement | null>(null);
   const tasksPerPage = 15;
 
-  // Derived state
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -63,26 +61,25 @@ export default function TaskView() {
   const isManager = currentUser?.role === "manager";
   const selectedTask = selectedTaskId ? getTaskById(selectedTaskId) : null;
 
-  // Initial data loading on component mount
   useEffect(() => {
     if (!isInitialized) {
       initializeData();
     }
   }, [initializeData, isInitialized]);
 
-  // Effect for tab changes - only fetch when necessary
   useEffect(() => {
     if (isInitialized && currentUser) {
       fetchTasks(activeTab, activeTab !== "all" ? activeTab : undefined);
     }
   }, [isInitialized, currentUser, activeTab, fetchTasks]);
 
-  // Click outside handler for status menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         statusMenuRef.current &&
-        !statusMenuRef.current.contains(event.target as Node)
+        !statusMenuRef.current.contains(event.target as Node) &&
+        currentToggleRef.current &&
+        !currentToggleRef.current.contains(event.target as Node)
       ) {
         setOpenStatusMenu(null);
       }
@@ -94,7 +91,6 @@ export default function TaskView() {
     };
   }, []);
 
-  // Task selection handlers
   const handleTaskSelection = (taskId: number) => {
     if (selectedTasks.includes(taskId)) {
       setSelectedTasks(selectedTasks.filter((id) => id !== taskId));
@@ -154,7 +150,11 @@ export default function TaskView() {
     e: React.MouseEvent<HTMLDivElement>
   ) => {
     e.stopPropagation();
+    e.preventDefault();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+
+    // Store reference to the current toggle button
+    currentToggleRef.current = e.currentTarget;
 
     if (openStatusMenu && openStatusMenu.taskId === task.id) {
       setOpenStatusMenu(null);
@@ -183,7 +183,6 @@ export default function TaskView() {
   return (
     <div className="p-6 bg-oc-neutral h-full">
       <div className="h-full overflow-hidden flex flex-col">
-        {/* Header */}
         <div className="flex justify-between items-center pb-2 gap-2">
           <div className="flex items-center pb-2 gap-2">
             <i className="fa fa-chevron-right text-2xl text-black"></i>
@@ -212,7 +211,6 @@ export default function TaskView() {
           )}
         </div>
 
-        {/* Search and filters */}
         <div className="py-4 flex items-center justify-between">
           <div className="flex flex-row gap-2">
             <div className="relative w-72">
@@ -261,7 +259,6 @@ export default function TaskView() {
         </div>
 
         <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm">
-          {/* Tabs */}
           <div className="flex px-4 py-2 border-b pb-0 border-oc-outline-light/60 overflow-x-auto hide-scrollbar">
             {isManager ? (
               <>
@@ -321,7 +318,6 @@ export default function TaskView() {
             )}
           </div>
 
-          {/* Tasks Table */}
           <div
             className="overflow-y-auto"
             style={{ maxHeight: "calc(100vh - 253px)" }}
@@ -405,11 +401,14 @@ export default function TaskView() {
                   paginatedTasks.map((task, index) => (
                     <tr
                       key={task.id}
-                      className={`border-oc-outline-light/60 hover:bg-white ${
+                      className={`border-oc-outline-light/60 ${
+                        openStatusMenu && openStatusMenu.taskId === task.id
+                          ? "bg-white"
+                          : "hover:bg-white"
+                      } ${
                         index === paginatedTasks.length - 1 ? "" : "border-b"
                       }`}
                     >
-                      {/* Task row content (unchanged) */}
                       <td
                         className="w-12 px-5 py-3 translate-y-0.5"
                         onClick={(e) => e.stopPropagation()}
@@ -432,13 +431,13 @@ export default function TaskView() {
                           {task.title}
                         </button>
                       </td>
-                      <td className="py-3">
+                      <td className="py-2">
                         <span
                           className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
                             task.tag === "Feature"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                          } inline-block w-18 text-center`}
                         >
                           {task.tag}
                         </span>
@@ -448,8 +447,10 @@ export default function TaskView() {
                           className="flex items-center cursor-pointer"
                           onClick={(e) => toggleStatusMenu(task, e)}
                         >
-                          <span>{task.status || "En progreso"}</span>
-                          <i className="fa fa-chevron-down ml-2 text-gray-500"></i>
+                          <span className="select-non w-[110px]">
+                            {task.status || "En progreso"}
+                          </span>
+                          <i className="fa fa-chevron-down text-gray-500"></i>
                         </div>
                       </td>
                       <td className="py-3">{task.startDate}</td>
@@ -562,17 +563,17 @@ export default function TaskView() {
               left: openStatusMenu.left,
               zIndex: 50,
             }}
-            className="bg-oc-primary rounded-md overflow-hidden border shadow-sm border-oc-outline-light/50 w-32"
+            className="bg-white rounded-md overflow-hidden border border-oc-outline-light/50 w-32"
           >
             <ul>
               {statuses.map((status) => (
                 <li
                   key={status}
-                  className={`px-4 py-2 hover:bg-white cursor-pointer text-sm ${
+                  className={`px-4 py-2 bg-white border hover:border-black/30 rounded-md cursor-pointer text-sm transition-all ${
                     tasks.find((t) => t.id === openStatusMenu.taskId)
                       ?.status === status
-                      ? "bg-oc-neutral"
-                      : ""
+                      ? "border-black/50 bg-white"
+                      : "border-white"
                   }`}
                   onClick={() =>
                     handleStatusChange(openStatusMenu.taskId, status)

@@ -39,7 +39,7 @@ export default function CreateTaskModal({
 
   const filteredUsers = teamId
     ? users.filter((user) => user.teamId === teamId)
-    : users;
+    : [];
 
   useEffect(() => {
     setIsVisible(true);
@@ -320,7 +320,11 @@ export default function CreateTaskModal({
                         style={{ height: `${assigneesListHeight}px` }}
                         className="bg-white p-2 min-h-[70px] overflow-y-auto rounded-lg border transition-all duration-150 ease-in-out border-oc-outline-light/60 flex flex-col items-start"
                       >
-                        {filteredUsers.length === 0 ? (
+                        {teamId === null ? (
+                          <p className="text-sm text-oc-brown/50">
+                            Elige un equipo
+                          </p>
+                        ) : filteredUsers.length === 0 ? (
                           <p className="text-sm text-oc-brown/50">
                             No hay usuarios disponibles en este equipo
                           </p>

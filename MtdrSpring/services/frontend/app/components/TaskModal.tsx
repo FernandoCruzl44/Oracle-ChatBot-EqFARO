@@ -1,5 +1,5 @@
 // app/components/TaskModal.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Task } from "~/types";
 import useTaskStore from "~/store/index";
 
@@ -23,6 +23,8 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
   const [newComment, setNewComment] = useState("");
   const [editableTask, setEditableTask] = useState<Task>({ ...task });
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const commentInputRef = useRef<HTMLInputElement>(null);
 
   const comments = getTaskComments(task.id);
   const isLoading = isLoadingComments();
@@ -50,7 +52,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         handleClose();
-      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && isEditing) {
         e.preventDefault();
         handleSave();
       }
@@ -95,15 +97,29 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     }
   };
 
+  useEffect(() => {
+    if (!isSubmittingComment && commentInputRef.current) {
+      // Small timeout to ensure the DOM has updated
+      setTimeout(() => {
+        commentInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isSubmittingComment]);
+
   const handleSubmitComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (newComment.trim()) {
+      setIsSubmittingComment(true);
       addComment(task.id, newComment)
         .then(() => {
           setNewComment("");
+          // Remove the focus call here, we'll handle it in the useEffect
         })
         .catch((error) => {
           console.error("Error adding comment:", error);
+        })
+        .finally(() => {
+          setIsSubmittingComment(false);
         });
     }
   };
@@ -324,7 +340,8 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       </div>
                       <p className="text-sm pl-0.5">{comment.content}</p>
                     </div>
-                    {comment.creatorId === getCurrentUser()?.id ? (
+                    {comment.creatorId === getCurrentUser()?.id ||
+                    getCurrentUser()?.role === "manager" ? (
                       <button
                         onClick={() => handleDeleteComment(comment.id)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-800"
@@ -355,14 +372,34 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
               </div>
             </div>
             <div className="p-4 pb-7 mb-2.5">
-              <form onSubmit={handleSubmitComment}>
+              <form
+                onSubmit={handleSubmitComment}
+                className="flex items-center gap-2"
+              >
                 <input
+                  ref={commentInputRef}
                   type="text"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Escribe tu comentario"
-                  className="w-full border border-oc-outline-light/60 bg-white rounded-lg p-3 py-2.5 text-sm"
+                  className="flex-1 border border-oc-outline-light/60 bg-white rounded-lg p-3 py-2.5 text-sm"
+                  disabled={isSubmittingComment}
                 />
+                <button
+                  type="submit"
+                  className={`text-white rounded-lg p-2.5 transition-colors flex items-center justify-center h-[42px] w-[42px] ${
+                    newComment.trim()
+                      ? "bg-oc-brown/90 hover:bg-oc-brown"
+                      : "bg-oc-brown/50"
+                  }`}
+                  disabled={!newComment.trim() || isSubmittingComment}
+                >
+                  {isSubmittingComment ? (
+                    <i className="fa fa-spinner animate-spin"></i>
+                  ) : (
+                    <i className="fa fa-paper-plane"></i>
+                  )}
+                </button>
               </form>
             </div>
           </div>
