@@ -17,6 +17,8 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     addComment,
     deleteComment,
     isLoadingComments,
+    sprints,
+    getSprintsByTeam,
   } = useTaskStore();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -28,6 +30,9 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
 
   const comments = getTaskComments(task.id);
   const isLoading = isLoadingComments();
+  const teamSprints = editableTask.teamId
+    ? getSprintsByTeam(editableTask.teamId)
+    : [];
 
   useEffect(() => {
     console.log("TaskModal received task:", task);
@@ -62,14 +67,9 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [editableTask]);
 
-  const handleInputChange = (field: keyof Task, value: string) => {
-    if (value !== task[field as keyof Task]) {
+  const handleInputChange = (field: keyof Task, value: any) => {
+    if (value !== editableTask[field]) {
       setIsEditing(true);
-      setEditableTask((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    } else {
       setEditableTask((prev) => ({
         ...prev,
         [field]: value,
@@ -87,6 +87,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
         startDate: editableTask.startDate,
         endDate: editableTask.endDate || null,
         team_id: editableTask.teamId,
+        sprint_id: editableTask.sprintId,
       };
 
       await updateTask(task.id, taskForApi);
@@ -99,7 +100,6 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
 
   useEffect(() => {
     if (!isSubmittingComment && commentInputRef.current) {
-      // Small timeout to ensure the DOM has updated
       setTimeout(() => {
         commentInputRef.current?.focus();
       }, 50);
@@ -113,7 +113,6 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
       addComment(task.id, newComment)
         .then(() => {
           setNewComment("");
-          // Remove the focus call here, we'll handle it in the useEffect
         })
         .catch((error) => {
           console.error("Error adding comment:", error);
@@ -138,7 +137,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
       onClick={handleClose}
     >
       <div
-        className={`rounded-lg w-full max-w-4xl flex h-[650px] p-2 bg-[#EFEDE9] transition-transform duration-150 ${
+        className={`rounded-lg w-full max-w-4xl flex h-[690px] p-2 bg-[#EFEDE9] transition-transform duration-150 ${
           isVisible ? "translate-y-0" : "translate-y-3"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -207,6 +206,31 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       <option value="Completada">Completada</option>
                     </select>
                   </div>
+
+                  <div className="flex items-center">
+                    <div className="w-32 text-oc-brown/60">
+                      <i className="fa fa-alarm-clock mr-2 translate-y-1"></i>
+                      Sprint
+                    </div>
+                    <select
+                      value={editableTask.sprintId || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "sprintId",
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
+                      className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                    >
+                      <option value="">Sin sprint</option>
+                      {teamSprints.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="flex items-center">
                     <div className="w-32 text-oc-brown/60">
                       <i className="fa fa-calendar mr-2 translate-y-1"></i>
@@ -244,7 +268,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       type="text"
                       value={editableTask.creatorName || "—"}
                       readOnly
-                      className="px-2 py-1 "
+                      className="px-2 py-1"
                     />
                   </div>
                   {editableTask.teamName && (

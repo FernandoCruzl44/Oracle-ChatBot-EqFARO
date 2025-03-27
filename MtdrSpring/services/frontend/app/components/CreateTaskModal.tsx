@@ -13,7 +13,15 @@ export default function CreateTaskModal({
   onClose,
   onSave,
 }: CreateTaskModalProps) {
-  const { currentUser, users, teams, createTask, fetchUsers } = useTaskStore();
+  const {
+    currentUser,
+    users,
+    teams,
+    createTask,
+    fetchUsers,
+    sprints,
+    getSprintsByTeam,
+  } = useTaskStore();
 
   const [isVisible, setIsVisible] = useState(false);
   const [title, setTitle] = useState("");
@@ -23,6 +31,7 @@ export default function CreateTaskModal({
   const [endDate, setEndDate] = useState("");
   const [description, setDescription] = useState("");
   const [teamId, setTeamId] = useState<number | undefined>(currentUser?.teamId);
+  const [sprintId, setSprintId] = useState<number | null>(null);
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,19 +50,18 @@ export default function CreateTaskModal({
     ? users.filter((user) => user.teamId === teamId)
     : [];
 
+  const teamSprints = teamId ? getSprintsByTeam(teamId) : [];
+
   useEffect(() => {
     setIsVisible(true);
 
-    // Set initial date to today
     const today = new Date().toISOString().split("T")[0];
     setStartDate(today);
 
-    // Fetch users if they haven't been loaded yet
     if (users.length === 0) {
       fetchUsers();
     }
 
-    // Pre-select the user's team if they have one
     if (currentUser?.teamId) {
       setTeamId(currentUser.teamId);
     }
@@ -81,7 +89,7 @@ export default function CreateTaskModal({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [title, startDate, teamId]);
+  }, [title, startDate, teamId, sprintId]);
 
   const handleClose = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -105,19 +113,16 @@ export default function CreateTaskModal({
       return;
     }
 
-    // For developers, if they don't have a team, show error
     if (!isManager && !userTeam?.id) {
       toast.error("No tienes un equipo asignado. Contacta a un administrador.");
       return;
     }
 
-    // For managers, team is required
     if (isManager && !teamId) {
       toast.error("Debes seleccionar un equipo");
       return;
     }
 
-    // Create task data
     const newTaskData = {
       title,
       tag,
@@ -126,14 +131,12 @@ export default function CreateTaskModal({
       endDate: endDate || null,
       description,
       team_id: teamId,
+      sprint_id: sprintId,
       assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
     };
 
     try {
-      // Use the store's createTask function to add the task
       await createTask(newTaskData);
-
-      // Call the onSave callback from parent component
       onSave();
     } catch (error: any) {
       console.error("Error creating task:", error);
@@ -259,7 +262,6 @@ export default function CreateTaskModal({
                     />
                   </div>
 
-                  {/* Team selector for managers */}
                   {isManager && (
                     <div className="flex items-center">
                       <div className="w-32 text-oc-brown/60">
@@ -285,7 +287,6 @@ export default function CreateTaskModal({
                     </div>
                   )}
 
-                  {/* Show team info for non-managers */}
                   {!isManager && (
                     <div className="flex items-center">
                       <div className="w-32 text-oc-brown/60">
@@ -308,7 +309,6 @@ export default function CreateTaskModal({
                     </div>
                   )}
 
-                  {/* Assignees */}
                   <div className="flex items-start">
                     <div className="w-32 text-oc-brown/60 pt-1">
                       <i className="fa fa-user-plus mr-2 translate-y-1"></i>
@@ -345,7 +345,7 @@ export default function CreateTaskModal({
                                 htmlFor={`user-${user.id}`}
                                 className="text-sm"
                               >
-                                {user.name}{" "}
+                                {user.name}
                                 <span className="text-xs text-oc-brown/50">
                                   ({user.role})
                                 </span>
@@ -356,6 +356,33 @@ export default function CreateTaskModal({
                       </div>
                     </div>
                   </div>
+
+                  {teamId && (
+                    <div className="flex items-center">
+                      <div className="w-32 text-oc-brown/60">
+                        <i className="fa fa-alarm-clock mr-2 translate-y-1"></i>
+                        Sprint
+                      </div>
+                      <select
+                        value={sprintId || ""}
+                        onChange={(e) =>
+                          setSprintId(
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value)
+                          )
+                        }
+                        className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                      >
+                        <option value="">Sin sprint</option>
+                        {teamSprints.map((sprint) => (
+                          <option key={sprint.id} value={sprint.id}>
+                            {sprint.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4">

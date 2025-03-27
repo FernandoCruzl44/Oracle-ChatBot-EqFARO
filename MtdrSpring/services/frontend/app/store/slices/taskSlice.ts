@@ -22,6 +22,74 @@ export interface TaskSlice extends StoreState {
   selectTask: (taskId: number | null) => void;
 }
 
+// Helper function to map frontend Task to backend JSON payload
+const mapTaskToBackend = (taskData: Partial<Task>): Record<string, any> => {
+  const backendData: Record<string, any> = { ...taskData };
+
+  // Map sprintId -> sprint_id
+  if (backendData.hasOwnProperty("sprintId")) {
+    backendData.sprint_id =
+      backendData.sprintId === undefined ? null : backendData.sprintId;
+    delete backendData.sprintId;
+  }
+
+  // Map teamId -> team_id
+  if (backendData.hasOwnProperty("teamId")) {
+    backendData.team_id = backendData.teamId;
+    delete backendData.teamId;
+  }
+
+  // Map creatorId -> created_by_id (if needed by backend explicitly)
+  if (backendData.hasOwnProperty("creatorId")) {
+    backendData.created_by_id = backendData.creatorId;
+    delete backendData.creatorId;
+  }
+
+  // Map assignees -> assignee_ids (if backend expects IDs)
+  if (backendData.hasOwnProperty("assignees")) {
+    // Assuming backend expects an array of IDs for creation/update
+    backendData.assignee_ids = backendData.assignees?.map((a: any) => a.id);
+    delete backendData.assignees;
+  }
+
+  // Remove fields backend doesn't expect/need
+  delete backendData.creatorName;
+  delete backendData.teamName;
+  delete backendData.id; // Don't send id on create, usually not needed on update body either
+
+  return backendData;
+};
+
+// Helper function to map backend response to frontend Task
+const mapBackendToTask = (backendTask: Record<string, any>): Task => {
+  const frontendTask: any = { ...backendTask };
+
+  // Map sprint_id -> sprintId
+  if (frontendTask.hasOwnProperty("sprint_id")) {
+    frontendTask.sprintId = frontendTask.sprint_id;
+    delete frontendTask.sprint_id;
+  }
+
+  // Map team_id -> teamId
+  if (frontendTask.hasOwnProperty("team_id")) {
+    frontendTask.teamId = frontendTask.team_id;
+    delete frontendTask.team_id;
+  }
+
+  // Map created_by_id -> creatorId
+  if (frontendTask.hasOwnProperty("created_by_id")) {
+    frontendTask.creatorId = frontendTask.created_by_id;
+    delete frontendTask.created_by_id;
+  }
+
+  // Ensure assignees is an array (backend might send it differently)
+  if (!Array.isArray(frontendTask.assignees)) {
+    frontendTask.assignees = frontendTask.assignees || [];
+  }
+
+  return frontendTask as Task;
+};
+
 export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   set,
   get
@@ -37,6 +105,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   initializeData: async () => {
+    // ... (initializeData remains the same as previous version) ...
     if (get().isInitialized || get().isLoadingTasks) return;
 
     set({ error: null, isLoadingTasks: true });
@@ -80,17 +149,27 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         res.ok ? res.json() : []
       );
 
-      const [tasks, teams, users] = await Promise.all([
+      // Fetch sprints during initialization as well
+      const fetchSprints = fetch("/api/sprints").then((res) =>
+        res.ok ? res.json() : []
+      );
+
+      const [tasksData, teams, users, sprints] = await Promise.all([
         fetchTasks,
         fetchTeams,
         fetchUsers,
+        fetchSprints, // Fetch sprints
       ]);
+
+      // Map backend tasks to frontend tasks
+      const tasks = tasksData.map(mapBackendToTask);
 
       set({
         currentUser: userData,
         tasks,
         teams,
         users,
+        sprints, // Set sprints in the store
         isLoadingTasks: false,
         isInitialized: true,
       });
@@ -105,6 +184,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   fetchTasks: async (viewMode, teamId) => {
+    // ... (fetchTasks remains the same as previous version) ...
     const { currentUser, isLoadingTasks } = get();
 
     if (!currentUser || isLoadingTasks) return;
@@ -117,13 +197,14 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
       if (viewMode === "all") {
         url += "view_mode=all";
       } else {
-        url += `view_mode=team&team_id=${teamId}`;
+        // Assuming teamId is passed correctly when viewMode is a team ID string
+        url += `view_mode=team&team_id=${viewMode}`;
       }
     } else {
       if (viewMode === "all") {
-        url += "view_mode=assigned";
+        url += "view_mode=assigned"; // Show assigned tasks for non-managers 'all' view
       } else if (viewMode === "team") {
-        url += "view_mode=team";
+        url += "view_mode=team"; // Backend will use user's team ID
       }
     }
 
@@ -133,7 +214,9 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         throw new Error("Error al cargar las tareas");
       }
       const data = await response.json();
-      set({ tasks: data, isLoadingTasks: false });
+      // Map backend response to frontend Task structure
+      const tasks = data.map(mapBackendToTask);
+      set({ tasks: tasks, isLoadingTasks: false });
     } catch (error) {
       console.error("Error fetching tasks:", error);
       set({
@@ -146,40 +229,40 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
   createTask: async (taskData) => {
     const { currentUser } = get();
-
-    const newTask = {
+    // Prepare data for backend, mapping names
+    const backendTaskData = mapTaskToBackend({
       ...taskData,
-      created_by_id: currentUser?.id,
-    };
+      creatorId: currentUser?.id, // Ensure creatorId is set if backend needs it explicitly
+    });
 
     try {
       const response = await fetch("/api/tasks/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTask),
+        body: JSON.stringify(backendTaskData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Error al crear la tarea");
+        throw new Error(
+          errorData.message || errorData.detail || "Error al crear la tarea"
+        );
       }
 
-      const createdTask = await response.json();
+      const createdBackendTask = await response.json();
+      // Map response back to frontend Task structure
+      const newTask = mapBackendToTask(createdBackendTask);
 
-      const processedTask = {
-        ...createdTask,
-        created_by:
-          createdTask.created_by ||
-          createdTask.creator?.name ||
-          currentUser?.name ||
-          "Usuario",
-      };
+      // Ensure creatorName is present
+      if (!newTask.creatorName && currentUser) {
+        newTask.creatorName = currentUser.name;
+      }
 
-      set((state: { tasks: Task[] }) => ({
-        tasks: [...state.tasks, processedTask],
+      set((state) => ({
+        tasks: [...state.tasks, newTask], // Add the correctly mapped task
       }));
 
-      return processedTask;
+      return newTask;
     } catch (error) {
       console.error("Error creating task:", error);
       set({
@@ -191,26 +274,38 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   updateTask: async (taskId, taskData) => {
+    // Prepare data for backend, mapping names
+    const backendTaskData = mapTaskToBackend(taskData);
+
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(taskData),
+        body: JSON.stringify(backendTaskData),
       });
 
       if (!response.ok) {
-        throw new Error("Error al actualizar la tarea");
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            errorData.detail ||
+            "Error al actualizar la tarea"
+        );
       }
 
-      const updatedTask = await response.json();
+      const updatedBackendTask = await response.json();
+      // Map response back to frontend Task structure
+      const updatedTask = mapBackendToTask(updatedBackendTask);
 
-      set((state: { tasks: Task[] }) => ({
-        tasks: state.tasks.map((task: Task) =>
-          task.id === taskId ? { ...task, ...updatedTask } : task
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? { ...task, ...updatedTask } // Overwrite existing task with FULL updated task from response
+            : task
         ),
       }));
 
-      return updatedTask;
+      return updatedTask; // Return the mapped task
     } catch (error) {
       console.error("Error updating task:", error);
       set({
@@ -224,13 +319,17 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   deleteTask: async (taskId) => {
+    // ... (deleteTask remains the same) ...
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error("Error al eliminar la tarea");
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || errorData.detail || "Error al eliminar la tarea"
+        );
       }
 
       set((state: { tasks: Task[] }) => ({
@@ -247,6 +346,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   deleteTasks: async (taskIds) => {
+    // ... (deleteTasks remains the same) ...
     try {
       const response = await fetch("/api/tasks/", {
         method: "DELETE",
@@ -255,7 +355,12 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
       });
 
       if (!response.ok) {
-        throw new Error("Error al eliminar las tareas");
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            errorData.detail ||
+            "Error al eliminar las tareas"
+        );
       }
 
       set((state: { tasks: Task[] }) => ({
@@ -274,6 +379,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   updateTaskStatus: async (taskId, status) => {
+    // ... (updateTaskStatus remains the same, but uses mapping for response) ...
     try {
       const response = await fetch(`/api/tasks/${taskId}/status`, {
         method: "PUT",
@@ -282,12 +388,21 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
       });
 
       if (!response.ok) {
-        throw new Error("Error al actualizar el estado de la tarea");
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            errorData.detail ||
+            "Error al actualizar el estado de la tarea"
+        );
       }
 
-      set((state: { tasks: Task[] }) => ({
-        tasks: state.tasks.map((task: Task) =>
-          task.id === taskId ? { ...task, status } : task
+      // Get the full updated task from the response
+      const updatedBackendTask = await response.json();
+      const updatedTask = mapBackendToTask(updatedBackendTask);
+
+      set((state) => ({
+        tasks: state.tasks.map(
+          (task) => (task.id === taskId ? { ...task, ...updatedTask } : task) // Use FULL response data
         ),
       }));
     } catch (error) {

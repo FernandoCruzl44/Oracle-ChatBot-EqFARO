@@ -25,6 +25,7 @@ export interface Task {
   status: string;
   startDate: string;
   endDate: string | null;
+  sprintId?: number | null;
 
   // Creator information
   creatorId?: number;
@@ -42,4 +43,16 @@ export interface Team {
   id: number;
   name: string;
   description?: string;
+}
+
+export interface Sprint {
+  id: number;
+  teamId: number;
+  teamName: string;
+  name: string;
+  status: "PLANNED" | "ACTIVE" | "COMPLETED" | "CANCELED";
+  startDate: string;
+  endDate: string;
+  tasksCount?: number;
+  completedTasksCount?: number;
 }

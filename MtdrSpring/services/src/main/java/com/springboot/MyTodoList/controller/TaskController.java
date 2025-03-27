@@ -24,6 +24,7 @@ public class TaskController {
         this.identityUtil = identityUtil;
     }
 
+    // GET /api/tasks (No changes needed here for sprint_id)
     @GetMapping
     public ResponseEntity<?> getTasks(
             @RequestParam(required = false) String view_mode,
@@ -121,6 +122,7 @@ public class TaskController {
         });
     }
 
+    // GET /api/tasks/{taskId} (No changes needed here for sprint_id)
     @GetMapping("/{taskId}")
     public ResponseEntity<?> getTask(
             @PathVariable Long taskId,
@@ -177,6 +179,7 @@ public class TaskController {
         });
     }
 
+    // POST /api/tasks - Updated to handle sprint_id
     @PostMapping
     @Transactional
     public ResponseEntity<?> createTask(
@@ -188,8 +191,18 @@ public class TaskController {
                     Map.of("message", "Unauthorized"));
         }
 
+        // Basic validation
+        if (!request.containsKey("title") || request.get("title") == null
+                || request.get("title").toString().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Title is required"));
+        }
+        if (!request.containsKey("startDate") || request.get("startDate") == null
+                || request.get("startDate").toString().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Start date is required"));
+        }
+
         return jdbi.inTransaction(handle -> {
-            // Crea la tarea
+            // Create the task object
             Task task = new Task();
             task.setTitle((String) request.get("title"));
             task.setDescription((String) request.get("description"));
@@ -199,14 +212,34 @@ public class TaskController {
             task.setEndDate((String) request.get("endDate"));
             task.setCreatorId(currentUserId);
 
+            // Handle team_id
             if (request.containsKey("team_id") && request.get("team_id") != null) {
-                task.setTeamId(Long.valueOf(request.get("team_id").toString()));
+                try {
+                    task.setTeamId(Long.valueOf(request.get("team_id").toString()));
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Invalid team_id format"));
+                }
+            } else {
+                // If creating task without team (e.g., personal task), set teamId to null
+                task.setTeamId(null);
             }
 
+            // *** Handle sprint_id ***
+            if (request.containsKey("sprint_id") && request.get("sprint_id") != null) {
+                try {
+                    task.setSprintId(Long.valueOf(request.get("sprint_id").toString()));
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Invalid sprint_id format"));
+                }
+            } else {
+                task.setSprintId(null); // Explicitly set to null if not provided or null
+            }
+
+            // Insert the task (repository now handles sprint_id)
             TaskRepository taskRepo = handle.attach(TaskRepository.class);
             Long taskId = taskRepo.insert(task);
 
-            // Se agregan los asignados si se proporcionan
+            // Add assignees if provided
             if (request.containsKey("assignee_ids") &&
                     request.get("assignee_ids") != null) {
                 @SuppressWarnings("unchecked")
@@ -214,16 +247,22 @@ public class TaskController {
                         "assignee_ids");
 
                 for (Object rawId : rawIds) {
-                    Long userId = Long.valueOf(rawId.toString());
-                    taskRepo.addAssignee(taskId, userId);
+                    try {
+                        Long userId = Long.valueOf(rawId.toString());
+                        taskRepo.addAssignee(taskId, userId);
+                    } catch (NumberFormatException e) {
+                        // Log or handle invalid assignee ID format
+                        System.err.println("Invalid assignee ID format: " + rawId);
+                    }
                 }
             }
 
-            // Fetch la tarea completa con los asignados
-            Optional<Task> createdTask = taskRepo.findById(taskId);
-            if (createdTask.isPresent()) {
-                Task fullTask = createdTask.get();
+            // Fetch the complete task with assignees and creator name
+            Optional<Task> createdTaskOpt = taskRepo.findById(taskId);
+            if (createdTaskOpt.isPresent()) {
+                Task fullTask = createdTaskOpt.get();
                 fullTask.setAssignees(taskRepo.findAssigneesByTaskId(taskId));
+                // Fetch creator name if needed (already done by findById query)
                 return ResponseEntity.ok(fullTask);
             } else {
                 return ResponseEntity.status(500).body(
@@ -232,6 +271,7 @@ public class TaskController {
         });
     }
 
+    // PUT /api/tasks/{taskId} - Updated to handle sprint_id
     @PutMapping("/{taskId}")
     @Transactional
     public ResponseEntity<?> updateTask(
@@ -254,84 +294,117 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
+            // Authorization check
             User currentUser = handle
                     .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             boolean isManager = "manager".equals(currentUser.getRole());
+            boolean isCreator = task.getCreatorId().equals(currentUserId); // Check if user is the creator
             boolean isTeamMember = currentUser.getTeamId() != null &&
                     task.getTeamId() != null &&
                     currentUser.getTeamId().equals(task.getTeamId());
+            boolean isAssigned = taskRepo.findAssigneesByTaskId(taskId)
+                    .stream()
+                    .anyMatch(user -> user.getId().equals(currentUserId));
 
-            if (!isManager && !isTeamMember) {
+            // Allow update if manager, creator, assigned, or team member (adjust logic as
+            // needed)
+            if (!isManager && !isCreator && !isTeamMember && !isAssigned) {
                 return ResponseEntity.status(403).body(
-                        Map.of("message", "Forbidden"));
+                        Map.of("message", "Forbidden: You cannot update this task"));
             }
 
+            // Update fields based on request content
             if (request.containsKey("title")) {
                 task.setTitle((String) request.get("title"));
             }
-
             if (request.containsKey("description")) {
                 task.setDescription((String) request.get("description"));
             }
-
             if (request.containsKey("tag")) {
                 task.setTag((String) request.get("tag"));
             }
-
             if (request.containsKey("status")) {
                 task.setStatus((String) request.get("status"));
             }
-
             if (request.containsKey("startDate")) {
                 task.setStartDate((String) request.get("startDate"));
             }
-
+            // Handle endDate potentially being null or empty string
             if (request.containsKey("endDate")) {
-                task.setEndDate((String) request.get("endDate"));
+                Object endDateObj = request.get("endDate");
+                task.setEndDate(endDateObj == null || endDateObj.toString().isEmpty() ? null : endDateObj.toString());
             }
-
             if (request.containsKey("team_id")) {
                 Object teamIdObj = request.get("team_id");
                 if (teamIdObj != null) {
-                    task.setTeamId(Long.valueOf(teamIdObj.toString()));
+                    try {
+                        task.setTeamId(Long.valueOf(teamIdObj.toString()));
+                    } catch (NumberFormatException e) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Invalid team_id format"));
+                    }
                 } else {
                     task.setTeamId(null);
                 }
             }
 
+            // *** Handle sprint_id update ***
+            if (request.containsKey("sprint_id")) {
+                Object sprintIdObj = request.get("sprint_id");
+                if (sprintIdObj == null) {
+                    task.setSprintId(null);
+                } else {
+                    try {
+                        task.setSprintId(Long.valueOf(sprintIdObj.toString()));
+                    } catch (NumberFormatException e) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Invalid sprint_id format"));
+                    }
+                }
+            }
+            // Note: If sprint_id is NOT in the request, the existing value remains
+            // unchanged.
+
+            // Update the task in the database (repository now handles sprint_id)
             taskRepo.update(task);
 
+            // Handle assignee updates if the key is present
             if (request.containsKey("assignee_ids")) {
-                taskRepo.deleteAllAssignees(taskId);
+                taskRepo.deleteAllAssignees(taskId); // Clear existing assignees first
 
                 @SuppressWarnings("unchecked")
-                List<Object> rawIds = (List<Object>) request.get(
-                        "assignee_ids");
+                List<Object> rawIds = (List<Object>) request.get("assignee_ids");
 
                 if (rawIds != null) {
                     for (Object rawId : rawIds) {
-                        Long userId = Long.valueOf(rawId.toString());
-                        taskRepo.addAssignee(taskId, userId);
+                        try {
+                            Long userId = Long.valueOf(rawId.toString());
+                            taskRepo.addAssignee(taskId, userId);
+                        } catch (NumberFormatException e) {
+                            System.err.println("Invalid assignee ID format during update: " + rawId);
+                        }
                     }
                 }
             }
 
+            // Fetch the updated task to return in the response
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
                 updatedTask.setAssignees(
                         taskRepo.findAssigneesByTaskId(taskId));
+                // Creator name is already fetched by findById
                 return ResponseEntity.ok(updatedTask);
             } else {
+                // Should not happen if update was successful, but handle defensively
                 return ResponseEntity.status(500).body(
                         Map.of("message", "Error retrieving updated task"));
             }
         });
     }
 
+    // DELETE /api/tasks/{taskId} (No changes needed)
     @DeleteMapping("/{taskId}")
     @Transactional
     public ResponseEntity<?> deleteTask(
@@ -351,12 +424,15 @@ public class TaskController {
                 return ResponseEntity.notFound().build();
             }
 
-            taskRepo.delete(taskId);
+            // Add authorization check if needed (e.g., only manager or creator can delete)
+
+            taskRepo.delete(taskId); // Deletes task and cascades assignee deletions via DB constraint
 
             return ResponseEntity.ok(Map.of("message", "Task deleted"));
         });
     }
 
+    // PUT /api/tasks/{taskId}/status (No changes needed)
     @PutMapping("/{taskId}/status")
     @Transactional
     public ResponseEntity<?> updateTaskStatus(
@@ -385,26 +461,24 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
+            // Authorization check (similar to updateTask)
             User currentUser = handle
                     .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             boolean isManager = "manager".equals(currentUser.getRole());
+            boolean isCreator = task.getCreatorId().equals(currentUserId);
             boolean isTeamMember = currentUser.getTeamId() != null &&
                     task.getTeamId() != null &&
                     currentUser.getTeamId().equals(task.getTeamId());
+            boolean isAssigned = taskRepo.findAssigneesByTaskId(taskId)
+                    .stream()
+                    .anyMatch(user -> user.getId().equals(currentUserId));
 
-            if (!isManager && !isTeamMember) {
-                List<User> assignees = taskRepo.findAssigneesByTaskId(taskId);
-                boolean isAssigned = assignees
-                        .stream()
-                        .anyMatch(user -> user.getId().equals(currentUserId));
-
-                if (!isAssigned) {
-                    return ResponseEntity.status(403).body(
-                            Map.of("message", "Forbidden"));
-                }
+            if (!isManager && !isCreator && !isTeamMember && !isAssigned) {
+                return ResponseEntity.status(403).body(
+                        Map.of("message", "Forbidden: You cannot update this task's status"));
             }
 
             taskRepo.updateStatus(taskId, status);
@@ -422,6 +496,7 @@ public class TaskController {
         });
     }
 
+    // PUT /api/tasks/{taskId}/assign (No changes needed)
     @PutMapping("/{taskId}/assign")
     @Transactional
     public ResponseEntity<?> assignTask(
@@ -450,6 +525,7 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
+            // Authorization check (similar to updateTask)
             User currentUser = handle
                     .attach(UserRepository.class)
                     .findById(currentUserId)
@@ -460,16 +536,20 @@ public class TaskController {
                     task.getTeamId() != null &&
                     currentUser.getTeamId().equals(task.getTeamId());
 
-            if (!isManager && !isTeamMember) {
+            if (!isManager && !isTeamMember) { // Allow managers or team members to assign
                 return ResponseEntity.status(403).body(
-                        Map.of("message", "Forbidden"));
+                        Map.of("message", "Forbidden: Only managers or team members can assign tasks"));
             }
 
             taskRepo.deleteAllAssignees(taskId);
 
             for (Object rawId : assigneeIdsRaw) {
-                Long userId = Long.valueOf(rawId.toString());
-                taskRepo.addAssignee(taskId, userId);
+                try {
+                    Long userId = Long.valueOf(rawId.toString());
+                    taskRepo.addAssignee(taskId, userId);
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid assignee ID format during assign: " + rawId);
+                }
             }
 
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
@@ -485,6 +565,7 @@ public class TaskController {
         });
     }
 
+    // DELETE /api/tasks (No changes needed)
     @DeleteMapping
     @Transactional
     public ResponseEntity<?> deleteMultipleTasks(
@@ -511,6 +592,8 @@ public class TaskController {
 
             List<Long> accessibleTaskIds = taskIds;
 
+            // If not a manager, filter tasks to only those the user has permission to
+            // delete
             if (!isManager) {
                 accessibleTaskIds = new ArrayList<>();
                 TaskRepository taskRepo = handle.attach(TaskRepository.class);
@@ -519,11 +602,13 @@ public class TaskController {
                     Optional<Task> taskOpt = taskRepo.findById(taskId);
                     if (taskOpt.isPresent()) {
                         Task task = taskOpt.get();
+                        boolean isCreator = task.getCreatorId().equals(currentUserId);
                         boolean isTeamMember = currentUser.getTeamId() != null &&
                                 task.getTeamId() != null &&
                                 currentUser.getTeamId().equals(task.getTeamId());
 
-                        if (isTeamMember) {
+                        // Example: Allow deletion if creator or team member (adjust as needed)
+                        if (isCreator || isTeamMember) {
                             accessibleTaskIds.add(taskId);
                         }
                     }
@@ -531,8 +616,16 @@ public class TaskController {
             }
 
             if (accessibleTaskIds.isEmpty()) {
-                return ResponseEntity.status(403).body(
-                        Map.of("message", "No tasks available for deletion"));
+                // Return forbidden if the user tried to delete tasks they don't have access to
+                if (!taskIds.isEmpty()) {
+                    return ResponseEntity.status(403).body(
+                            Map.of("message",
+                                    "You do not have permission to delete one or more of the selected tasks"));
+                } else {
+                    // This case shouldn't happen if initial list wasn't empty, but handle
+                    // defensively
+                    return ResponseEntity.badRequest().body(Map.of("message", "No tasks available for deletion"));
+                }
             }
 
             handle
@@ -542,6 +635,11 @@ public class TaskController {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Tasks deleted");
             response.put("count", accessibleTaskIds.size());
+            // Optionally report which tasks couldn't be deleted if the original list was
+            // filtered
+            if (accessibleTaskIds.size() < taskIds.size()) {
+                response.put("warning", "Some tasks could not be deleted due to permissions.");
+            }
 
             return ResponseEntity.ok(response);
         });

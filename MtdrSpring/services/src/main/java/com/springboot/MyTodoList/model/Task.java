@@ -15,6 +15,7 @@ public class Task {
     private Long teamId;
     private String teamName;
     private List<User> assignees;
+    private Long sprintId;
 
     public Long getId() {
         return id;
@@ -110,5 +111,13 @@ public class Task {
 
     public void setAssignees(List<User> assignees) {
         this.assignees = assignees;
+    }
+
+    public Long getSprintId() {
+        return sprintId;
+    }
+
+    public void setSprintId(Long sprintId) {
+        this.sprintId = sprintId;
     }
 }

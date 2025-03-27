@@ -21,14 +21,14 @@ public interface TaskRepository {
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "WHERE t.id = :id")
         Optional<Task> findById(@Bind("id") Long id);
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "WHERE (:teamId IS NULL OR t.team_id = :teamId) " +
                         "AND (:status IS NULL OR t.status = :status) " +
@@ -50,17 +50,19 @@ public interface TaskRepository {
                         "WHERE ta.task_id = :taskId")
         List<User> findAssigneesByTaskId(@Bind("taskId") Long taskId);
 
-        @SqlUpdate("INSERT INTO tasks (title, description, tag, status, start_date, end_date, created_by_id, team_id) "
+        // Updated INSERT statement to include sprint_id
+        @SqlUpdate("INSERT INTO tasks (title, description, tag, status, start_date, end_date, created_by_id, team_id, sprint_id) "
                         +
-                        "VALUES (:title, :description, :tag, :status, :startDate, :endDate, :creatorId, :teamId)")
+                        "VALUES (:title, :description, :tag, :status, :startDate, :endDate, :creatorId, :teamId, :sprintId)")
         @GetGeneratedKeys("id")
-        Long insert(@BindBean Task task);
+        Long insert(@BindBean Task task); // @BindBean handles sprintId from Task object
 
+        // Updated UPDATE statement to include sprint_id
         @SqlUpdate("UPDATE tasks SET title = :title, description = :description, " +
                         "tag = :tag, status = :status, start_date = :startDate, " +
-                        "end_date = :endDate, team_id = :teamId " +
+                        "end_date = :endDate, team_id = :teamId, sprint_id = :sprintId " + // Added sprint_id
                         "WHERE id = :id")
-        int update(@BindBean Task task);
+        int update(@BindBean Task task); // @BindBean handles sprintId from Task object
 
         @SqlUpdate("DELETE FROM tasks WHERE id = :id")
         int delete(@Bind("id") Long id);
@@ -73,7 +75,7 @@ public interface TaskRepository {
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "JOIN task_assignee ta ON t.id = ta.task_id " +
                         "WHERE ta.user_id = :userId " +
@@ -82,7 +84,7 @@ public interface TaskRepository {
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "WHERE t.team_id = :teamId " +
                         "ORDER BY t.id")
@@ -108,6 +110,8 @@ public interface TaskRepository {
                         task.setEndDate(rs.getString("end_date"));
                         task.setCreatorId(rs.getLong("created_by_id"));
                         task.setCreatorName(rs.getString("creator_name"));
+                        // Correctly maps sprint_id, handling NULLs
+                        task.setSprintId(rs.getObject("sprint_id", Long.class));
 
                         Long teamId = rs.getObject("team_id", Long.class);
                         if (!rs.wasNull()) {

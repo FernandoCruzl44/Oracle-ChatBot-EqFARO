@@ -32,8 +32,10 @@ public class DatabaseConfig {
                                 new com.springboot.MyTodoList.repository.TeamRepository.TeamMapper());
                 jdbi.registerRowMapper(com.springboot.MyTodoList.model.Comment.class,
                                 new com.springboot.MyTodoList.repository.CommentRepository.CommentMapper());
+                jdbi.registerRowMapper(com.springboot.MyTodoList.model.Sprint.class,
+                                new com.springboot.MyTodoList.repository.SprintRepository.SprintMapper());
 
-		MyTodoListApplication.jdbi = jdbi;
+                MyTodoListApplication.jdbi = jdbi;
 
                 return jdbi;
         }
