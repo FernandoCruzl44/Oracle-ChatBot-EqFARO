@@ -73,7 +73,7 @@ export function CreateSprintModal({
         onClick={handleClose}
       >
         <div
-          className={`rounded-lg w-full max-w-[600px] flex p-2 bg-[#EFEDE9] transition-all duration-150 ease-in-out ${
+          className={`rounded-lg w-full max-w-[600px] flex p-2 bg-oc-neutral transition-all duration-150 ease-in-out ${
             isVisible ? "translate-y-0" : "translate-y-3"
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -81,7 +81,7 @@ export function CreateSprintModal({
           <div className="bg-oc-primary border border-oc-outline-light relative rounded-lg w-full flex overflow-hidden transition-all duration-150">
             <button
               onClick={handleClose}
-              className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-stone-500 hover:text-stone-700"
             >
               <i className="fa fa-times text-xl"></i>
             </button>
@@ -93,7 +93,7 @@ export function CreateSprintModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nombre del Sprint"
-                  className="text-lg font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+                  className="text-lg text-white font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
                   required
                   title="Este campo es obligatorio"
                 />
@@ -112,7 +112,7 @@ export function CreateSprintModal({
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="px-2 py-1"
+                        className="px-2 py-1 text-white text-xs fill-white"
                         required
                       />
                     </div>
@@ -126,7 +126,7 @@ export function CreateSprintModal({
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="px-2 py-1"
+                        className="px-2 py-1 text-white text-xs fill-white"
                         required
                       />
                     </div>
@@ -143,7 +143,7 @@ export function CreateSprintModal({
                     <button
                       type="button"
                       onClick={handleSubmit}
-                      className="w-full text-sm py-2.5 bg-oc-brown text-white rounded hover:bg-oc-brown/90 transition-all flex justify-center items-center"
+                      className="w-full text-sm py-2.5 bg-oc-neutral/50 border border-oc-outline-light/60 rounded-lg hover:bg-black transition-all flex justify-center items-center text-white"
                     >
                       <span>Crear Sprint</span>
                     </button>

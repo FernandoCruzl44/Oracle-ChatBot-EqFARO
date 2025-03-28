@@ -23,10 +23,10 @@ const TasksSkeletonLoader: React.FC<TasksSkeletonLoaderProps> = ({
               className="py-3 px-2"
             >
               {colIndex === 0 ? (
-                <div className="w-4 h-4 mx-auto bg-gray-200 rounded animate-pulse"></div>
+                <div className="w-4 h-4 mx-auto bg-stone-700 rounded animate-pulse"></div>
               ) : (
                 <div
-                  className={`h-5 bg-gray-200 rounded animate-pulse ${
+                  className={`h-5 bg-stone-700 rounded animate-pulse ${
                     colIndex === 1 ? "w-4/5" : "w-2/3"
                   }`}
                 ></div>

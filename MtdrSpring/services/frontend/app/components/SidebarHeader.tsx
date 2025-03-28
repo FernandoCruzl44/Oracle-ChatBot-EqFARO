@@ -7,7 +7,7 @@ export default function SidebarHeader() {
       </div>
       <div>
         <div className="font-medium">Faro</div>
-        <div className="text-sm text-gray-300">Equipo 2</div>
+        <div className="text-sm text-stone-300">Equipo 2</div>
       </div>
     </div>
   );

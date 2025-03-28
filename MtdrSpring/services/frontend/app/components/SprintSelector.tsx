@@ -60,13 +60,15 @@ export function SprintSelector({
     setIsEditModalOpen(false);
   };
 
+  const buttonClasses = `px-4 py-2 rounded-lg border border-oc-outline-light flex items-center text-sm ${
+    isLoading ? "opacity-50 cursor-not-allowed" : ""
+  }`;
+
   return (
     <div className="relative z-20" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm ${
-          isLoading ? "opacity-50 cursor-not-allowed" : ""
-        }`}
+        className={`${buttonClasses} bg-oc-primary hover:bg-black text-white`}
         disabled={isLoading}
       >
         <i className="fa fa-alarm-clock mr-2"></i>
@@ -85,17 +87,17 @@ export function SprintSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-56 bg-white rounded-lg shadow-lg border border-oc-outline-light">
-          <div className="py-1">
+        <div className="absolute z-10 mt-1 w-56 bg-oc-primary rounded-lg shadow-lg border border-oc-outline-light dark:border-stone-600">
+          <div className="py-1 px-1 space-y-1">
             <button
               onClick={() => {
                 onSelectSprint(null);
                 setIsOpen(false);
               }}
-              className={`block w-full text-left px-4 py-2 text-sm ${
+              className={`w-full text-left px-4 py-2 rounded text-sm ${
                 !selectedSprintId
-                  ? "bg-blue-50 text-blue-800"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-stone-700 text-blue-400"
+                  : "text-white hover:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-600"
               }`}
             >
               Todos los sprints
@@ -104,10 +106,10 @@ export function SprintSelector({
             {teamSprints.map((sprint) => (
               <div
                 key={sprint.id}
-                className={`group flex items-center justify-between ${
+                className={`group flex items-center justify-between rounded ${
                   selectedSprintId === sprint.id
-                    ? "bg-blue-50"
-                    : "hover:bg-gray-100"
+                    ? "bg-stone-700"
+                    : "hover:bg-stone-700 dark:hover:bg-stone-600"
                 }`}
               >
                 <button
@@ -117,15 +119,15 @@ export function SprintSelector({
                   }}
                   className={`block w-full text-left px-4 py-2 text-sm ${
                     selectedSprintId === sprint.id
-                      ? "text-blue-800"
-                      : "text-gray-700"
+                      ? "text-blue-400"
+                      : "text-stone-700 dark:text-stone-400"
                   }`}
                 >
                   {sprint.name}
                 </button>
                 <button
                   onClick={() => handleEditSprint(sprint)}
-                  className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-gray-600 translate-y-1"
+                  className="opacity-0 group-hover:opacity-100 pr-2 text-stone-900 hover:text-stone-600 translate-y-1 dark:text-stone-400 dark:hover:text-stone-500"
                   title="Editar sprint"
                 >
                   <i className="fa fa-edit text-sm"></i>
@@ -133,13 +135,13 @@ export function SprintSelector({
               </div>
             ))}
 
-            <div className="border-t border-oc-outline-light/60 mt-1 pt-1">
+            <div className="border-t border-oc-outline-light/60 mt-1 pt-1 dark:border-stone-600">
               <button
                 onClick={() => {
                   setIsOpen(false);
                   onCreateSprint();
                 }}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                className="block w-full text-left px-4 py-2 text-sm rounded text-stone-700 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-600"
               >
                 <i className="fa fa-plus mr-2"></i>
                 Nuevo sprint

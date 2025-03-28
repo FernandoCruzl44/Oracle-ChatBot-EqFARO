@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Task } from "~/types";
 import useTaskStore from "~/store/index";
+import { generateAvatarColor } from "~/lib/generateAvatarColor";
 
 interface TaskModalProps {
   task: Task;
@@ -137,7 +138,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
       onClick={handleClose}
     >
       <div
-        className={`rounded-lg w-full max-w-4xl flex h-[690px] p-2 bg-[#EFEDE9] transition-transform duration-150 ${
+        className={`rounded-lg w-full max-w-4xl flex h-[690px] p-2 bg-oc-neutral transition-transform duration-150 ${
           isVisible ? "translate-y-0" : "translate-y-3"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -145,7 +146,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
         <div className="bg-oc-primary border border-oc-outline-light relative rounded-lg w-full flex overflow-hidden">
           <button
             onClick={handleClose}
-            className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-gray-500 hover:text-gray-700"
+            className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-stone-500 hover:text-stone-700"
           >
             <i className="fa fa-times text-xl"></i>
           </button>
@@ -155,7 +156,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                 type="text"
                 value={editableTask.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                className="text-lg font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+                className="text-lg text-white font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
               />
               <form
                 className="pt-3 text-sm flex flex-col h-full"
@@ -178,11 +179,14 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                           e.target.value as "Feature" | "Issue"
                         )
                       }
-                      className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
-                        editableTask.tag === "Feature"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
+                      className={
+                        `px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40`
+                        //${
+                        //   editableTask.tag === "Feature"
+                        //     ? "bg-green-100 text-green-800"
+                        //     : "bg-red-100 text-red-800"
+                        //}`
+                      }
                     >
                       <option value="Feature">Feature</option>
                       <option value="Issue">Issue</option>
@@ -198,7 +202,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("status", e.target.value)
                       }
-                      className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                      className="px-2 py-1 text-xs text-white rounded-lg border border-oc-outline-light/40"
                     >
                       <option value="En progreso">En progreso</option>
                       <option value="Cancelada">Cancelada</option>
@@ -220,7 +224,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                           e.target.value === "" ? null : Number(e.target.value)
                         )
                       }
-                      className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                      className="px-2 py-1 text-xs text-white rounded-lg border border-oc-outline-light/40"
                     >
                       <option value="">Sin sprint</option>
                       {teamSprints.map((sprint) => (
@@ -242,7 +246,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("startDate", e.target.value)
                       }
-                      className="px-2 py-1"
+                      className="px-2 py-1 text-white text-xs fill-white"
                     />
                   </div>
                   <div className="flex items-center">
@@ -256,7 +260,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       onChange={(e) =>
                         handleInputChange("endDate", e.target.value)
                       }
-                      className="px-2 py-1"
+                      className="px-2 py-1 text-white text-xs"
                     />
                   </div>
                   <div className="flex items-center">
@@ -268,7 +272,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                       type="text"
                       value={editableTask.creatorName || "—"}
                       readOnly
-                      className="px-2 py-1"
+                      className="px-2 py-1 text-white "
                     />
                   </div>
                   {editableTask.teamName && (
@@ -281,7 +285,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                         type="text"
                         value={editableTask.teamName || ""}
                         readOnly
-                        className="px-2 py-1 "
+                        className="px-2 py-1 text-white "
                       />
                     </div>
                   )}
@@ -293,14 +297,22 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                           Asignados
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {editableTask.assignees.map((assignee, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 text-xs rounded-lg bg-blue-100 text-blue-800 border border-blue-200"
-                            >
-                              {assignee.name}
-                            </span>
-                          ))}
+                          {editableTask.assignees.map((assignee, i) => {
+                            const colors = generateAvatarColor(assignee.name);
+                            return (
+                              <span
+                                key={i}
+                                style={{
+                                  backgroundColor: colors.backgroundColor,
+                                  color: colors.color,
+                                }}
+                                className="px-1.5 py-0.5 text-xs rounded-full border border-oc-outline-light/60 whitespace-nowrap font-bold"
+                                title={assignee.name}
+                              >
+                                {assignee.name}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -308,7 +320,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
               </form>
               <div>
                 <textarea
-                  className="w-full border bg-white rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
+                  className="w-full border bg-oc-primary rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
                   placeholder="Descripción (Opcional)"
                   value={editableTask.description || ""}
                   onChange={(e) =>
@@ -320,13 +332,15 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                 <button
                   type="button"
                   onClick={handleSave}
-                  className={`w-full text-sm py-2.5 bg-oc-brown text-white rounded hover:bg-oc-brown/90 transition-all flex justify-center items-center ${
-                    isEditing ? "" : "opacity-50 cursor-not-allowed"
+                  className={`w-full text-sm py-2.5 bg-oc-neutral/50 border border-oc-outline-light/60 rounded-lg hover:bg-black transition-all flex justify-center items-center ${
+                    isEditing
+                      ? "bg-white/80 hover:bg-white text-black"
+                      : "cursor-not-allowed text-white"
                   }`}
                   disabled={!isEditing}
                 >
                   <span>Guardar cambios</span>
-                  <span className="ml-2 text-xs flex items-center text-oc-outline-light/80">
+                  <span className="ml-2 text-xs flex items-center opacity-40">
                     <i className="fa fa-keyboard mr-1" aria-hidden="true"></i>⌘
                     + Enter / Ctrl + Enter
                   </span>
@@ -337,7 +351,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
           {/* Right - Comments */}
           <div className="w-[350px] flex flex-col bg-oc-primary">
             <div className="p-8">
-              <h3 className="text-lg font-bold border-b border-oc-outline-light/60 pb-3">
+              <h3 className="text-lg font-bold border-b  text-white border-oc-outline-light/60 pb-3">
                 Comentarios
               </h3>
             </div>
@@ -368,7 +382,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                     getCurrentUser()?.role === "manager" ? (
                       <button
                         onClick={() => handleDeleteComment(comment.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-800"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-400 hover:text-stone-100"
                       >
                         <i className="fa fa-trash text-sm"></i>
                       </button>
@@ -378,7 +392,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                   </div>
                 ))}
                 <div
-                  className={`absolute top-0 right-0 left-0 justify-center items-center text-center text-gray-500 pt-4 transition-opacity duration-200 pointer-events-none ${
+                  className={`absolute top-0 right-0 left-0 justify-center items-center text-center text-stone-300 pt-4 transition-opacity duration-200 pointer-events-none ${
                     comments.length === 0 && !isLoading
                       ? "opacity-100"
                       : "opacity-0"
@@ -406,15 +420,15 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Escribe tu comentario"
-                  className="flex-1 border border-oc-outline-light/60 bg-white rounded-lg p-3 py-2.5 text-sm"
+                  className="flex-1 border border-oc-outline-light/60 bg-oc-neutral/50 hover:bg-black transition-colors text-white placeholder:text-white/40 rounded-lg p-3 py-2.5 text-sm"
                   disabled={isSubmittingComment}
                 />
                 <button
                   type="submit"
-                  className={`text-white rounded-lg p-2.5 transition-colors flex items-center justify-center h-[42px] w-[42px] ${
+                  className={`text-white rounded-lg p-2.5 transition-colors flex items-center justify-center h-[42px] w-[42px] border border-oc-outline-light/60 ${
                     newComment.trim()
-                      ? "bg-oc-brown/90 hover:bg-oc-brown"
-                      : "bg-oc-brown/50"
+                      ? " bg-stone-50/5 hover:bg-stone-50/20"
+                      : "bg-oc-neutral/90 "
                   }`}
                   disabled={!newComment.trim() || isSubmittingComment}
                 >

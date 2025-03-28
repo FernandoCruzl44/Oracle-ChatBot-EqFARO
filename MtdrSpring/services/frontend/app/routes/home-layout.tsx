@@ -27,7 +27,7 @@ export default function HomeLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-stone-100">
       <Toaster richColors closeButton position="top-center" />
       <Sidebar />
       <div className="flex-1 overflow-auto">

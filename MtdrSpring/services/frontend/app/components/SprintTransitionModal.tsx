@@ -79,7 +79,7 @@ export function SprintTransitionModal({
 
           <div className="space-y-4 mb-6">
             <div>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-stone-600 mb-2">
                 Hay tareas incompletas en este sprint. ¿Qué deseas hacer con
                 ellas?
               </p>
@@ -134,7 +134,7 @@ export function SprintTransitionModal({
           <div className="flex justify-end space-x-2">
             <button
               onClick={handleClose}
-              className="px-4 py-2 border rounded hover:bg-gray-50"
+              className="px-4 py-2 border rounded hover:bg-stone-50"
             >
               Cancelar
             </button>

@@ -83,13 +83,29 @@ export default function CreateTaskModal({
         handleClose();
       } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        handleSubmitTask(e as any);
+
+        // Create a synthetic event without casting to avoid type issues
+        const syntheticEvent = {
+          preventDefault: () => {},
+        };
+
+        handleSubmitTask(syntheticEvent as React.FormEvent);
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [title, startDate, teamId, sprintId]);
+  }, [
+    title,
+    startDate,
+    teamId,
+    sprintId,
+    description,
+    tag,
+    status,
+    endDate,
+    assigneeIds,
+  ]);
 
   const handleClose = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -152,7 +168,7 @@ export default function CreateTaskModal({
       onClick={handleClose}
     >
       <div
-        className={`rounded-lg w-full max-w-[600px] flex p-2 bg-[#EFEDE9] transition-all duration-150 ease-in-out ${
+        className={`rounded-lg w-full max-w-[600px] flex p-2 bg-oc-neutral transition-all duration-150 ease-in-out ${
           isVisible ? "translate-y-0" : "translate-y-3"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -160,7 +176,7 @@ export default function CreateTaskModal({
         <div className="bg-oc-primary border border-oc-outline-light relative rounded-lg w-full flex overflow-hidden transition-all duration-150">
           <button
             onClick={handleClose}
-            className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-gray-500 hover:text-gray-700"
+            className="absolute top-3 right-3 border border-oc-outline-light w-7 h-7 rounded flex items-center justify-center hover:bg-oc-neutral text-stone-500 hover:text-stone-700"
           >
             <i className="fa fa-times text-xl"></i>
           </button>
@@ -172,7 +188,7 @@ export default function CreateTaskModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Título de la tarea"
-                className="text-lg font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+                className="text-lg text-white font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
                 required
                 title="Este campo es obligatorio"
               />
@@ -193,11 +209,14 @@ export default function CreateTaskModal({
                       onChange={(e) =>
                         setTag(e.target.value as "Feature" | "Issue")
                       }
-                      className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
-                        tag === "Feature"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
+                      className={
+                        `px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40`
+                        //${
+                        //   editableTask.tag === "Feature"
+                        //     ? "bg-green-100 text-green-800"
+                        //     : "bg-red-100 text-red-800"
+                        //}`
+                      }
                       required
                     >
                       <option value="Feature">Feature</option>
@@ -213,7 +232,7 @@ export default function CreateTaskModal({
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
-                      className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                      className="px-2 py-1 text-xs text-white rounded-lg border border-oc-outline-light/40"
                     >
                       <option value="Backlog">Backlog</option>
                       <option value="En progreso">En progreso</option>
@@ -231,7 +250,7 @@ export default function CreateTaskModal({
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="px-2 py-1"
+                      className="px-2 py-1 text-white text-xs fill-white"
                       required
                     />
                   </div>
@@ -245,7 +264,7 @@ export default function CreateTaskModal({
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="px-2 py-1"
+                      className="px-2 py-1 text-white text-xs"
                     />
                   </div>
 
@@ -258,7 +277,7 @@ export default function CreateTaskModal({
                       type="text"
                       value={currentUser?.name || "—"}
                       readOnly
-                      className="px-2 py-1"
+                      className="px-2 py-1 text-white"
                     />
                   </div>
 
@@ -273,7 +292,7 @@ export default function CreateTaskModal({
                         onChange={(e) =>
                           setTeamId(Number(e.target.value) || undefined)
                         }
-                        className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                        className="px-2 py-1 text-xs text-white rounded-lg border border-oc-outline-light/40"
                         required
                         title="Debes seleccionar un equipo"
                       >
@@ -298,7 +317,7 @@ export default function CreateTaskModal({
                           type="text"
                           value={userTeam.name || ""}
                           readOnly
-                          className="px-2 py-1"
+                          className="px-2 py-1 text-white"
                         />
                       ) : (
                         <span className="text-xs bg-yellow-50 border border-yellow-100 text-yellow-800 rounded-lg p-1">
@@ -318,7 +337,7 @@ export default function CreateTaskModal({
                       <div
                         ref={assigneesListRef}
                         style={{ height: `${assigneesListHeight}px` }}
-                        className="bg-white p-2 min-h-[70px] overflow-y-auto rounded-lg border transition-all duration-150 ease-in-out border-oc-outline-light/60 flex flex-col items-start"
+                        className="bg-oc-primary p-2 min-h-[70px] overflow-y-auto rounded-lg border transition-all duration-150 ease-in-out border-oc-outline-light/60 flex flex-col items-start"
                       >
                         {teamId === null ? (
                           <p className="text-sm text-oc-brown/50">
@@ -343,11 +362,16 @@ export default function CreateTaskModal({
                               />
                               <label
                                 htmlFor={`user-${user.id}`}
-                                className="text-sm"
+                                className="text-sm text-white"
                               >
                                 {user.name}
-                                <span className="text-xs text-oc-brown/50">
-                                  ({user.role})
+                                <span className="text-xs text-oc-brown/50 ml-2">
+                                  (
+                                  {user.role
+                                    ? user.role.charAt(0).toUpperCase() +
+                                      user.role.slice(1)
+                                    : ""}
+                                  )
                                 </span>
                               </label>
                             </div>
@@ -372,7 +396,7 @@ export default function CreateTaskModal({
                               : Number(e.target.value)
                           )
                         }
-                        className="px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40"
+                        className="px-2 py-1 text-xs text-white rounded-lg border border-oc-outline-light/40"
                       >
                         <option value="">Sin sprint</option>
                         {teamSprints.map((sprint) => (
@@ -390,17 +414,17 @@ export default function CreateTaskModal({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Descripción (Opcional)"
-                    className="w-full border bg-white rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
+                    className="w-full border bg-oc-primary rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
                   ></textarea>
                 </div>
 
                 <div className="my-2">
                   <button
                     type="submit"
-                    className="w-full text-sm py-2.5 bg-oc-brown text-white rounded hover:bg-oc-brown/90 transition-all flex justify-center items-center"
+                    className="w-full text-sm py-2.5 bg-oc-neutral/50 border border-oc-outline-light/60 rounded-lg hover:bg-black transition-all flex justify-center items-center text-white"
                   >
                     <span>Crear Tarea</span>
-                    <span className="ml-2 text-xs flex items-center text-oc-outline-light/80">
+                    <span className="ml-2 text-xs flex items-center opacity-40">
                       <i className="fa fa-keyboard mr-1" aria-hidden="true"></i>
                       ⌘ + Enter / Ctrl + Enter
                     </span>

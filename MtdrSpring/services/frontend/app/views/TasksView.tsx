@@ -1,20 +1,15 @@
 // app/views/TasksView.tsx
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { Task, Sprint } from "~/types";
 import TaskModal from "../components/TaskModal"; // Assuming TaskModal is default export
-import Portal from "../components/Portal"; // Assuming Portal is default export
 import CreateTaskModal from "../components/CreateTaskModal"; // Assuming CreateTaskModal is default export
 import { SprintTransitionModal } from "../components/SprintTransitionModal";
 import { CreateSprintModal } from "../components/CreateSprintModal";
 import { SprintSelector } from "../components/SprintSelector";
 import useTaskStore from "~/store";
 import TasksSkeletonLoader from "~/components/TasksSkeletonLoader"; // Assuming TasksSkeletonLoader is default export
-
-interface DropdownPosition {
-  taskId: number;
-  top: number;
-  left: number;
-}
+import { generateAvatarColor } from "~/lib/generateAvatarColor";
+import TaskStatusSelector from "~/components/TaskStatusSelector";
 
 export default function TaskView() {
   const {
@@ -36,7 +31,6 @@ export default function TaskView() {
     selectedSprintId,
     selectSprint,
     fetchSprints,
-    // fetchSprintTasks, // Not directly used in this view logic
     completeSprint,
     isLoadingSprints,
     getSprintsByTeam, // Keep this for filtering within selector if needed
@@ -47,9 +41,6 @@ export default function TaskView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("all");
-  const [openStatusMenu, setOpenStatusMenu] = useState<DropdownPosition | null>(
-    null
-  );
   const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);
@@ -58,8 +49,6 @@ export default function TaskView() {
     null
   );
 
-  const statusMenuRef = useRef<HTMLDivElement>(null);
-  const currentToggleRef = useRef<HTMLDivElement | null>(null);
   const tasksPerPage = 15;
 
   // Filter tasks based on search term and selected sprint
@@ -86,6 +75,32 @@ export default function TaskView() {
 
   const isManager = currentUser?.role === "manager";
   const selectedTask = selectedTaskId ? getTaskById(selectedTaskId) : null;
+
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "—";
+    const date = new Date(dateString);
+    // Ajustar a zona horaria local
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+
+    const months = [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic",
+    ];
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
 
   // Check for sprints that need transition (always check for managers)
   useEffect(() => {
@@ -155,25 +170,6 @@ export default function TaskView() {
     isManager,
   ]);
 
-  // Click outside handler for status dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        statusMenuRef.current &&
-        !statusMenuRef.current.contains(event.target as Node) &&
-        currentToggleRef.current &&
-        !currentToggleRef.current.contains(event.target as Node)
-      ) {
-        setOpenStatusMenu(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   // --- Event Handlers ---
 
   const handleTaskSelection = (taskId: number) => {
@@ -227,34 +223,10 @@ export default function TaskView() {
   };
 
   const handleStatusChange = (taskId: number, newStatus: string) => {
-    updateTaskStatus(taskId, newStatus)
-      .then(() => {
-        setOpenStatusMenu(null);
-      })
-      .catch((error) => {
-        console.error("Error updating task status:", error);
-        // Add user feedback
-      });
-  };
-
-  const toggleStatusMenu = (
-    task: Task,
-    e: React.MouseEvent<HTMLDivElement>
-  ) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    currentToggleRef.current = e.currentTarget;
-
-    setOpenStatusMenu((prev) =>
-      prev && prev.taskId === task.id
-        ? null
-        : {
-            taskId: task.id,
-            top: rect.bottom + window.scrollY,
-            left: rect.left + window.scrollX,
-          }
-    );
+    updateTaskStatus(taskId, newStatus).catch((error) => {
+      console.error("Error updating task status:", error);
+      // Add user feedback
+    });
   };
 
   const statuses = ["En progreso", "Cancelada", "Backlog", "Completada"];
@@ -275,7 +247,7 @@ export default function TaskView() {
   const getSprintName = (sprintId?: number | null): string => {
     if (!sprintId) return "—";
     const sprint = sprints.find((s) => s.id === sprintId);
-    return sprint ? sprint.name : "Desconocido"; // Handle case where sprint might not be loaded yet
+    return sprint ? sprint.name : "—"; // Fallback changed to avoid "Desconocido"
   };
 
   const handleCompleteSprint = async (
@@ -327,7 +299,7 @@ export default function TaskView() {
     { id: "checkbox", label: "", width: "w-12 px-5" }, // Added padding
     { id: "title", label: "Título", width: "w-80" },
     { id: "tag", label: "Tag", width: "w-28" },
-    { id: "sprint", label: "Sprint", width: "w-40" },
+    { id: "sprint", label: "Sprint", width: "w-24" },
     { id: "status", label: "Estatus", width: "w-32" }, // Increased width slightly
     { id: "startDate", label: "Fecha Inicio", width: "w-32" }, // Increased width slightly
     { id: "endDate", label: "Fecha Final", width: "w-32" }, // Increased width slightly
@@ -348,12 +320,11 @@ export default function TaskView() {
         {/* Header Section */}
         <div className="flex justify-between items-center pb-2 gap-2">
           <div className="flex items-center pb-2 gap-2">
-            <i className="fa fa-chevron-right text-2xl text-black"></i>
-            <h1 className="text-xl font-medium text-black">Tareas</h1>
+            <i className="fa fa-chevron-right text-2xl text-white"></i>
+            <h1 className="text-xl font-medium text-white">Tareas</h1>
           </div>
           {currentUser && (
-            <div className="text-sm text-gray-600 flex items-center flex-wrap">
-              {/* Added flex-wrap */}
+            <div className="text-sm text-stone-300 flex items-center flex-wrap">
               <span className="font-medium">{currentUser.name}</span>
               <span className="mx-2">•</span>
               <span
@@ -384,12 +355,12 @@ export default function TaskView() {
               <input
                 type="text"
                 placeholder="Buscar por título"
-                className="w-full pl-8 pr-10 py-2 rounded-lg border border-oc-outline-light text-black bg-oc-primary text-sm"
+                className="w-full pl-8 pr-10 py-2 rounded-lg border border-oc-outline-light text-white bg-oc-primary text-sm"
                 value={searchTerm}
                 onChange={handleSearch}
                 disabled={isLoadingTasks}
               />
-              <i className="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-black"></i>{" "}
+              <i className="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white"></i>{" "}
               {/* Centered icon */}
               {searchTerm && (
                 <i
@@ -405,7 +376,7 @@ export default function TaskView() {
             <div className="flex gap-2">
               <button
                 onClick={handleAddTaskClick}
-                className={`px-4 py-2 bg-oc-primary hover:bg-white rounded-lg border border-oc-outline-light flex items-center text-black text-sm ${
+                className={`px-4 py-2 bg-oc-primary hover:bg-black rounded-lg border border-oc-outline-light flex items-center text-white text-sm ${
                   isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""
                 }`}
                 disabled={isLoadingTasks}
@@ -454,8 +425,8 @@ export default function TaskView() {
                 <button
                   className={`px-4 py-2 font-medium whitespace-nowrap ${
                     activeTab === "all"
-                      ? "text-gray-800 border-b-2 border-gray-800"
-                      : "text-gray-600 hover:text-gray-800" // Added hover
+                      ? "text-stone-100 border-b-2 border-white"
+                      : "text-stone-400 hover:text-stone-200" // Added hover
                   } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={() => !isLoadingTasks && changeTab("all")}
                   disabled={isLoadingTasks}
@@ -467,8 +438,8 @@ export default function TaskView() {
                     key={team.id}
                     className={`px-4 py-2 font-medium whitespace-nowrap ${
                       activeTab === String(team.id)
-                        ? "text-gray-800 border-b-2 border-gray-800"
-                        : "text-gray-600 hover:text-gray-800" // Added hover
+                        ? "text-stone-100 border-b-2 border-stone-200"
+                        : "text-stone-400 hover:text-stone-100" // Added hover
                     } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() =>
                       !isLoadingTasks && changeTab(String(team.id))
@@ -484,8 +455,8 @@ export default function TaskView() {
                 <button
                   className={`px-4 py-2 font-medium ${
                     activeTab === "all"
-                      ? "text-gray-800 border-b-2 border-gray-800"
-                      : "text-gray-600 hover:text-gray-800" // Added hover
+                      ? "text-stone-100 border-b-2 border-white"
+                      : "text-stone-400 hover:text-stone-200" // Added hover
                   } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={() => !isLoadingTasks && changeTab("all")}
                   disabled={isLoadingTasks}
@@ -496,8 +467,8 @@ export default function TaskView() {
                   <button
                     className={`px-4 py-2 font-medium ${
                       activeTab === "team"
-                        ? "text-gray-800 border-b-2 border-gray-800"
-                        : "text-gray-600 hover:text-gray-800" // Added hover
+                        ? "text-stone-100 border-b-2 border-white"
+                        : "text-stone-400 hover:text-stone-200" // Added hover
                     } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() => !isLoadingTasks && changeTab("team")}
                     disabled={isLoadingTasks}
@@ -513,10 +484,10 @@ export default function TaskView() {
             className="overflow-y-auto flex-grow" // Changed to flex-grow
             // style={{ maxHeight: "calc(100vh - 253px)" }} // Removed fixed max height
           >
-            <table className="min-w-full text-black table-fixed">
+            <table className="min-w-full text-white table-fixed">
               <thead className="sticky top-0 z-10 bg-oc-primary">
                 {/* Added sticky thead */}
-                <tr style={{ boxShadow: "0 1px 0px #D1D0CE" }}>
+                <tr style={{ boxShadow: "0 1px 0px #343231" }}>
                   {tableHeaders.map((header) => (
                     <td
                       key={header.id}
@@ -527,7 +498,7 @@ export default function TaskView() {
                       {header.id === "checkbox" ? (
                         <input
                           type="checkbox"
-                          className="w-4 h-4"
+                          className="w-4 h-4 translate-y-0.5"
                           onChange={handleSelectAll}
                           checked={
                             paginatedTasks.length > 0 &&
@@ -566,7 +537,7 @@ export default function TaskView() {
                   <tr>
                     <td
                       colSpan={columnCount}
-                      className="py-4 px-6 text-center text-gray-500" // Adjusted color
+                      className="py-4 px-6 text-center text-stone-500" // Adjusted color
                     >
                       <div className="flex justify-center items-center">
                         <i className="fa fa-info-circle mr-2"></i>
@@ -580,13 +551,13 @@ export default function TaskView() {
                   paginatedTasks.map((task, index) => (
                     <tr
                       key={task.id}
-                      className={`border-oc-outline-light/60 hover:bg-gray-50 ${
+                      className={`border-oc-outline-light/60 hover:bg-stone-700/30 transition-colors ${
                         // Simplified hover
                         index === paginatedTasks.length - 1 ? "" : "border-b"
                       }`}
                     >
                       <td
-                        className="w-12 px-5 py-3" // Removed translate
+                        className="w-12 px-5 py-3 translate-y-0.5"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <input
@@ -596,7 +567,10 @@ export default function TaskView() {
                           onChange={() => handleTaskSelection(task.id)}
                         />
                       </td>
-                      <td className="py-3 px-2 truncate">
+                      <td
+                        className="py-3 px-2 truncate"
+                        onClick={() => handleTaskClick(task)}
+                      >
                         {/* Added truncate */}
                         <button
                           className="hover:underline text-left"
@@ -613,8 +587,8 @@ export default function TaskView() {
                         <span
                           className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
                             task.tag === "Feature"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                              ? "bg-green-700/50 text-green-100"
+                              : "bg-red-700/50 text-red-100"
                           } inline-block w-auto text-center`} // Adjusted width
                         >
                           {task.tag}
@@ -629,24 +603,22 @@ export default function TaskView() {
                           {getSprintName(task.sprintId)}
                         </span>
                       </td>
-                      <td className="py-3 px-2">
-                        <div
-                          className="flex items-center cursor-pointer group" // Added group for hover effect
-                          onClick={(e) => toggleStatusMenu(task, e)}
-                        >
-                          <span
-                            className="select-none w-full truncate"
-                            title={task.status || "En progreso"}
-                          >
-                            {/* Added truncate and title */}
-                            {task.status || "En progreso"}
-                          </span>
-                          <i className="fa fa-chevron-down text-gray-400 group-hover:text-gray-600 ml-1"></i>{" "}
-                          {/* Adjusted color */}
-                        </div>
+                      <td
+                        className="py-3 px-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <TaskStatusSelector
+                          status={task.status || "En progreso"}
+                          onStatusChange={(newStatus) =>
+                            handleStatusChange(task.id, newStatus)
+                          }
+                          isLoading={isLoadingTasks}
+                        />
                       </td>
-                      <td className="py-3 px-2">{task.startDate}</td>
-                      <td className="py-3 px-2">{task.endDate || "—"}</td>
+                      <td className="py-3 px-2">
+                        {formatDate(task.startDate)}
+                      </td>
+                      <td className="py-3 px-2">{formatDate(task.endDate)}</td>
                       <td
                         className="py-3 px-2 truncate"
                         title={task.creatorName || "—"}
@@ -657,21 +629,24 @@ export default function TaskView() {
                         <td className="py-3 px-2">
                           {task.assignees && task.assignees.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {task.assignees.map((assignee, i) => (
-                                <span
-                                  key={i}
-                                  className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-lg border border-oc-outline-light/60 whitespace-nowrap" // Added nowrap
-                                  title={
-                                    typeof assignee === "object"
-                                      ? assignee.name
-                                      : assignee
-                                  }
-                                >
-                                  {typeof assignee === "object"
-                                    ? assignee.name
-                                    : assignee}
-                                </span>
-                              ))}
+                              {task.assignees.map((assignee, i) => {
+                                const colors = generateAvatarColor(
+                                  assignee.name
+                                );
+                                return (
+                                  <span
+                                    key={i}
+                                    style={{
+                                      backgroundColor: colors.backgroundColor,
+                                      color: colors.color,
+                                    }}
+                                    className="px-1.5 py-0.5 text-xs rounded-full border border-oc-outline-light/60 whitespace-nowrap font-bold"
+                                    title={assignee.name}
+                                  >
+                                    {assignee.name.slice(0, 1)}
+                                  </span>
+                                );
+                              })}
                             </div>
                           ) : (
                             "—"
@@ -687,7 +662,7 @@ export default function TaskView() {
         </div>
 
         {/* Footer / Pagination */}
-        <div className="px-4 py-2 flex items-center justify-between text-black text-sm h-12  flex-shrink-0">
+        <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">
           {/* Added border-t and flex-shrink-0 */}
           <div>
             {selectedTasks.length} seleccionada
@@ -776,42 +751,6 @@ export default function TaskView() {
             onComplete={handleCompleteSprint}
           />
         )}
-
-      {/* Status dropdown portal */}
-      {openStatusMenu && (
-        <Portal>
-          <div
-            ref={statusMenuRef}
-            style={{
-              position: "absolute",
-              top: openStatusMenu.top + 5,
-              left: openStatusMenu.left,
-              zIndex: 50,
-            }}
-            className="bg-white rounded-md shadow-lg overflow-hidden border border-oc-outline-light/50 w-36" // Increased width slightly
-          >
-            <ul>
-              {statuses.map((status) => (
-                <li
-                  key={status}
-                  className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                    // Simplified hover
-                    tasks.find((t) => t.id === openStatusMenu.taskId)
-                      ?.status === status
-                      ? "font-medium text-blue-600" // Highlight selected
-                      : ""
-                  }`}
-                  onClick={() =>
-                    handleStatusChange(openStatusMenu.taskId, status)
-                  }
-                >
-                  {status}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Portal>
-      )}
     </div>
   );
 }
