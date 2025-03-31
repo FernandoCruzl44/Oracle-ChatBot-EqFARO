@@ -2,8 +2,7 @@
 import React from "react";
 import TasksSkeletonLoader from "~/components/Skeletons/TasksSkeletonLoader";
 import TaskStatusSelector from "~/components/Selectors/TaskStatusSelector";
-import { generateAvatarColor } from "~/lib/generateAvatarColor";
-import { formatDate, getSprintName } from "~/lib/utils";
+import { formatDate, getSprintName, generateAvatarColor } from "~/lib/utils";
 import type { Task } from "~/types";
 
 interface TableProps {
