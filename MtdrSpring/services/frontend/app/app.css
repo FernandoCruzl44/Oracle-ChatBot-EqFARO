@@ -29,6 +29,6 @@ body {
   }
 }
 
-.fi-select-input > option {
-  @apply dark:bg-gray-900;
+option {
+  color: initial;
 }
