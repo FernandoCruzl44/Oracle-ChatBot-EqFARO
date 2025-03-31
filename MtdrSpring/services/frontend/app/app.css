@@ -30,5 +30,7 @@ body {
 }
 
 option {
-  color: initial;
+  color: white;
+  background-color: var(--color-oc-neutral);
+  accent-color: var(--color-oc-amber);
 }
