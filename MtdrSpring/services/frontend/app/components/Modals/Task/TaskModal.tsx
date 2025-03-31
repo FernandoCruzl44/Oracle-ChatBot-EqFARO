@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Task } from "~/types";
 import useTaskStore from "~/store/index";
-import { generateAvatarColor } from "~/lib/generateAvatarColor";
+import { generateAvatarColor } from "~/lib/utils";
 import { Modal } from "../../Modal";
 import { Button } from "../../Button";
 import { TaskMetadata } from "./TaskMetadata";

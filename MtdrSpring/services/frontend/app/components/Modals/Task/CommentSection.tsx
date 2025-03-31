@@ -1,5 +1,5 @@
 // app/components/TaskModal/CommentsSection.tsx
-import { generateAvatarColor } from "~/lib/generateAvatarColor";
+import { generateAvatarColor } from "~/lib/utils";
 import { CommentItem } from "./CommentItem";
 
 interface CommentsSectionProps {
