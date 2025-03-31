@@ -179,7 +179,7 @@ public class TaskController {
         });
     }
 
-    // POST /api/tasks - Updated to handle sprint_id
+    // POST /api/tasks - Updated to handle estimated_hours and actual_hours
     @PostMapping
     @Transactional
     public ResponseEntity<?> createTask(
@@ -211,6 +211,28 @@ public class TaskController {
             task.setStartDate((String) request.get("startDate"));
             task.setEndDate((String) request.get("endDate"));
             task.setCreatorId(currentUserId);
+
+            // Handle estimated_hours
+            if (request.containsKey("estimated_hours") && request.get("estimated_hours") != null) {
+                try {
+                    task.setEstimatedHours(Double.valueOf(request.get("estimated_hours").toString()));
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Invalid estimated_hours format"));
+                }
+            } else {
+                task.setEstimatedHours(null);
+            }
+
+            // Handle actual_hours
+            if (request.containsKey("actual_hours") && request.get("actual_hours") != null) {
+                try {
+                    task.setActualHours(Double.valueOf(request.get("actual_hours").toString()));
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Invalid actual_hours format"));
+                }
+            } else {
+                task.setActualHours(null);
+            }
 
             // Handle team_id
             if (request.containsKey("team_id") && request.get("team_id") != null) {
@@ -271,7 +293,7 @@ public class TaskController {
         });
     }
 
-    // PUT /api/tasks/{taskId} - Updated to handle sprint_id
+    // PUT /api/tasks/{taskId} - Updated to handle estimated_hours and actual_hours
     @PutMapping("/{taskId}")
     @Transactional
     public ResponseEntity<?> updateTask(
@@ -347,6 +369,34 @@ public class TaskController {
                     }
                 } else {
                     task.setTeamId(null);
+                }
+            }
+
+            // Handle estimated_hours update
+            if (request.containsKey("estimated_hours")) {
+                Object estimatedHoursObj = request.get("estimated_hours");
+                if (estimatedHoursObj == null) {
+                    task.setEstimatedHours(null);
+                } else {
+                    try {
+                        task.setEstimatedHours(Double.valueOf(estimatedHoursObj.toString()));
+                    } catch (NumberFormatException e) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Invalid estimated_hours format"));
+                    }
+                }
+            }
+
+            // Handle actual_hours update
+            if (request.containsKey("actual_hours")) {
+                Object actualHoursObj = request.get("actual_hours");
+                if (actualHoursObj == null) {
+                    task.setActualHours(null);
+                } else {
+                    try {
+                        task.setActualHours(Double.valueOf(actualHoursObj.toString()));
+                    } catch (NumberFormatException e) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Invalid actual_hours format"));
+                    }
                 }
             }
 

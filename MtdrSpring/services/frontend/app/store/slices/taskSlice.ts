@@ -45,6 +45,18 @@ const mapTaskToBackend = (taskData: Partial<Task>): Record<string, any> => {
     delete backendData.creatorId;
   }
 
+  // Map estimatedHours -> estimated_hours
+  if (backendData.hasOwnProperty("estimatedHours")) {
+    backendData.estimated_hours = backendData.estimatedHours;
+    delete backendData.estimatedHours;
+  }
+
+  // Map actualHours -> actual_hours
+  if (backendData.hasOwnProperty("actualHours")) {
+    backendData.actual_hours = backendData.actualHours;
+    delete backendData.actualHours;
+  }
+
   // Map assignees -> assignee_ids (if backend expects IDs)
   if (backendData.hasOwnProperty("assignees")) {
     // Assuming backend expects an array of IDs for creation/update
@@ -80,6 +92,18 @@ const mapBackendToTask = (backendTask: Record<string, any>): Task => {
   if (frontendTask.hasOwnProperty("created_by_id")) {
     frontendTask.creatorId = frontendTask.created_by_id;
     delete frontendTask.created_by_id;
+  }
+
+  // Map estimated_hours -> estimatedHours
+  if (frontendTask.hasOwnProperty("estimated_hours")) {
+    frontendTask.estimatedHours = frontendTask.estimated_hours;
+    delete frontendTask.estimated_hours;
+  }
+
+  // Map actual_hours -> actualHours
+  if (frontendTask.hasOwnProperty("actual_hours")) {
+    frontendTask.actualHours = frontendTask.actual_hours;
+    delete frontendTask.actual_hours;
   }
 
   // Ensure assignees is an array (backend might send it differently)

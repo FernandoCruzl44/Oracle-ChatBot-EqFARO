@@ -50,19 +50,20 @@ public interface TaskRepository {
                         "WHERE ta.task_id = :taskId")
         List<User> findAssigneesByTaskId(@Bind("taskId") Long taskId);
 
-        // Updated INSERT statement to include sprint_id
-        @SqlUpdate("INSERT INTO tasks (title, description, tag, status, start_date, end_date, created_by_id, team_id, sprint_id) "
+        // Updated INSERT statement to include estimated_hours and actual_hours
+        @SqlUpdate("INSERT INTO tasks (title, description, tag, status, start_date, end_date, created_by_id, team_id, sprint_id, estimated_hours, actual_hours) "
                         +
-                        "VALUES (:title, :description, :tag, :status, :startDate, :endDate, :creatorId, :teamId, :sprintId)")
+                        "VALUES (:title, :description, :tag, :status, :startDate, :endDate, :creatorId, :teamId, :sprintId, :estimatedHours, :actualHours)")
         @GetGeneratedKeys("id")
-        Long insert(@BindBean Task task); // @BindBean handles sprintId from Task object
+        Long insert(@BindBean Task task);
 
-        // Updated UPDATE statement to include sprint_id
+        // Updated UPDATE statement to include estimated_hours and actual_hours
         @SqlUpdate("UPDATE tasks SET title = :title, description = :description, " +
                         "tag = :tag, status = :status, start_date = :startDate, " +
-                        "end_date = :endDate, team_id = :teamId, sprint_id = :sprintId " + // Added sprint_id
+                        "end_date = :endDate, team_id = :teamId, sprint_id = :sprintId, " +
+                        "estimated_hours = :estimatedHours, actual_hours = :actualHours " +
                         "WHERE id = :id")
-        int update(@BindBean Task task); // @BindBean handles sprintId from Task object
+        int update(@BindBean Task task);
 
         @SqlUpdate("DELETE FROM tasks WHERE id = :id")
         int delete(@Bind("id") Long id);
@@ -112,6 +113,13 @@ public interface TaskRepository {
                         task.setCreatorName(rs.getString("creator_name"));
                         // Correctly maps sprint_id, handling NULLs
                         task.setSprintId(rs.getObject("sprint_id", Long.class));
+
+                        // Add mapping for estimated_hours and actual_hours
+                        Double estimatedHours = rs.getObject("estimated_hours", Double.class);
+                        task.setEstimatedHours(estimatedHours);
+
+                        Double actualHours = rs.getObject("actual_hours", Double.class);
+                        task.setActualHours(actualHours);
 
                         Long teamId = rs.getObject("team_id", Long.class);
                         if (!rs.wasNull()) {

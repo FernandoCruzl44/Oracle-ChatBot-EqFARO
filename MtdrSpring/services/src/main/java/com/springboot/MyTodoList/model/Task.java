@@ -16,6 +16,8 @@ public class Task {
     private String teamName;
     private List<User> assignees;
     private Long sprintId;
+    private Double estimatedHours;
+    private Double actualHours;
 
     public Long getId() {
         return id;
@@ -119,5 +121,21 @@ public class Task {
 
     public void setSprintId(Long sprintId) {
         this.sprintId = sprintId;
+    }
+
+    public Double getEstimatedHours() {
+        return estimatedHours;
+    }
+
+    public void setEstimatedHours(Double estimatedHours) {
+        this.estimatedHours = estimatedHours;
+    }
+
+    public Double getActualHours() {
+        return actualHours;
+    }
+
+    public void setActualHours(Double actualHours) {
+        this.actualHours = actualHours;
     }
 }

@@ -26,6 +26,8 @@ export interface Task {
   startDate: string;
   endDate: string | null;
   sprintId?: number | null;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
 
   // Creator information
   creatorId?: number;
