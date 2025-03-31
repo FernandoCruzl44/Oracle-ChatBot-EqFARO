@@ -1,13 +1,13 @@
 // app/views/TasksView.tsx
 import { useEffect, useState } from "react";
 import type { Task, Sprint } from "~/types";
-import TaskModal from "../components/TaskModal"; // Assuming TaskModal is default export
-import CreateTaskModal from "../components/CreateTaskModal"; // Assuming CreateTaskModal is default export
+import TaskModal from "../components/TaskModal";
+import CreateTaskModal from "../components/CreateTaskModal";
 import { SprintTransitionModal } from "../components/SprintTransitionModal";
 import { CreateSprintModal } from "../components/CreateSprintModal";
 import { SprintSelector } from "../components/SprintSelector";
 import useTaskStore from "~/store";
-import TasksSkeletonLoader from "~/components/TasksSkeletonLoader"; // Assuming TasksSkeletonLoader is default export
+import TasksSkeletonLoader from "~/components/TasksSkeletonLoader";
 import { generateAvatarColor } from "~/lib/generateAvatarColor";
 import TaskStatusSelector from "~/components/TaskStatusSelector";
 
@@ -26,14 +26,13 @@ export default function TaskView() {
     selectedTaskId,
     getTaskById,
     deleteTasks,
-    // Sprint related store methods
-    sprints, // This holds ALL fetched sprints
+    sprints,
     selectedSprintId,
     selectSprint,
     fetchSprints,
     completeSprint,
     isLoadingSprints,
-    getSprintsByTeam, // Keep this for filtering within selector if needed
+    getSprintsByTeam,
   } = useTaskStore();
 
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
@@ -44,19 +43,16 @@ export default function TaskView() {
   const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);
-  // Store the sprint currently being transitioned to avoid immediate re-opening
   const [transitioningSprint, setTransitioningSprint] = useState<Sprint | null>(
     null
   );
 
   const tasksPerPage = 15;
 
-  // Filter tasks based on search term and selected sprint
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    // Filter by sprint applies regardless of the tab, but only if a sprint is selected
     const matchesSprint = selectedSprintId
       ? task.sprintId === selectedSprintId
       : true;
@@ -79,7 +75,6 @@ export default function TaskView() {
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "—";
     const date = new Date(dateString);
-    // Ajustar a zona horaria local
     date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
 
     const months = [
@@ -102,11 +97,9 @@ export default function TaskView() {
     return `${day} ${month} ${year}`;
   };
 
-  // Check for sprints that need transition (always check for managers)
   useEffect(() => {
     if (sprints.length > 0 && isManager) {
       const today = new Date();
-      // Find the *first* active sprint ending soon that isn't already being transitioned
       const sprintToTransition = sprints.find((sprint) => {
         if (
           sprint.status !== "ACTIVE" ||
@@ -115,49 +108,37 @@ export default function TaskView() {
           return false;
         }
         const endDate = new Date(sprint.endDate);
-        // Set time to end of day for comparison
         endDate.setHours(23, 59, 59, 999);
         const daysRemaining = Math.ceil(
           (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
         );
-        // Trigger if ending today or within next 3 days, or if already past end date
         return daysRemaining <= 3;
       });
 
-      // Only open if a suitable sprint is found AND the modal isn't already open for another sprint
       if (sprintToTransition && !isSprintTransitionModalOpen) {
         console.log(
           "Triggering transition modal for sprint:",
           sprintToTransition.name
         );
-        setTransitioningSprint(sprintToTransition); // Set the sprint being transitioned
+        setTransitioningSprint(sprintToTransition);
         setIsSprintTransitionModalOpen(true);
       }
     }
-    // Depend on sprints and isManager. Don't depend on isSprintTransitionModalOpen or transitioningSprint here
-    // to ensure it always checks when sprints/role changes.
   }, [sprints, isManager]);
 
-  // Initialize data
   useEffect(() => {
     if (!isInitialized) {
-      initializeData(); // initializeData now fetches all sprints
+      initializeData();
     }
   }, [initializeData, isInitialized]);
 
-  // Fetch tasks and potentially team-specific sprints when tab changes
   useEffect(() => {
     if (isInitialized && currentUser) {
-      // Fetch tasks based on view mode
-      fetchTasks(activeTab); // Pass only activeTab, backend logic handles filtering
+      fetchTasks(activeTab);
 
-      // Fetch sprints relevant to the current view
-      // No need to fetch all sprints here, initializeData handles that
       if (activeTab !== "all" && activeTab !== "team") {
-        // Fetch sprints for a specific team ID tab
         fetchSprints(Number(activeTab));
       } else if (activeTab === "team" && !isManager && currentUser.teamId) {
-        // Fetch sprints for the user's team if they are not a manager and on the 'team' tab
         fetchSprints(currentUser.teamId);
       }
     }
@@ -169,8 +150,6 @@ export default function TaskView() {
     fetchSprints,
     isManager,
   ]);
-
-  // --- Event Handlers ---
 
   const handleTaskSelection = (taskId: number) => {
     setSelectedTasks((prev) =>
@@ -195,10 +174,9 @@ export default function TaskView() {
   const closeModal = () => {
     selectTask(null);
     setIsCreateModalOpen(false);
-    // Also close sprint modals if needed, though they have their own close logic
     setIsCreateSprintModalOpen(false);
     setIsSprintTransitionModalOpen(false);
-    setTransitioningSprint(null); // Reset transitioning sprint when any modal closes
+    setTransitioningSprint(null);
   };
 
   const handleAddTaskClick = () => {
@@ -207,7 +185,6 @@ export default function TaskView() {
 
   const handleSaveNewTask = () => {
     setIsCreateModalOpen(false);
-    // Optionally refetch tasks if needed, though createTask should update state
   };
 
   const handleDeleteTasks = () => {
@@ -218,14 +195,12 @@ export default function TaskView() {
       })
       .catch((error) => {
         console.error("Error deleting tasks:", error);
-        // Add user feedback (e.g., toast notification)
       });
   };
 
   const handleStatusChange = (taskId: number, newStatus: string) => {
     updateTaskStatus(taskId, newStatus).catch((error) => {
       console.error("Error updating task status:", error);
-      // Add user feedback
     });
   };
 
@@ -233,21 +208,21 @@ export default function TaskView() {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset page on new search
+    setCurrentPage(1);
   };
 
   const changeTab = (tab: string) => {
     setActiveTab(tab);
     setSearchTerm("");
     setSelectedTasks([]);
-    selectSprint(null); // Reset sprint selection when changing tabs
-    setCurrentPage(1); // Reset page on tab change
+    selectSprint(null);
+    setCurrentPage(1);
   };
 
   const getSprintName = (sprintId?: number | null): string => {
     if (!sprintId) return "—";
     const sprint = sprints.find((s) => s.id === sprintId);
-    return sprint ? sprint.name : "—"; // Fallback changed to avoid "Desconocido"
+    return sprint ? sprint.name : "—";
   };
 
   const handleCompleteSprint = async (
@@ -264,60 +239,49 @@ export default function TaskView() {
       );
     } catch (error) {
       console.error("Error completing sprint:", error);
-      // Add user feedback
     } finally {
       setIsSprintTransitionModalOpen(false);
-      setTransitioningSprint(null); // Reset after completion attempt
+      setTransitioningSprint(null);
     }
   };
 
   const handleCloseTransitionModal = () => {
     setIsSprintTransitionModalOpen(false);
-    // Keep transitioningSprint set so the effect doesn't immediately reopen for the same sprint
-    // It will be reset naturally when the effect runs again and doesn't find this sprint ending
   };
 
-  // Determine the team ID for the SprintSelector based on the current view
-  // Returns undefined if the selector shouldn't be shown for the current tab/role
   const getSelectorTeamId = (): number | undefined => {
     if (activeTab === "all") {
-      return undefined; // Selector not shown in 'all' view
+      return undefined;
     } else if (activeTab === "team") {
-      // Show for manager (all teams) or user (their team)
       return isManager ? undefined : currentUser?.teamId;
     } else {
-      // Specific team tab (only managers see these tabs)
       return Number(activeTab);
     }
   };
   const selectorTeamId = getSelectorTeamId();
-  // Determine if the sprint selector should be visible at all
-  const showSprintSelector = activeTab !== "all"; // Don't show on 'all' tab
+  const showSprintSelector = activeTab !== "all";
 
-  // Table headers configuration
   const tableHeaders = [
-    { id: "checkbox", label: "", width: "w-12 px-5" }, // Added padding
+    { id: "checkbox", label: "", width: "w-12 px-5" },
     { id: "title", label: "Título", width: "w-80" },
     { id: "tag", label: "Tag", width: "w-28" },
     { id: "sprint", label: "Sprint", width: "w-24" },
-    { id: "status", label: "Estatus", width: "w-32" }, // Increased width slightly
-    { id: "startDate", label: "Fecha Inicio", width: "w-32" }, // Increased width slightly
-    { id: "endDate", label: "Fecha Final", width: "w-32" }, // Increased width slightly
-    { id: "creator", label: "Creada por", width: "w-32" }, // Increased width slightly
+    { id: "status", label: "Estatus", width: "w-32" },
+    { id: "startDate", label: "Fecha Inicio", width: "w-32" },
+    { id: "endDate", label: "Fecha Final", width: "w-32" },
+    { id: "creator", label: "Creada por", width: "w-32" },
   ];
 
-  // Conditionally add Assignees column
   const showAssigneesColumn =
     (isManager && activeTab !== "all") || (!isManager && activeTab === "team");
   if (showAssigneesColumn) {
-    tableHeaders.push({ id: "assignees", label: "Asignada a", width: "w-32" }); // Increased width slightly
+    tableHeaders.push({ id: "assignees", label: "Asignada a", width: "w-32" });
   }
   const columnCount = tableHeaders.length;
 
   return (
     <div className="p-6 bg-oc-neutral h-full">
       <div className="h-full overflow-hidden flex flex-col">
-        {/* Header Section */}
         <div className="flex justify-between items-center pb-2 gap-2">
           <div className="flex items-center pb-2 gap-2">
             <i className="fa fa-chevron-right text-2xl text-white"></i>
@@ -346,11 +310,8 @@ export default function TaskView() {
           )}
         </div>
 
-        {/* Controls Section */}
         <div className="py-4 flex items-center justify-between">
           <div className="flex flex-row gap-2 items-center">
-            {/* Added items-center */}
-            {/* Search Input */}
             <div className="relative w-72">
               <input
                 type="text"
@@ -360,11 +321,10 @@ export default function TaskView() {
                 onChange={handleSearch}
                 disabled={isLoadingTasks}
               />
-              <i className="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white"></i>{" "}
-              {/* Centered icon */}
+              <i className="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white"></i>
               {searchTerm && (
                 <i
-                  className="fa fa-times-circle absolute right-3 top-1/2 transform -translate-y-1/2 text-oc-brown/80 cursor-pointer" // Centered icon
+                  className="fa fa-times-circle absolute right-3 top-1/2 transform -translate-y-1/2 text-oc-brown/80 cursor-pointer"
                   onClick={() => {
                     setSearchTerm("");
                     setCurrentPage(1);
@@ -372,7 +332,6 @@ export default function TaskView() {
                 ></i>
               )}
             </div>
-            {/* Action Buttons */}
             <div className="flex gap-2">
               <button
                 onClick={handleAddTaskClick}
@@ -385,10 +344,9 @@ export default function TaskView() {
                 <span>Agrega tarea</span>
               </button>
 
-              {/* Sprint Selector - Conditionally Rendered */}
               {showSprintSelector && (
                 <SprintSelector
-                  teamId={selectorTeamId ?? 0} // Pass appropriate teamId or undefined
+                  teamId={selectorTeamId ?? 0}
                   selectedSprintId={selectedSprintId}
                   onSelectSprint={selectSprint}
                   onCreateSprint={
@@ -406,27 +364,22 @@ export default function TaskView() {
                   className="px-4 py-2 bg-red-100 hover:bg-red-200 rounded-lg border border-oc-outline-light flex items-center text-red-700 text-sm"
                 >
                   <i className="fa fa-trash mr-2"></i>
-                  <span>Eliminar ({selectedTasks.length})</span>{" "}
-                  {/* Show count */}
+                  <span>Eliminar ({selectedTasks.length})</span>
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Main Content Area */}
         <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm flex flex-col overflow-hidden">
-          {/* Added flex flex-col */}
-          {/* Tabs */}
           <div className="flex px-4 py-2 border-b pb-0 border-oc-outline-light/60 overflow-x-auto hide-scrollbar flex-shrink-0">
-            {/* Added flex-shrink-0 */}
             {isManager ? (
               <>
                 <button
                   className={`px-4 py-2 font-medium whitespace-nowrap ${
                     activeTab === "all"
                       ? "text-stone-100 border-b-2 border-white"
-                      : "text-stone-400 hover:text-stone-200" // Added hover
+                      : "text-stone-400 hover:text-stone-200"
                   } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={() => !isLoadingTasks && changeTab("all")}
                   disabled={isLoadingTasks}
@@ -439,7 +392,7 @@ export default function TaskView() {
                     className={`px-4 py-2 font-medium whitespace-nowrap ${
                       activeTab === String(team.id)
                         ? "text-stone-100 border-b-2 border-stone-200"
-                        : "text-stone-400 hover:text-stone-100" // Added hover
+                        : "text-stone-400 hover:text-stone-100"
                     } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() =>
                       !isLoadingTasks && changeTab(String(team.id))
@@ -456,19 +409,19 @@ export default function TaskView() {
                   className={`px-4 py-2 font-medium ${
                     activeTab === "all"
                       ? "text-stone-100 border-b-2 border-white"
-                      : "text-stone-400 hover:text-stone-200" // Added hover
+                      : "text-stone-400 hover:text-stone-200"
                   } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={() => !isLoadingTasks && changeTab("all")}
                   disabled={isLoadingTasks}
                 >
                   Mis tareas
                 </button>
-                {currentUser?.teamId && ( // Only show team tab if user has a team
+                {currentUser?.teamId && (
                   <button
                     className={`px-4 py-2 font-medium ${
                       activeTab === "team"
                         ? "text-stone-100 border-b-2 border-white"
-                        : "text-stone-400 hover:text-stone-200" // Added hover
+                        : "text-stone-400 hover:text-stone-200"
                     } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() => !isLoadingTasks && changeTab("team")}
                     disabled={isLoadingTasks}
@@ -479,21 +432,16 @@ export default function TaskView() {
               </>
             )}
           </div>
-          {/* Table Area */}
-          <div
-            className="overflow-y-auto flex-grow" // Changed to flex-grow
-            // style={{ maxHeight: "calc(100vh - 253px)" }} // Removed fixed max height
-          >
+          <div className="overflow-y-auto flex-grow">
             <table className="min-w-full text-white table-fixed">
               <thead className="sticky top-0 z-10 bg-oc-primary">
-                {/* Added sticky thead */}
                 <tr style={{ boxShadow: "0 1px 0px #343231" }}>
                   {tableHeaders.map((header) => (
                     <td
                       key={header.id}
                       className={`py-3 font-bold ${header.width} ${
                         header.id === "checkbox" ? "pl-5" : "px-2"
-                      }`} // Adjusted padding
+                      }`}
                     >
                       {header.id === "checkbox" ? (
                         <input
@@ -537,7 +485,7 @@ export default function TaskView() {
                   <tr>
                     <td
                       colSpan={columnCount}
-                      className="py-4 px-6 text-center text-stone-500" // Adjusted color
+                      className="py-4 px-6 text-center text-stone-500"
                     >
                       <div className="flex justify-center items-center">
                         <i className="fa fa-info-circle mr-2"></i>
@@ -552,7 +500,6 @@ export default function TaskView() {
                     <tr
                       key={task.id}
                       className={`border-oc-outline-light/60 hover:bg-stone-700/30 transition-colors ${
-                        // Simplified hover
                         index === paginatedTasks.length - 1 ? "" : "border-b"
                       }`}
                     >
@@ -571,31 +518,29 @@ export default function TaskView() {
                         className="py-3 px-2 truncate"
                         onClick={() => handleTaskClick(task)}
                       >
-                        {/* Added truncate */}
                         <button
                           className="hover:underline text-left"
                           onClick={(e: React.MouseEvent) => {
                             e.preventDefault();
                             handleTaskClick(task);
                           }}
-                          title={task.title} // Add title for full text on hover
+                          title={task.title}
                         >
                           {task.title}
                         </button>
                       </td>
                       <td className="py-2 px-2">
                         <span
-                          className={`px-2 py-1 text-xs rounded-lg border border-oc-outline-light/40 ${
+                          className={`px-2 py-1 text-xs rounded-lg border  ${
                             task.tag === "Feature"
-                              ? "bg-green-700/50 text-green-100"
-                              : "bg-red-700/50 text-red-100"
-                          } inline-block w-auto text-center`} // Adjusted width
+                              ? "border-green-700/50 text-green-300"
+                              : "border-red-700/50 text-red-300"
+                          } inline-block w-auto text-center`}
                         >
                           {task.tag}
                         </span>
                       </td>
                       <td className="py-3 px-2 truncate">
-                        {/* Added truncate */}
                         <span
                           className="text-sm"
                           title={getSprintName(task.sprintId)}
@@ -661,9 +606,7 @@ export default function TaskView() {
           </div>
         </div>
 
-        {/* Footer / Pagination */}
         <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">
-          {/* Added border-t and flex-shrink-0 */}
           <div>
             {selectedTasks.length} seleccionada
             {selectedTasks.length !== 1 ? "s" : ""}
@@ -676,7 +619,7 @@ export default function TaskView() {
             <span className="mr-4">{tasksPerPage} tareas por página</span>
             <div className="flex">
               <button
-                className="w-8 h-8 flex items-center justify-center border rounded-l border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled styles
+                className="w-8 h-8 flex items-center justify-center border rounded-l border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setCurrentPage(1)}
                 disabled={
                   currentPage === 1 ||
@@ -687,7 +630,7 @@ export default function TaskView() {
                 <i className="fa fa-angle-double-left"></i>
               </button>
               <button
-                className="w-8 h-8 flex items-center justify-center border-t border-r border-b border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled styles
+                className="w-8 h-8 flex items-center justify-center border-t border-r border-b border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={
                   currentPage === 1 ||
@@ -698,7 +641,7 @@ export default function TaskView() {
                 <i className="fa fa-angle-left"></i>
               </button>
               <button
-                className="w-8 h-8 flex items-center justify-center border-t border-b border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled styles
+                className="w-8 h-8 flex items-center justify-center border-t border-b border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() =>
                   setCurrentPage(Math.min(totalPages, currentPage + 1))
                 }
@@ -711,7 +654,7 @@ export default function TaskView() {
                 <i className="fa fa-angle-right"></i>
               </button>
               <button
-                className="w-8 h-8 flex items-center justify-center border rounded-r border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled styles
+                className="w-8 h-8 flex items-center justify-center border rounded-r border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={
                   currentPage === totalPages ||
@@ -726,31 +669,27 @@ export default function TaskView() {
         </div>
       </div>
 
-      {/* Modals */}
       {selectedTask && <TaskModal task={selectedTask} onClose={closeModal} />}
       {isCreateModalOpen && (
         <CreateTaskModal onClose={closeModal} onSave={handleSaveNewTask} />
       )}
-      {isCreateSprintModalOpen &&
-        isManager && ( // Ensure only managers can open create sprint modal
-          <CreateSprintModal
-            teamId={Number(activeTab)} // This might need adjustment if activeTab is 'all' or 'team'
-            onClose={() => setIsCreateSprintModalOpen(false)}
-            onSave={() => {
-              fetchSprints(Number(activeTab)); // Refetch sprints for the current team
-              setIsCreateSprintModalOpen(false);
-            }}
-          />
-        )}
-      {transitioningSprint &&
-        isSprintTransitionModalOpen &&
-        isManager && ( // Ensure only managers see transition modal
-          <SprintTransitionModal
-            sprint={transitioningSprint}
-            onClose={handleCloseTransitionModal} // Use specific close handler
-            onComplete={handleCompleteSprint}
-          />
-        )}
+      {isCreateSprintModalOpen && isManager && (
+        <CreateSprintModal
+          teamId={Number(activeTab)}
+          onClose={() => setIsCreateSprintModalOpen(false)}
+          onSave={() => {
+            fetchSprints(Number(activeTab));
+            setIsCreateSprintModalOpen(false);
+          }}
+        />
+      )}
+      {transitioningSprint && isSprintTransitionModalOpen && isManager && (
+        <SprintTransitionModal
+          sprint={transitioningSprint}
+          onClose={handleCloseTransitionModal}
+          onComplete={handleCompleteSprint}
+        />
+      )}
     </div>
   );
 }

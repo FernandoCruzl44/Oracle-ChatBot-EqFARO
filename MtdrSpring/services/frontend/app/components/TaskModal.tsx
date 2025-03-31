@@ -208,7 +208,11 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
                               e.target.value as "Feature" | "Issue"
                             )
                           }
-                          className="px-2 py-2 my-[1px] text-xs text-white rounded-lg outline outline-oc-outline-light/40 bg-oc-neutral/50 min-w-32 border-r-5 border-transparent"
+                          className={`px-2 py-2 my-[1px] text-xs  rounded-lg outline  min-w-32 border-r-5 border-transparent ${
+                            editableTask.tag === "Feature"
+                              ? " text-green-300 outline-green-300/20"
+                              : " text-red-300 outline-red-300/20"
+                          }`}
                         >
                           <option value="Feature">Feature</option>
                           <option value="Issue">Issue</option>
