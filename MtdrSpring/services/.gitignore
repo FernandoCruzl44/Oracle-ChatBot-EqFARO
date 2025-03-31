@@ -3,3 +3,4 @@ wallet/
 .project
 .settings
 .classpath
+.mvn
