@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import type { Sprint } from "~/types";
 import useTaskStore from "~/store";
-import Portal from "./Portal";
+import Portal from "../../Portal";
 
 interface SprintTransitionModalProps {
   sprint: Sprint;

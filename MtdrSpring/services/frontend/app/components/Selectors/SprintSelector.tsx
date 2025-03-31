@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Sprint } from "~/types";
 import useTaskStore from "~/store";
-import { EditSprintModal } from "./EditSprintModal";
+import { EditSprintModal } from "../Modals/Sprint/EditSprintModal";
 
 interface SprintSelectorProps {
   teamId: number;

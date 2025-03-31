@@ -1,15 +1,15 @@
 // app/views/TasksView.tsx
 import { useEffect, useState } from "react";
 import type { Task, Sprint } from "~/types";
-import TaskModal from "../components/TaskModal";
-import CreateTaskModal from "../components/CreateTaskModal";
-import { SprintTransitionModal } from "../components/SprintTransitionModal";
-import { CreateSprintModal } from "../components/CreateSprintModal";
-import { SprintSelector } from "../components/SprintSelector";
+import TaskModal from "../components/Modals/Task/TaskModal";
+import CreateTaskModal from "../components/Modals/Task/CreateTaskModal";
+import { SprintTransitionModal } from "../components/Modals/Sprint/SprintTransitionModal";
+import { CreateSprintModal } from "../components/Modals/Sprint/CreateSprintModal";
+import { SprintSelector } from "../components/Selectors/SprintSelector";
 import useTaskStore from "~/store";
-import TasksSkeletonLoader from "~/components/TasksSkeletonLoader";
+import TasksSkeletonLoader from "~/components/Skeletons/TasksSkeletonLoader";
 import { generateAvatarColor } from "~/lib/generateAvatarColor";
-import TaskStatusSelector from "~/components/TaskStatusSelector";
+import TaskStatusSelector from "~/components/Selectors/TaskStatusSelector";
 
 export default function TaskView() {
   const {
