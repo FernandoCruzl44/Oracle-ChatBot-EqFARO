@@ -87,7 +87,7 @@ export function Toolbar({
           {selectedTasks.length > 0 && (
             <button
               onClick={handleDeleteTasks}
-              className="px-4 py-2 bg-red-100 hover:bg-red-200 rounded-lg border border-oc-outline-light flex items-center text-red-700 text-sm"
+              className="px-4 py-2  hover:bg-red-900/50 rounded-lg border border-red-400 flex items-center text-red-400 text-sm transition-colors"
             >
               <i className="fa fa-trash mr-2"></i>
               <span>Eliminar ({selectedTasks.length})</span>
