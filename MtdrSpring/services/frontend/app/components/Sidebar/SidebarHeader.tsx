@@ -9,7 +9,7 @@ export default function SidebarHeader() {
         src="/favicon.ico"
         alt="Logo"
         style={{ imageRendering: "pixelated" }}
-        className="w-10 h-10 rounded-md bg-oc-red flex items-center justify-center mr-3"
+        className="w-10 h-10 rounded-md bg-[#D13B3B] flex items-center justify-center mr-3 p-1.5"
       />
       <div>
         <div className="font-medium">Faro</div>
