@@ -4,8 +4,10 @@ import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
 import com.springboot.MyTodoList.repository.TaskRepository;
 import com.springboot.MyTodoList.repository.CommentRepository;
+import com.springboot.MyTodoList.repository.SprintRepository;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.Comment;
+import com.springboot.MyTodoList.model.Sprint;
 
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -28,12 +30,20 @@ public class BotController extends TelegramLongPollingBot {
 	private final UserRepository userRepository;
 	private final TaskRepository taskRepository;
 	private final CommentRepository commentRepository;
+	private final SprintRepository sprintRepository;
 
 	// Identifiers for callback data
 	private static final String LOGIN_USER_PREFIX = "login_";
 	private static final String TASK_PREFIX = "task_";
 	private static final String SHOW_COMMENTS = "showComments";
 	private static final String ADD_COMMENT = "addComment";
+	//private static final String ADD_TASK = "addTask";
+	private static final String ADD_TASK_TITLE = "addTaskTitle";
+	private static final String ADD_TASK_DESCRIPTION = "addTaskDescription";
+	private static final String ADD_TASK_ESTIMATED_HOURS = "addTaskEstimatedHours";
+	private static final String ADD_TASL_SPRINT = "addTaskSprint";
+	private static final String SPRINT_SELECT_PREFIX = "sprint_select_";
+	private static final String NO_SPRINT_OPTION = "no_sprint";
 
 	// User state management
 	// - stores current user (loggedInUserId)
@@ -58,6 +68,7 @@ public class BotController extends TelegramLongPollingBot {
 		this.userRepository = handle.attach(UserRepository.class);
 		this.taskRepository = handle.attach(TaskRepository.class);
 		this.commentRepository = handle.attach(CommentRepository.class);
+		this.sprintRepository = handle.attach(SprintRepository.class);
 
 		logger.info("Bot initialized with username: " + botUsername);
 	}
@@ -83,7 +94,43 @@ public class BotController extends TelegramLongPollingBot {
 					addNewComment(chatId, state.selectedTaskId, state.loggedInUserId, text);
 					state.currentAction = "NORMAL";
 					showComments(chatId, state.selectedTaskId);
-				} else {
+				} 
+				else if ("ADDING_TASK_TITLE".equals(state.currentAction)){
+					state.NewTask.setTitle(text);
+					state.currentAction = "ADDING_TASK_DESCRIPTION";
+					sendTelegramMessage(chatId, "Por favor, escribe la descripción de la tarea:");
+				}
+				else if ("ADDING_TASK_DESCRIPTION".equals(state.currentAction)){
+					state.NewTask.setDescription(text);
+					state.currentAction = "ADDING_TASK_ESTIMATED_HOURS";
+					sendTelegramMessage(chatId, "Por favor, escribe las horas estimadas de la tarea:");
+				}
+				else if("ADDING_TASK_ESTIMATED_HOURS".equals(state.currentAction)){
+					state.NewTask.setEstimatedHours(Double.parseDouble(text));
+					state.currentAction = "ADDING_TASK_TAG";
+					sendTelegramMessage(chatId, "Por favor, escribe el Tag de la tarea (Feature/Issue):");
+				}
+				else if("ADDING_TASK_TAG".equals(state.currentAction)){
+					state.NewTask.setTag(text);
+					state.currentAction = "ADDING_TASK_STATUS";
+					sendTelegramMessage(chatId, "Por favor, escribe Backlog en este status: ");
+				}
+
+				else if("ADDING_TASK_STATUS".equals(state.currentAction)){
+					state.NewTask.setStatus(text);
+					state.currentAction = "SELECTING_SPRINT"; // Cambiamos el estado
+    
+					// Obtenemos el equipo del usuario para mostrar sus sprints
+					Optional<User> currentUser = userRepository.findById(state.loggedInUserId);
+					if (currentUser.isPresent() && currentUser.get().getTeamId() != null) {
+						showSprintsForTeam(chatId, currentUser.get().getTeamId());
+					} else {
+						sendTelegramMessage(chatId, "No se pudo determinar tu equipo. No se asignará ningún sprint.");
+						state.NewTask.setSprintId(null);
+						createNewTask(chatId, state);
+					}
+				}
+				else {
 					sendTelegramMessage(chatId, "Comando no reconocido. Usa /start para comenzar.");
 				}
 			}
@@ -119,7 +166,41 @@ public class BotController extends TelegramLongPollingBot {
 			
 			else if (ADD_COMMENT.equals(callbackData)) {
 				state.currentAction = "ADDING_COMMENT";
-				promptForComment(chatId);
+				sendTelegramMessage(chatId, "Por favor, escribe tu comentario ahora:");
+			}
+			else if(ADD_TASK_TITLE.equals(callbackData)){
+				state.currentAction = "ADDING_TASK_TITLE";
+				state.NewTask = new Task();
+				sendTelegramMessage(chatId, "Por favor, escribe el título de la tarea:");
+			}
+			else if(ADD_TASK_DESCRIPTION.equals(callbackData)){
+				state.currentAction = "ADDING_TASK_DESCRIPTION";
+				sendTelegramMessage(chatId, "Por favor, escribe la descripción de la tarea:");
+			}
+			else if(ADD_TASK_ESTIMATED_HOURS.equals(callbackData)){
+				state.currentAction = "ADDING_TASK_ESTIMATED_HOURS";
+				sendTelegramMessage(chatId, "Por favor, escribe las horas estimadas de la tarea:");
+			}
+			else if(ADD_TASL_SPRINT.equals(callbackData)){
+				state.currentAction = "ADDING_TASK_SPRINT";
+				sendTelegramMessage(chatId, "Por favor, escribe el sprint de la tarea:");
+			}
+			else if (callbackData.startsWith(SPRINT_SELECT_PREFIX)) {
+				String sprintIdStr = callbackData.substring(SPRINT_SELECT_PREFIX.length());
+				
+				if (NO_SPRINT_OPTION.equals(sprintIdStr)) {
+					state.NewTask.setSprintId(null);
+				} else {
+					Long sprintId = Long.parseLong(sprintIdStr);
+					state.NewTask.setSprintId(sprintId);
+				}
+				
+				// Procedemos a crear la tarea con el sprint seleccionado
+				sendTelegramMessage(chatId, "Procesando la creación de la tarea...");
+				createNewTask(chatId, state);
+			}
+			else {
+				sendTelegramMessage(chatId, "Acción no reconocida.");
 			}
 		}
 	}
@@ -170,8 +251,10 @@ public class BotController extends TelegramLongPollingBot {
 			rows.add(Collections.singletonList(btn));
 		}
 
+		rows.add(Collections.singletonList(createButton("Agregar tarea", ADD_TASK_TITLE)));
 		markup.setKeyboard(rows);
 		sendTelegramMessage(chatId, "Estas son tus tareas asignadas:", markup);
+		
 	}
 
 
@@ -184,12 +267,14 @@ public class BotController extends TelegramLongPollingBot {
 
 		Task task = optTask.get();
 		String messageText = String.format(
-				"Tarea: %s\nDescripción: %s\nEstado: %s\nInicio: %s\nFin: %s\n",
+				"Tarea: %s\nDescripción: %s\nEstado: %s\nInicio: %s\nFin: %s\nHoras Estimadas: %s\nHoras Reales: %s\n",
 				task.getTitle(),
 				task.getDescription(),
 				task.getStatus(),
 				task.getStartDate(),
-				task.getEndDate());
+				task.getEndDate(), 
+				task.getEstimatedHours(),
+				task.getActualHours());
 
 		// Buttons: show comments, add new comment
 		InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
@@ -227,11 +312,7 @@ public class BotController extends TelegramLongPollingBot {
 
 		sendTelegramMessage(chatId, sb.toString());
 	}
-
 	
-	private void promptForComment(long chatId) {
-		sendTelegramMessage(chatId, "Por favor, escribe tu comentario ahora:");
-	}
 	
 	private void addNewComment(long chatId, Long taskId, Long userId, String content) {
 		if (taskId == null || userId == null) {
@@ -253,6 +334,68 @@ public class BotController extends TelegramLongPollingBot {
 		commentRepository.insert(comment);
 
 		sendTelegramMessage(chatId, "Comentario agregado correctamente.");
+	}
+
+	private void createNewTask(Long chatId, UserState state) {
+		state.NewTask.setCreatorId(state.loggedInUserId);
+		state.NewTask.setStartDate(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+		state.NewTask.setActualHours(0.0);
+		
+		// El usuario actualmente logueado será el asignado a la tarea
+		List<User> assignees = new ArrayList<>();
+		Optional<User> currentUser = userRepository.findById(state.loggedInUserId);
+		if (currentUser.isPresent()) {
+			assignees.add(currentUser.get());
+			state.NewTask.setCreatorName(currentUser.get().getName());
+		}
+		
+		// Guardar la tarea en la base de datos
+		Long taskId = taskRepository.insert(state.NewTask);
+		
+		// Agregar asignación de usuario a la tarea
+		if (taskId != null) {
+			taskRepository.addAssignee(taskId, state.loggedInUserId);
+			sendTelegramMessage(chatId, "¡Tarea creada correctamente con ID: " + taskId + "!");
+			
+			// Resetear el estado y mostrar la tarea creada
+			state.selectedTaskId = taskId;
+			state.currentAction = "NORMAL";
+			showTaskDetails(chatId, taskId);
+
+		} else {
+			sendTelegramMessage(chatId, "Error al crear la tarea. Por favor, intenta nuevamente.");
+			state.currentAction = "NORMAL";
+		}
+	}
+
+	private void showSprintsForTeam(long chatId, Long teamId) {
+		List<Sprint> sprints = sprintRepository.findByTeamId(teamId);
+		
+		InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+		List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+		
+		if (sprints.isEmpty()) {
+			sendTelegramMessage(chatId, "No hay sprints disponibles para tu equipo. La tarea se creará sin asignar a un sprint.");
+			UserState state = userStates.get(chatId);
+			state.NewTask.setSprintId(null);
+			createNewTask(chatId, state);
+			return;
+		}
+		
+		// Crear un botón para cada sprint
+		for (Sprint sprint : sprints) {
+			InlineKeyboardButton btn = createButton(
+					sprint.getName() ,
+					SPRINT_SELECT_PREFIX + sprint.getId());
+			rows.add(Collections.singletonList(btn));
+		}
+		
+		// Opción para no asignar sprint
+		InlineKeyboardButton noSprintBtn = createButton("Sin sprint", SPRINT_SELECT_PREFIX + NO_SPRINT_OPTION);
+		rows.add(Collections.singletonList(noSprintBtn));
+		
+		markup.setKeyboard(rows);
+		sendTelegramMessage(chatId, "Selecciona el sprint para esta tarea:", markup);
 	}
 
 	// Utility methods
@@ -292,6 +435,7 @@ public class BotController extends TelegramLongPollingBot {
 		Long loggedInUserId; // Which user is "logged in"
 		Long selectedTaskId; // Which task the user is viewing
 		String currentAction; // e.g. "NORMAL", "ADDING_COMMENT"
+		Task NewTask; 
 
 		UserState() {
 			reset();
@@ -301,6 +445,8 @@ public class BotController extends TelegramLongPollingBot {
 			this.loggedInUserId = null;
 			this.selectedTaskId = null;
 			this.currentAction = "NORMAL";
+			this.NewTask = null;
 		}
 	}
+
 }
