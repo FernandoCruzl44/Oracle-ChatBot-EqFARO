@@ -53,7 +53,7 @@ export function Table({
 
   return (
     <div className="overflow-y-auto flex-grow">
-      <table className="min-w-full text-white table-fixed">
+      <table className="min-w-full text-white table-fixed ">
         <thead className="sticky top-0 z-10 bg-oc-primary">
           <tr style={{ boxShadow: "0 1px 0px #343231" }}>
             {tableHeaders.map((header) => (
