@@ -1,6 +1,6 @@
 // app/components/SidebarProfile.tsx
 import { useEffect } from "react";
-import { generateAvatarColor } from "~/lib/generateAvatarColor";
+import { generateAvatarColor } from "~/lib/utils";
 import useTaskStore from "~/store";
 
 export default function SidebarProfile() {
