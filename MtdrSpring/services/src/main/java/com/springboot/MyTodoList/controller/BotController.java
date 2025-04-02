@@ -6,6 +6,7 @@ import com.springboot.MyTodoList.repository.TaskRepository;
 import com.springboot.MyTodoList.repository.CommentRepository;
 import com.springboot.MyTodoList.repository.SprintRepository;
 import com.springboot.MyTodoList.model.Task;
+import com.springboot.MyTodoList.MyTodoListApplication;
 import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.Sprint;
 
@@ -25,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class BotController extends TelegramLongPollingBot {
 	
-	private static final Logger logger = LoggerFactory.getLogger(BotController.class);
+	private static final Logger logger = LoggerFactory.getLogger(MyTodoListApplication.class);
 
 	private final UserRepository userRepository;
 	private final TaskRepository taskRepository;
@@ -73,21 +74,50 @@ public class BotController extends TelegramLongPollingBot {
 		logger.info("Bot initialized with username: " + botUsername);
 	}
 
+	private UserState findUserOrNewState(long chatId) {
+		// TODO: Check DB for user, or create new UserState with no user selected.
+		UserState new_US = new UserState();
+
+		Optional<User> userOpt = userRepository.findByChatId(chatId);
+		if (userOpt.isPresent()) {
+			new_US.loggedInUserId = userOpt.get().getId();
+			new_US.userName = userOpt.get().getName();
+		}
+
+		return new_US;
+	}
+
 	@Override
 	public void onUpdateReceived(Update update) {
 		// If it's a text message
 		if (update.hasMessage() && update.getMessage().hasText()) {
 			long chatId = update.getMessage().getChatId();
+			logger.debug("Handling message from Tel_ID " + chatId);
 			String text = update.getMessage().getText();
 
 			// Make sure user has a state entry
-			UserState state = userStates.computeIfAbsent(chatId, k -> new UserState());
+			UserState state = userStates.computeIfAbsent(chatId, k -> findUserOrNewState(k));
 
+			logger.debug("Got " + text + " in context " + state);
 			// Basic commands
-			if ("/start".equalsIgnoreCase(text)) {
+			if ("/login".equalsIgnoreCase(text)) {
 				// Reset and show the "login" flow
 				state.reset();
 				showUserList(chatId);
+			} else if ("/logout".equalsIgnoreCase(text)) {
+				// If this chat was in the DB set to any user, it forgets it.
+				sendTelegramMessage(chatId, "Terminando sesión como " + state.userName);
+				userRepository.forgetChatId(chatId);
+				state.reset();
+			} else if ("/start".equalsIgnoreCase(text)) {
+				if (state.loggedInUserId == null) {
+					sendTelegramMessage(chatId, "No tenemos registrado a este usuario, inicie sesión.");
+					showUserList(chatId);
+				} else { // User found!
+					sendTelegramMessage(chatId, "Sesión iniciada como " + state.userName  + " automáticamente, use '/logout' para ingresar como otro usuario.");
+					listTasksForUser(chatId, state.loggedInUserId);
+				}
+
 			} else {
 				// If the user is in the middle of adding a comment, process that
 				if ("ADDING_COMMENT".equals(state.currentAction)) {
@@ -138,9 +168,12 @@ public class BotController extends TelegramLongPollingBot {
 		
 		else if (update.hasCallbackQuery()) {
 			long chatId = update.getCallbackQuery().getMessage().getChatId();
+			
+			logger.debug("Handling message from Tel_ID " + chatId);
 			String callbackData = update.getCallbackQuery().getData();
+			logger.debug("Responding to: " + callbackData);
 
-			UserState state = userStates.computeIfAbsent(chatId, k -> new UserState());
+			UserState state = userStates.computeIfAbsent(chatId, k -> findUserOrNewState(k));
 
 			if (callbackData.startsWith(LOGIN_USER_PREFIX)) {
 				String userIdString = callbackData.substring(LOGIN_USER_PREFIX.length());
@@ -148,9 +181,19 @@ public class BotController extends TelegramLongPollingBot {
 				Optional<User> user = userRepository.findById(userId);
 
 				state.loggedInUserId = userId;
+				state.userName = user.get().getName();
+				userRepository.forgetChatId(chatId); // Don't allow duplicate telegramID fields
+				userRepository.setChatIdForUser(userId, chatId);
 				state.currentAction = "NORMAL";
 				sendTelegramMessage(chatId, "Has iniciado sesión como usuario: " + user.get().getName());
+				sendTelegramMessage(chatId, "Puedes cerrar sesión con '/logout' en cualquier momento");
 				listTasksForUser(chatId, userId);
+			}
+
+			else if (state.loggedInUserId == null) {
+				logger.debug(chatId + " seems to be logged out...");
+				sendTelegramMessage(chatId, "No haz iniciado sesión actualmente, " +
+						    "inicia sesión con '/login' para continuar...");
 			}
 			
 			else if (callbackData.startsWith(TASK_PREFIX)) {
@@ -224,7 +267,7 @@ public class BotController extends TelegramLongPollingBot {
 
 		for (User user : allUsers) {
 			InlineKeyboardButton btn = createButton(
-					user.getName() + " (ID: " + user.getId() + ")",
+					user.getName() + " (" + user.getEmail() + ")",
 					LOGIN_USER_PREFIX + user.getId());
 			rows.add(Collections.singletonList(btn));
 		}
@@ -273,8 +316,8 @@ public class BotController extends TelegramLongPollingBot {
 				task.getStatus(),
 				task.getStartDate(),
 				task.getEndDate(), 
-				task.getEstimatedHours(),
-				task.getActualHours());
+				(task.getEstimatedHours() != null) ? task.getEstimatedHours() : "--",
+				(task.getActualHours() != null) ? task.getActualHours() : "--");
 
 		// Buttons: show comments, add new comment
 		InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
@@ -432,7 +475,9 @@ public class BotController extends TelegramLongPollingBot {
 
 	// UserState helper class
 	private static class UserState {
+		// TODO: Just use User and Task objects instead of sparse data
 		Long loggedInUserId; // Which user is "logged in"
+		String userName;
 		Long selectedTaskId; // Which task the user is viewing
 		String currentAction; // e.g. "NORMAL", "ADDING_COMMENT"
 		Task NewTask; 
@@ -443,6 +488,7 @@ public class BotController extends TelegramLongPollingBot {
 
 		void reset() {
 			this.loggedInUserId = null;
+			this.userName = null;
 			this.selectedTaskId = null;
 			this.currentAction = "NORMAL";
 			this.NewTask = null;

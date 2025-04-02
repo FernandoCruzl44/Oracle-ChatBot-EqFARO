@@ -47,6 +47,15 @@ public interface UserRepository {
         @SqlUpdate("DELETE FROM users WHERE id = :id")
         int delete(@Bind("id") Long id);
 
+	@SqlUpdate("UPDATE users set telegramId = null WHERE telegramId = :chatId")
+	int forgetChatId(@Bind("chatId") long chatId);
+
+	@SqlQuery("SELECT * FROM users WHERE users.telegramId = :chatId")
+	Optional<User> findByChatId(@Bind("chatId") long chatId);
+
+	@SqlUpdate("UPDATE users SET telegramId = :chatId WHERE id = :id")
+	int setChatIdForUser(@Bind("id") long id, @Bind("chatId") long chatId);
+
         class UserMapper implements RowMapper<User> {
 
                 @Override
@@ -63,7 +72,7 @@ public interface UserRepository {
                         }
 
                         user.setRole(rs.getString("role"));
-                        user.setTelegramId(rs.getString("telegramId"));
+                        user.setTelegramId(rs.getLong("telegramId"));
 
                         try {
                                 Long teamId = rs.getObject("team_id", Long.class);

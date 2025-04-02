@@ -11,7 +11,7 @@ public class User {
     private String password;
 
     private String role;
-    private String telegramId;
+    private Long telegramId;
     private String teamRole;
     private Long teamId;
     private String teamName;
@@ -56,11 +56,11 @@ public class User {
         this.role = role;
     }
 
-    public String getTelegramId() {
+    public Long getTelegramId() {
         return telegramId;
     }
 
-    public void setTelegramId(String telegramId) {
+    public void setTelegramId(Long telegramId) {
         this.telegramId = telegramId;
     }
 
