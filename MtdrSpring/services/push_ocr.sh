@@ -13,13 +13,12 @@ docker buildx build --platform linux/amd64 -f Dockerfile -t faroimage .
 # Set the OCI registry variables
 REGISTRY="mx-queretaro-1.ocir.io"
 NAMESPACE="axco8elk7e3y"
-RUN_NAME="okay"
-IMAGE_NAME="faro"
-TAG="v1.0"
-MTDR_KEY="v"
+RUN_NAME="faro"
+IMAGE_NAME="oraclechatbot"
+TAG=$(date +%s)
 
 # Full path including MTDR_KEY
-FULL_IMAGE_PATH="$REGISTRY/$NAMESPACE/$RUN_NAME/$IMAGE_NAME:$TAG-$MTDR_KEY"
+FULL_IMAGE_PATH="$REGISTRY/$NAMESPACE/$RUN_NAME/$IMAGE_NAME:$TAG"
 
 # # Check if already logged in to registry, if not prompt for login
 # if ! docker info | grep -q "$REGISTRY"; then
@@ -39,4 +38,4 @@ echo "Pushing image to OCI registry..."
 docker push "$FULL_IMAGE_PATH"
 
 echo "Successfully pushed image: $FULL_IMAGE_PATH"
-echo "MTDR_KEY: $MTDR_KEY (saved to $MTDR_KEY_FILE for future use)"
+# echo "MTDR_KEY: $MTDR_KEY (saved to $MTDR_KEY_FILE for future use)"
