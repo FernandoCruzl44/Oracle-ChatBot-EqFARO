@@ -49,6 +49,7 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String TAG_SELECT_PREFIX = "tag_select_";
 	private static final String FEATURE = "Feature";
 	private static final String ISSUE = "Issue";
+	private static final String CHANGE_REAL_HOURS = "real_hours";
 
 	// User state management
 	// - stores current user (loggedInUserId)
@@ -186,10 +187,14 @@ public class BotController extends TelegramLongPollingBot {
 					state.NewTask.setEstimatedHours(Double.parseDouble(text));
 					showTagOptions(chatId);
 				}
-				else if("ADDING_TASK_SPRINT".equals(state.currentAction)){
-    
+				else if("ADDING_TASK_REAL_TIME".equals(state.currentAction)){
 					
+					taskRepository.updateRealHours(state.selectedTaskId, Double.parseDouble(text));
+					sendTelegramMessage(chatId, "Horas reales actualizadas.");
+					state.softReset();
+					listTasksForUser(chatId, state.loggedInUserId);
 				}
+				
 				else {
 					sendTelegramMessage(chatId, "Comando no reconocido. Usa /tasks para comenzar.");
 				}
@@ -298,6 +303,11 @@ public class BotController extends TelegramLongPollingBot {
 						createNewTask(chatId, state);
 					}
 			}
+			else if(CHANGE_REAL_HOURS.equals(callbackData)){
+				sendTelegramMessage(chatId, "Por favor, escribe las horas reales de la tarea:");
+				state.currentAction = "ADDING_TASK_REAL_TIME";
+				sendTelegramMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+			}
 			else {
 				sendTelegramMessage(chatId, "Acción no reconocida.");
 			}
@@ -387,6 +397,8 @@ public class BotController extends TelegramLongPollingBot {
 				createButton("Agregar comentario", ADD_COMMENT)));
 		rows.add(Collections.singletonList(
 				createButton("Cambiar estatus", CHANGE_STATUS)));
+		rows.add(Collections.singletonList(
+				createButton("Colocar horas reales", CHANGE_REAL_HOURS)));
 
 		markup.setKeyboard(rows);
 		sendTelegramMessage(chatId, messageText, markup);

@@ -94,6 +94,9 @@ public interface TaskRepository {
         @SqlUpdate("UPDATE tasks SET status = :status WHERE id = :taskId")
         int updateStatus(@Bind("taskId") Long taskId, @Bind("status") String status);
 
+        @SqlUpdate("UPDATE tasks SET actual_hours = :realHours WHERE id = :taskId")
+        int updateRealHours(@Bind("taskId") Long taskId, @Bind("realHours") Double realHours);
+
         @SqlUpdate("DELETE FROM tasks WHERE id IN (<taskIds>)")
         int deleteMultiple(@BindList("taskIds") List<Long> taskIds);
 
