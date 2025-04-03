@@ -46,6 +46,9 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String NO_SPRINT_OPTION = "no_sprint";
 	private static final String STATUS_SELECT_PREFIX = "status_select_";
 	private static final String CHANGE_STATUS = "change_status";
+	private static final String TAG_SELECT_PREFIX = "tag_select_";
+	private static final String FEATURE = "Feature";
+	private static final String ISSUE = "Issue";
 
 	// User state management
 	// - stores current user (loggedInUserId)
@@ -181,6 +184,7 @@ public class BotController extends TelegramLongPollingBot {
 				else if("ADDING_TASK_ESTIMATED_HOURS".equals(state.currentAction)){
 					state.NewTask.setEstimatedHours(Double.parseDouble(text));
 					state.currentAction = "ADDING_TASK_TAG";
+					showTagOptions(chatId);
 					sendTelegramMessage(chatId, "Por favor, escribe el Tag de la tarea (Feature/Issue):");
 				}
 				else if("ADDING_TASK_TAG".equals(state.currentAction)){
@@ -287,6 +291,14 @@ public class BotController extends TelegramLongPollingBot {
 				
 				// Mostrar los detalles actualizados
 				listTasksForUser(chatId, state.loggedInUserId);
+			}
+			else if(callbackData.startsWith(TAG_SELECT_PREFIX)){
+				String tag = callbackData.substring(TAG_SELECT_PREFIX.length());
+				if(FEATURE.equals(tag) || ISSUE.equals(tag)){
+					state.NewTask.setTag(tag);
+					
+				}
+				
 			}
 			else {
 				sendTelegramMessage(chatId, "Acción no reconocida.");
@@ -495,7 +507,19 @@ public class BotController extends TelegramLongPollingBot {
 		sendTelegramMessage(chatId, "Selecciona el sprint para esta tarea:", markup);
 	}
 
-	private void showTagOptions(long chatId){
+	private void showTagOptions(long chatId) {
+		InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+		List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+		
+		// Crear botones para cada opción de tag
+		InlineKeyboardButton featureBtn = createButton(FEATURE, TAG_SELECT_PREFIX + FEATURE);
+		InlineKeyboardButton issueBtn = createButton(ISSUE, TAG_SELECT_PREFIX + ISSUE);
+		
+		rows.add(Collections.singletonList(featureBtn));
+		rows.add(Collections.singletonList(issueBtn));
+		
+		markup.setKeyboard(rows);
+		sendTelegramMessage(chatId, "Selecciona el tag para la tarea:", markup);
 
 	}
 
