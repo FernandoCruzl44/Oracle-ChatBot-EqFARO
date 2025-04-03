@@ -276,6 +276,13 @@ public class BotController extends TelegramLongPollingBot {
 				// Extraer el nombre del estado de la enumeración
 				String statusName = callbackData.substring(STATUS_SELECT_PREFIX.length());
 				TaskStatus selectedStatus = TaskStatus.valueOf(statusName);
+
+				if(selectedStatus == TaskStatus.COMPLETED){
+					String endDate = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date());
+					taskRepository.updateEndDate(state.selectedTaskId, endDate);
+					sendTelegramMessage(chatId, "Fecha Final declarada como " + endDate);
+					
+				}
 				
 				// Actualizar el estado de la tarea
 				taskRepository.updateStatus(state.selectedTaskId, selectedStatus.getDisplayName());
