@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: telegram-bot
-        image: mx-queretaro-1.ocir.io/axco8elk7e3y/faro/oraclechatbot:1743651372
+        image: mx-queretaro-1.ocir.io/axco8elk7e3y/faro/oraclechatbot:1743653761
         env:
         - name: POD_NAME
           valueFrom:
