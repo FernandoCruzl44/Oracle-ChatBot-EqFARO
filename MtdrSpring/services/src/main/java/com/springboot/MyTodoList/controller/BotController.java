@@ -135,25 +135,28 @@ public class BotController extends TelegramLongPollingBot {
 			logger.debug("Got " + text + " in context " + state);
 			// Basic commands
 			if ("/login".equalsIgnoreCase(text)) {
-				// Reset and show the "login" flow
-				state.reset();
+				// Solo se termina sesión actual si se usa /logout o se intercambia por otro usuario con este comando.
 				showUserList(chatId);
 			} else if ("/logout".equalsIgnoreCase(text)) {
 				// If this chat was in the DB set to any user, it forgets it.
 				sendTelegramMessage(chatId, "Terminando sesión como " + state.userName);
 				userRepository.forgetChatId(chatId);
 				state.reset();
-			} else if ("/start".equalsIgnoreCase(text)) {
+			} else if ("/start".equalsIgnoreCase(text) || "/tasks".equalsIgnoreCase(text)) {
 				if (state.loggedInUserId == null) {
-					sendTelegramMessage(chatId, "No tenemos registrado a este usuario, inicie sesión.");
+					sendTelegramMessage(chatId, "No hay sesión de este usuario, inicie sesión.");
 					showUserList(chatId);
-				} else { // User found!
+				} else {
 					sendTelegramMessage(chatId, "Sesión iniciada como " + state.userName  + " automáticamente, use '/logout' para ingresar como otro usuario.");
 					listTasksForUser(chatId, state.loggedInUserId);
 				}
-
-			}else if("/cancel".equalsIgnoreCase(text)){
-
+			} else if ("/whoami".equalsIgnoreCase(text)) {
+				if (state.loggedInUserId == null) {
+					sendTelegramMessage(chatId, "No hay sesión de este usuario, inicie sesión.");
+				} else {
+					sendTelegramMessage(chatId, "Sesión de " + state.userName);
+				}
+			} else if("/cancel".equalsIgnoreCase(text)){
 				state.softReset();
 				sendTelegramMessage(chatId, "Acción cancelada.");
 				listTasksForUser(chatId, state.loggedInUserId);
@@ -198,7 +201,7 @@ public class BotController extends TelegramLongPollingBot {
 					
 				}
 				else {
-					sendTelegramMessage(chatId, "Comando no reconocido. Usa /start para comenzar.");
+					sendTelegramMessage(chatId, "Comando no reconocido. Usa /tasks para comenzar.");
 				}
 			}
 		}
