@@ -38,13 +38,14 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String TASK_PREFIX = "task_";
 	private static final String SHOW_COMMENTS = "showComments";
 	private static final String ADD_COMMENT = "addComment";
-	//private static final String ADD_TASK = "addTask";
 	private static final String ADD_TASK_TITLE = "addTaskTitle";
 	private static final String ADD_TASK_DESCRIPTION = "addTaskDescription";
 	private static final String ADD_TASK_ESTIMATED_HOURS = "addTaskEstimatedHours";
 	private static final String ADD_TASL_SPRINT = "addTaskSprint";
 	private static final String SPRINT_SELECT_PREFIX = "sprint_select_";
 	private static final String NO_SPRINT_OPTION = "no_sprint";
+	private static final String STATUS_SELECT_PREFIX = "status_select_";
+	private static final String CHANGE_STATUS = "change_status";
 
 	// User state management
 	// - stores current user (loggedInUserId)
@@ -85,6 +86,39 @@ public class BotController extends TelegramLongPollingBot {
 		}
 
 		return new_US;
+
+	}
+
+	public enum TaskStatus {
+		BACKLOG("Backlog"),
+		IN_PROGRESS("En progreso"),
+		COMPLETED("Completada"),
+		CANCELLED("Cancelada");
+		
+		private final String displayName;
+		
+		TaskStatus(String displayName) {
+			this.displayName = displayName;
+		}
+		
+		public String getDisplayName() {
+			return displayName;
+		}
+		
+		@Override
+		public String toString() {
+			return displayName;
+		}
+		
+		// Método para convertir un string a TaskStatus
+		public static TaskStatus fromString(String text) {
+			for (TaskStatus status : TaskStatus.values()) {
+				if (status.displayName.equalsIgnoreCase(text)) {
+					return status;
+				}
+			}
+			return BACKLOG; // Valor por defecto
+		}
 	}
 
 	@Override
@@ -142,12 +176,8 @@ public class BotController extends TelegramLongPollingBot {
 				}
 				else if("ADDING_TASK_TAG".equals(state.currentAction)){
 					state.NewTask.setTag(text);
-					state.currentAction = "ADDING_TASK_STATUS";
-					sendTelegramMessage(chatId, "Por favor, escribe Backlog en este status: ");
-				}
+					state.NewTask.setStatus(TaskStatus.BACKLOG.getDisplayName());
 
-				else if("ADDING_TASK_STATUS".equals(state.currentAction)){
-					state.NewTask.setStatus(text);
 					state.currentAction = "SELECTING_SPRINT"; // Cambiamos el estado
     
 					// Obtenemos el equipo del usuario para mostrar sus sprints
@@ -159,6 +189,7 @@ public class BotController extends TelegramLongPollingBot {
 						state.NewTask.setSprintId(null);
 						createNewTask(chatId, state);
 					}
+					
 				}
 				else {
 					sendTelegramMessage(chatId, "Comando no reconocido. Usa /start para comenzar.");
@@ -216,18 +247,6 @@ public class BotController extends TelegramLongPollingBot {
 				state.NewTask = new Task();
 				sendTelegramMessage(chatId, "Por favor, escribe el título de la tarea:");
 			}
-			else if(ADD_TASK_DESCRIPTION.equals(callbackData)){
-				state.currentAction = "ADDING_TASK_DESCRIPTION";
-				sendTelegramMessage(chatId, "Por favor, escribe la descripción de la tarea:");
-			}
-			else if(ADD_TASK_ESTIMATED_HOURS.equals(callbackData)){
-				state.currentAction = "ADDING_TASK_ESTIMATED_HOURS";
-				sendTelegramMessage(chatId, "Por favor, escribe las horas estimadas de la tarea:");
-			}
-			else if(ADD_TASL_SPRINT.equals(callbackData)){
-				state.currentAction = "ADDING_TASK_SPRINT";
-				sendTelegramMessage(chatId, "Por favor, escribe el sprint de la tarea:");
-			}
 			else if (callbackData.startsWith(SPRINT_SELECT_PREFIX)) {
 				String sprintIdStr = callbackData.substring(SPRINT_SELECT_PREFIX.length());
 				
@@ -241,6 +260,21 @@ public class BotController extends TelegramLongPollingBot {
 				// Procedemos a crear la tarea con el sprint seleccionado
 				sendTelegramMessage(chatId, "Procesando la creación de la tarea...");
 				createNewTask(chatId, state);
+			}
+			else if(CHANGE_STATUS.equals(callbackData)){
+				showStatusOptions(chatId,state.selectedTaskId);
+			}
+			else if (callbackData.startsWith(STATUS_SELECT_PREFIX)) {
+				// Extraer el nombre del estado de la enumeración
+				String statusName = callbackData.substring(STATUS_SELECT_PREFIX.length());
+				TaskStatus selectedStatus = TaskStatus.valueOf(statusName);
+				
+				// Actualizar el estado de la tarea
+				taskRepository.updateStatus(state.selectedTaskId, selectedStatus.getDisplayName());
+				sendTelegramMessage(chatId, "Estado actualizado a: " + selectedStatus.getDisplayName());
+				
+				// Mostrar los detalles actualizados
+				listTasksForUser(chatId, state.loggedInUserId);
 			}
 			else {
 				sendTelegramMessage(chatId, "Acción no reconocida.");
@@ -327,6 +361,8 @@ public class BotController extends TelegramLongPollingBot {
 				createButton("Ver comentarios", SHOW_COMMENTS)));
 		rows.add(Collections.singletonList(
 				createButton("Agregar comentario", ADD_COMMENT)));
+		rows.add(Collections.singletonList(
+				createButton("Cambiar estatus", CHANGE_STATUS)));
 
 		markup.setKeyboard(rows);
 		sendTelegramMessage(chatId, messageText, markup);
@@ -390,6 +426,10 @@ public class BotController extends TelegramLongPollingBot {
 		if (currentUser.isPresent()) {
 			assignees.add(currentUser.get());
 			state.NewTask.setCreatorName(currentUser.get().getName());
+
+			if (currentUser.get().getTeamId() != null) {
+            	state.NewTask.setTeamId(currentUser.get().getTeamId());
+        	}
 		}
 		
 		// Guardar la tarea en la base de datos
@@ -403,12 +443,13 @@ public class BotController extends TelegramLongPollingBot {
 			// Resetear el estado y mostrar la tarea creada
 			state.selectedTaskId = taskId;
 			state.currentAction = "NORMAL";
-			showTaskDetails(chatId, taskId);
 
 		} else {
 			sendTelegramMessage(chatId, "Error al crear la tarea. Por favor, intenta nuevamente.");
 			state.currentAction = "NORMAL";
 		}
+
+		listTasksForUser(chatId, state.loggedInUserId);
 	}
 
 	private void showSprintsForTeam(long chatId, Long teamId) {
@@ -439,6 +480,26 @@ public class BotController extends TelegramLongPollingBot {
 		
 		markup.setKeyboard(rows);
 		sendTelegramMessage(chatId, "Selecciona el sprint para esta tarea:", markup);
+	}
+
+	private void showTagOptions(long chatId){
+
+	}
+
+	private void showStatusOptions(long chatId,long taskId){
+		InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+		List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+		
+		for (TaskStatus status : TaskStatus.values()) {
+			InlineKeyboardButton button = createButton(
+				status.getDisplayName(),
+				STATUS_SELECT_PREFIX + status.name()
+			);
+			rows.add(Collections.singletonList(button));
+		}
+		
+		markup.setKeyboard(rows);
+		sendTelegramMessage(chatId, "Selecciona el nuevo estado para la tarea:", markup);
 	}
 
 	// Utility methods
