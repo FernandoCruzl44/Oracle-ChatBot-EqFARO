@@ -196,7 +196,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
           </form>
           <div>
             <textarea
-              className="w-full border mt-4 bg-oc-neutral/30 rounded-lg p-3 h-[120px] max-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
+              className="w-full border mt-4 bg-oc-neutral/30 rounded-lg p-3 h-[120px] max-h-[120px] text-sm text-oc-brown border-oc-outline-light/60 resize-none overflow-auto"
               placeholder="Descripción (Opcional)"
               value={editableTask.description || ""}
               onChange={(e) => handleInputChange("description", e.target.value)}
