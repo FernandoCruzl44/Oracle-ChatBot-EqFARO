@@ -1,4 +1,4 @@
-// app/components/TaskModal/CommentsSection.tsx
+import { useEffect, useRef } from "react";
 import { generateAvatarColor } from "~/lib/utils";
 import { CommentItem } from "./CommentItem";
 
@@ -16,11 +16,24 @@ export function CommentsSection({
   handleDeleteComment,
 }: CommentsSectionProps) {
   const currentUser = getCurrentUser();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [comments]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-4 pl-2">
+    <div
+      ref={containerRef}
+      className="flex-1 overflow-y-auto p-6 pb-0 pt-0 w-full px-4"
+    >
       <div
-        className={`relative space-y-4 ${
+        className={`relative space-y-3 ${
           isLoading ? "opacity-50" : "opacity-100"
         }`}
       >

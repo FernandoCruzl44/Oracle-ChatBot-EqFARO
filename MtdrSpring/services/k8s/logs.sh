@@ -1,0 +1,1 @@
+kubectl get pods -o name | sed 's/pod\///g' | xargs -L 1 bash -c 'kubectl logs "$0" > "$0".log'
