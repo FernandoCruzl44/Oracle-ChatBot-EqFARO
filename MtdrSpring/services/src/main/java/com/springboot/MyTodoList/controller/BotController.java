@@ -352,25 +352,24 @@ public class BotController extends TelegramLongPollingBot {
 	
 	private void listTasksForUser(long chatId, Long userId) {
 		List<Task> tasks = taskRepository.findTasksAssignedToUser(userId);
-		if (tasks.isEmpty()) {
-			sendTelegramMessage(chatId, "No tienes tareas asignadas.");
-			return;
-		}
-
 		InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
 		List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-
-		for (Task task : tasks) {
-			InlineKeyboardButton btn = createButton(
-					task.getTitle() + " [ID: " + task.getId() + "]",
-					TASK_PREFIX + task.getId());
-			rows.add(Collections.singletonList(btn));
-		}
-
-		rows.add(Collections.singletonList(createButton("Agregar tarea", ADD_TASK_TITLE)));
-		markup.setKeyboard(rows);
-		sendTelegramMessage(chatId, "Estas son tus tareas asignadas:", markup);
-		
+		if (tasks.isEmpty()) {
+			rows.add(Collections.singletonList(createButton("Agregar tarea", ADD_TASK_TITLE)));
+			markup.setKeyboard(rows);
+			sendTelegramMessage(chatId, "No tienes tareas asignadas.");
+			sendTelegramMessage(chatId, "Agrega una tarea!",markup);
+		}else{
+			for (Task task : tasks) {
+				InlineKeyboardButton btn = createButton(
+						task.getTitle() + " [ID: " + task.getId() + "]",
+						TASK_PREFIX + task.getId());
+				rows.add(Collections.singletonList(btn));
+				}
+				rows.add(Collections.singletonList(createButton("Agregar tarea", ADD_TASK_TITLE)));
+				markup.setKeyboard(rows);
+				sendTelegramMessage(chatId, "Estas son tus tareas asignadas:", markup);	
+			}
 	}
 
 
