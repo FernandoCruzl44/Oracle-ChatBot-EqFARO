@@ -7,7 +7,7 @@ call mvn package
 REM If Maven succeeded, build the Docker image
 IF %ERRORLEVEL% EQU 0 (
     REM Build Docker image with platform parameter
-    docker build -f Dockerfile --platform %PLATFORM% -t agileimage:0.1 .
+    docker build -f Dockerfile --platform linux/amd64 -t agileimage:0.1 .
     
     REM If Docker build succeeded, run the container
     IF %ERRORLEVEL% EQU 0 (
