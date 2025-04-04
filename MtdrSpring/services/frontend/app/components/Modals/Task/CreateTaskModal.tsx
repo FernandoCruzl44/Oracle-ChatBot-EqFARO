@@ -373,7 +373,7 @@ export default function CreateTaskModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Descripción (Opcional)"
-                className="w-full border my-4 bg-oc-neutral/30 rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60"
+                className="w-full border my-4 bg-oc-neutral/30 rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60 resize-none overflow-auto"
               ></textarea>
             </div>
 
