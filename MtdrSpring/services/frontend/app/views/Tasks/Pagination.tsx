@@ -1,4 +1,4 @@
-// app/components/Tasks/TasksPagination.tsx
+// app/components/Tasks/Pagination.tsx
 import React from "react";
 
 interface PaginationProps {
@@ -9,6 +9,7 @@ interface PaginationProps {
   filteredTasks: any[];
   tasksPerPage: number;
   isLoadingTasks: boolean;
+  viewMode?: "table" | "kanban";
 }
 
 export function Pagination({
@@ -19,7 +20,25 @@ export function Pagination({
   filteredTasks,
   tasksPerPage,
   isLoadingTasks,
+  viewMode = "table",
 }: PaginationProps) {
+  // For kanban view, we might want to show all tasks and skip pagination
+  // This is optional and depends on the user experience you want
+  if (viewMode === "kanban" && filteredTasks.length <= 100) {
+    return (
+      <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">
+        <div>
+          {selectedTasks.length} seleccionada
+          {selectedTasks.length !== 1 ? "s" : ""}
+        </div>
+        <div>
+          Total: {filteredTasks.length} tarea
+          {filteredTasks.length !== 1 ? "s" : ""}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">
       <div>

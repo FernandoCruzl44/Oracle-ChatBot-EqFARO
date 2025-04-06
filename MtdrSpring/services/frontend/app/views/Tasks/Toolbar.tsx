@@ -1,6 +1,7 @@
-// app/components/Tasks/TasksToolbar.tsx
+// app/components/Tasks/Toolbar.tsx
 import React from "react";
 import { SprintSelector } from "~/components/Selectors/SprintSelector";
+import useTaskStore from "~/store";
 
 interface ToolbarProps {
   searchTerm: string;
@@ -18,6 +19,8 @@ interface ToolbarProps {
   selectedTasks: number[];
   handleDeleteTasks: () => void;
   isLoadingTasks: boolean;
+  viewMode: "table" | "kanban";
+  setViewMode: (mode: "table" | "kanban") => void;
 }
 
 export function Toolbar({
@@ -36,7 +39,11 @@ export function Toolbar({
   selectedTasks,
   handleDeleteTasks,
   isLoadingTasks,
+  viewMode,
+  setViewMode,
 }: ToolbarProps) {
+  const currentUser = useTaskStore((state) => state.currentUser);
+
   return (
     <div className="py-4 flex items-center justify-between">
       <div className="flex flex-row gap-2 items-center">
@@ -72,9 +79,39 @@ export function Toolbar({
             <span>Agrega tarea</span>
           </button>
 
+          {/* View Toggle Buttons */}
+          <div className="flex rounded-lg border border-oc-outline-light overflow-hidden">
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`px-3 py-2 flex items-center text-sm ${
+                viewMode === "kanban"
+                  ? "bg-stone-700 text-white"
+                  : "bg-oc-primary text-stone-400 hover:text-white hover:bg-black"
+              }`}
+              title="Vista de kanban"
+            >
+              <i className="fa fa-columns"></i>
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-3 py-2 flex items-center text-sm ${
+                viewMode === "table"
+                  ? "bg-stone-700 text-white"
+                  : "bg-oc-primary text-stone-400 hover:text-white hover:bg-black"
+              }`}
+              title="Vista de tabla"
+            >
+              <i className="fa fa-table"></i>
+            </button>
+          </div>
+
           {showSprintSelector && (
             <SprintSelector
-              teamId={selectorTeamId ?? 0}
+              teamId={
+                isManager
+                  ? (selectorTeamId as number)
+                  : (currentUser?.teamId as number)
+              }
               selectedSprintId={selectedSprintId}
               onSelectSprint={selectSprint}
               onCreateSprint={
@@ -87,7 +124,7 @@ export function Toolbar({
           {selectedTasks.length > 0 && (
             <button
               onClick={handleDeleteTasks}
-              className="px-4 py-2  hover:bg-red-900/50 rounded-lg border border-red-400 flex items-center text-red-400 text-sm transition-colors"
+              className="px-4 py-2 hover:bg-red-900/50 rounded-lg border border-red-400 flex items-center text-red-400 text-sm transition-colors"
             >
               <i className="fa fa-trash mr-2"></i>
               <span>Eliminar ({selectedTasks.length})</span>

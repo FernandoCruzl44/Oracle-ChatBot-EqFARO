@@ -16,13 +16,13 @@ export function Modal({
 }: ModalProps) {
   return (
     <div
-      className={`fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-150 ${
+      className={`fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 transition-opacity duration-150 ${
         isVisible ? "opacity-100" : "opacity-0"
       }`}
       onClick={onClose}
     >
       <div
-        className={`rounded-lg flex p-2 bg-oc-neutral transition-transform duration-150 ${
+        className={`rounded-lg flex p-2 bg-oc-primary transition-transform duration-150 ${
           isVisible ? "translate-y-0" : "translate-y-3"
         } ${className}`}
         onClick={(e) => e.stopPropagation()}

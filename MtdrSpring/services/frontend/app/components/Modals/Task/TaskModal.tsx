@@ -170,7 +170,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
       onClose={handleClose}
       handleClose={handleClose}
     >
-      <div className="flex-1 p-8 border-r border-oc-outline-light/60 overflow-hidden">
+      <div className="flex-1 p-8 border-r border-oc-outline-light/90 overflow-hidden">
         <div className="flex flex-col h-full">
           <input
             type="text"

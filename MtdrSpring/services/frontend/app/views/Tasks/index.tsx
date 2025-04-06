@@ -9,7 +9,8 @@ import useTaskStore from "~/store";
 import { Header } from "./Header";
 import { Toolbar } from "./Toolbar";
 import { Tabs } from "./Tabs";
-import { Table } from "./Table";
+import { KanbanBoard } from "./KanbanBoard";
+import { Table } from "./Table"; // Keep the Table component
 import { Pagination } from "./Pagination";
 
 export default function TaskView() {
@@ -41,6 +42,7 @@ export default function TaskView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
   const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);
@@ -48,7 +50,7 @@ export default function TaskView() {
     null
   );
 
-  const tasksPerPage = 15;
+  const tasksPerPage = 20;
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title
@@ -174,10 +176,15 @@ export default function TaskView() {
       });
   };
 
-  const handleStatusChange = (taskId: number, newStatus: string) => {
-    updateTaskStatus(taskId, newStatus).catch((error) => {
+  const handleStatusChange = async (
+    taskId: number,
+    newStatus: string
+  ): Promise<void> => {
+    try {
+      await updateTaskStatus(taskId, newStatus);
+    } catch (error) {
       console.error("Error updating task status:", error);
-    });
+    }
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,7 +235,7 @@ export default function TaskView() {
   };
 
   const selectorTeamId = getSelectorTeamId();
-  const showSprintSelector = activeTab !== "all";
+  const showSprintSelector = true;
   const showAssigneesColumn =
     (isManager && activeTab !== "all") || (!isManager && activeTab === "team");
 
@@ -253,6 +260,8 @@ export default function TaskView() {
           selectedTasks={selectedTasks}
           handleDeleteTasks={handleDeleteTasks}
           isLoadingTasks={isLoadingTasks}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
 
         <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm flex flex-col overflow-hidden">
@@ -265,22 +274,41 @@ export default function TaskView() {
             currentUser={currentUser}
           />
 
-          <Table
-            paginatedTasks={paginatedTasks}
-            isLoadingTasks={isLoadingTasks}
-            error={error}
-            searchTerm={searchTerm}
-            handleSelectAll={handleSelectAll}
-            selectedTasks={selectedTasks}
-            handleTaskSelection={handleTaskSelection}
-            handleTaskClick={handleTaskClick}
-            handleStatusChange={handleStatusChange}
-            showAssigneesColumn={showAssigneesColumn}
-            sprints={sprints}
-            tasksPerPage={tasksPerPage}
-          />
+          {/* Toggle between Table and KanbanBoard */}
+          {viewMode === "table" ? (
+            <Table
+              paginatedTasks={paginatedTasks}
+              isLoadingTasks={isLoadingTasks}
+              error={error}
+              searchTerm={searchTerm}
+              handleSelectAll={handleSelectAll}
+              selectedTasks={selectedTasks}
+              handleTaskSelection={handleTaskSelection}
+              handleTaskClick={handleTaskClick}
+              handleStatusChange={handleStatusChange}
+              showAssigneesColumn={showAssigneesColumn}
+              sprints={sprints}
+              tasksPerPage={tasksPerPage}
+            />
+          ) : (
+            <KanbanBoard
+              paginatedTasks={paginatedTasks}
+              isLoadingTasks={isLoadingTasks}
+              error={error}
+              searchTerm={searchTerm}
+              handleSelectAll={handleSelectAll}
+              selectedTasks={selectedTasks}
+              handleTaskSelection={handleTaskSelection}
+              handleTaskClick={handleTaskClick}
+              handleStatusChange={handleStatusChange}
+              showAssigneesColumn={showAssigneesColumn}
+              sprints={sprints}
+              tasksPerPage={tasksPerPage}
+            />
+          )}
         </div>
 
+        {/* Keep pagination for now, could be modified or removed later */}
         <Pagination
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
@@ -289,6 +317,7 @@ export default function TaskView() {
           filteredTasks={filteredTasks}
           tasksPerPage={tasksPerPage}
           isLoadingTasks={isLoadingTasks}
+          viewMode={viewMode}
         />
       </div>
 

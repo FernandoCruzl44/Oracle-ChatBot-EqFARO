@@ -17,18 +17,18 @@ export function Header({ currentUser }: HeaderProps) {
       {currentUser && (
         <div className="text-sm text-stone-300 flex items-center flex-wrap">
           <span className="font-medium">{currentUser.name}</span>
-          <span className="mx-2">•</span>
+          <span className="mx-2">|</span>
           <span
             className={`${
-              isManager ? "text-blue-600" : "text-green-600"
+              isManager ? "text-blue-200" : "text-green-200"
             } font-medium`}
           >
             {isManager ? "Manager" : "Developer"}
           </span>
           {!isManager && currentUser.teamName && (
             <>
-              <span className="mx-2">•</span>
-              <span className="text-cyan-600 font-medium">
+              <span className="mx-2">en</span>
+              <span className="text-cyan-200 font-medium">
                 {currentUser.teamName}
               </span>
             </>
