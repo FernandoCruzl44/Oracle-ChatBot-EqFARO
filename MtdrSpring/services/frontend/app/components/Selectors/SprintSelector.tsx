@@ -40,7 +40,9 @@ export function SprintSelector({
     };
   }, []);
 
-  const teamSprints = getSprintsByTeam(teamId);
+  const teamSprints = getSprintsByTeam(teamId).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
   const currentSprint = sprints.find((s) => s.id === selectedSprintId);
 
   const handleEditSprint = (sprint: Sprint) => {
@@ -50,13 +52,13 @@ export function SprintSelector({
   };
 
   const handleSaveSprint = () => {
-    fetchSprints(teamId); // Refresh the sprints list
+    fetchSprints(teamId);
     setIsEditModalOpen(false);
   };
 
   const handleDeleteSprint = () => {
-    onSelectSprint(null); // Deselect the deleted sprint
-    fetchSprints(teamId); // Refresh the sprints list
+    onSelectSprint(null);
+    fetchSprints(teamId);
     setIsEditModalOpen(false);
   };
 
