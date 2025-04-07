@@ -14,7 +14,11 @@ interface TableProps {
   selectedTasks: number[];
   handleTaskSelection: (taskId: number) => void;
   handleTaskClick: (task: Task) => void;
-  handleStatusChange: (taskId: number, newStatus: string) => void;
+  handleStatusChange: (
+    taskId: number,
+    newStatus: string,
+    taskData: Partial<Task>
+  ) => void;
   showAssigneesColumn: boolean;
   sprints: any[];
   tasksPerPage: number;
@@ -167,7 +171,7 @@ export function Table({
                   <TaskStatusSelector
                     status={task.status || "En progreso"}
                     onStatusChange={(newStatus) =>
-                      handleStatusChange(task.id, newStatus)
+                      handleStatusChange(task.id, newStatus, task)
                     }
                     isLoading={isLoadingTasks}
                   />

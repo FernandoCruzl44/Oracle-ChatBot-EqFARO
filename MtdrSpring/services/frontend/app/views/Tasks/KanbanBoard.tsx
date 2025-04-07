@@ -17,7 +17,11 @@ interface KanbanBoardProps {
   selectedTasks: number[];
   handleTaskSelection: (taskId: number) => void;
   handleTaskClick: (task: Task) => void;
-  handleStatusChange: (taskId: number, newStatus: string) => Promise<void>;
+  handleStatusChange: (
+    taskId: number,
+    newStatus: string,
+    taskData: Partial<Task>
+  ) => Promise<void>;
   showAssigneesColumn: boolean;
   sprints: any[];
   tasksPerPage: number;
@@ -67,7 +71,7 @@ export function KanbanBoard({
     setPendingUpdates((prev) => ({ ...prev, [taskId]: true }));
 
     // Then update server state
-    handleStatusChange(taskId, newStatus)
+    handleStatusChange(taskId, newStatus, task)
       .then(() => {
         setPendingUpdates((prev) => {
           const newState = { ...prev };

@@ -255,10 +255,11 @@ export default function TaskView() {
 
   const handleStatusChange = async (
     taskId: number,
-    newStatus: string
+    newStatus: string,
+    taskData: Partial<Task>
   ): Promise<void> => {
     try {
-      await updateTaskStatus(taskId, newStatus);
+      await updateTaskStatus(taskId, newStatus, taskData);
     } catch (error) {
       console.error("Error updating task status:", error);
     }

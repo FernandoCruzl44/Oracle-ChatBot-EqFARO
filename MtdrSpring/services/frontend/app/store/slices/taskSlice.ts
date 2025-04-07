@@ -18,7 +18,11 @@ export interface TaskSlice extends StoreState {
   updateTask: (taskId: number, taskData: Partial<Task>) => Promise<Task>;
   deleteTask: (taskId: number) => Promise<void>;
   deleteTasks: (taskIds: number[]) => Promise<void>;
-  updateTaskStatus: (taskId: number, status: string) => Promise<void>;
+  updateTaskStatus: (
+    taskId: number,
+    status: string,
+    taskData: Partial<Task>
+  ) => Promise<void>;
   selectTask: (taskId: number | null) => void;
 }
 
@@ -56,6 +60,11 @@ const mapTaskToBackend = (taskData: Partial<Task>): Record<string, any> => {
     backendData.actual_hours = backendData.actualHours;
     delete backendData.actualHours;
   }
+
+  // if (backendData.hasOwnProperty("endDate")) {
+  //   backendData.end_date = backendData.endDate;
+  //   delete backendData.endDate;
+  // }
 
   // Map assignees -> assignee_ids (if backend expects IDs)
   if (backendData.hasOwnProperty("assignees")) {
@@ -105,6 +114,11 @@ const mapBackendToTask = (backendTask: Record<string, any>): Task => {
     frontendTask.actualHours = frontendTask.actual_hours;
     delete frontendTask.actual_hours;
   }
+
+  // if (frontendTask.hasOwnProperty("end_date")) {
+  //   frontendTask.endDate = frontendTask.end_date;
+  //   delete frontendTask.end_date;
+  // }
 
   // Ensure assignees is an array (backend might send it differently)
   if (!Array.isArray(frontendTask.assignees)) {
@@ -402,13 +416,21 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
     }
   },
 
-  updateTaskStatus: async (taskId, status) => {
-    // ... (updateTaskStatus remains the same, but uses mapping for response) ...
+  updateTaskStatus: async (taskId, status, taskData) => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}/status`, {
+      const payload = mapTaskToBackend({
+        ...taskData,
+        status,
+      });
+
+      if (status === "Completada") {
+        payload.endDate = new Date().toISOString().slice(0, 10);
+      }
+
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -422,11 +444,18 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
       // Get the full updated task from the response
       const updatedBackendTask = await response.json();
+      console.log("Updated Backend Task:", updatedBackendTask);
       const updatedTask = mapBackendToTask(updatedBackendTask);
 
+      // set((state) => ({
+      //   tasks: state.tasks.map(
+      //     (task) => (task.id === taskId ? { ...task, ...updatedTask } : task) // Use FULL response data
+      //   ),
+      // }));
+
       set((state) => ({
-        tasks: state.tasks.map(
-          (task) => (task.id === taskId ? { ...task, ...updatedTask } : task) // Use FULL response data
+        tasks: state.tasks.map((task) =>
+          task.id === taskId ? { ...task, ...updatedTask } : task
         ),
       }));
     } catch (error) {
