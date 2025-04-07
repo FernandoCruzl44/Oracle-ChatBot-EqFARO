@@ -11,7 +11,6 @@ export function Header({ currentUser }: HeaderProps) {
   return (
     <div className="flex justify-between items-center pb-2 gap-2">
       <div className="flex items-center pb-2 gap-2">
-        <i className="fa fa-chevron-right text-2xl text-white"></i>
         <h1 className="text-xl font-medium text-white">Tareas</h1>
       </div>
       {currentUser && (

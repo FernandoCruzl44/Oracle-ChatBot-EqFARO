@@ -29,7 +29,7 @@ export default function TaskStatusSelector({
     };
   }, []);
 
-  const statuses = ["En progreso", "Cancelada", "Backlog", "Completada"];
+  const statuses = ["Backlog", "En progreso", "Completada", "Cancelada"];
 
   const buttonClasses = `rounded-lg  flex items-center text-sm ${
     isLoading ? "opacity-50 cursor-not-allowed" : ""

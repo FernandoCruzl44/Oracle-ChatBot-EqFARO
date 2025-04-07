@@ -50,7 +50,7 @@ export function CommentItem({
       </div>
 
       <div
-        className={`flex-1 border border-oc-outline-light/60 bg-oc-neutral/40 rounded-xl p-2 px-3 relative max-w-[300px] ${
+        className={`flex-1 border border-oc-outline-light/60 bg-[#181615] rounded-xl p-2 px-3 relative max-w-[300px] ${
           isOwnComment ? "mr-5 rounded-tr-none" : "ml-5 rounded-tl-none"
         }`}
       >

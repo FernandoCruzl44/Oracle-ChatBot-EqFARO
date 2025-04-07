@@ -49,10 +49,10 @@ export function TaskMetadata({
               value={editableTask.status}
               onChange={(e) => handleInputChange("status", e.target.value)}
               options={[
-                { value: "En progreso", label: "En progreso" },
-                { value: "Cancelada", label: "Cancelada" },
                 { value: "Backlog", label: "Backlog" },
+                { value: "En progreso", label: "En progreso" },
                 { value: "Completada", label: "Completada" },
+                { value: "Cancelada", label: "Cancelada" },
               ]}
             />
           </FormField>

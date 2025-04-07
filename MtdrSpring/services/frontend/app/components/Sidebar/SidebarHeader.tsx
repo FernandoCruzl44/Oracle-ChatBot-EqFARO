@@ -12,7 +12,9 @@ export default function SidebarHeader({
         src="/favicon.ico"
         alt="Logo"
         style={{ imageRendering: "pixelated" }}
-        className="min-w-[40px] min-h-[40px] flex-shrink-0 p-1.5"
+        className={`min-w-[40px] min-h-[40px] flex-shrink-0 p-1.5  ${
+          !isExpanded ? "opacity-100" : "opacity-100"
+        } `}
       />
       <div
         className={`ml-1 -space-y-1 items-left justify-center overflow-hidden transition-opacity duration-200 ${

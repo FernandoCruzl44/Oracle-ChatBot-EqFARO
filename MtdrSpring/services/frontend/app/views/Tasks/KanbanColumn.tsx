@@ -1,5 +1,4 @@
-// app/components/Tasks/KanbanColumn.tsx
-import React from "react";
+import React, { useState } from "react";
 import type { Task } from "~/types";
 import { TaskCard } from "./TaskCard";
 import { DraggableTask, DroppableColumn } from "./KanbanDnd";
@@ -29,6 +28,8 @@ export function KanbanColumn({
   handleSelectAll,
   pendingUpdates = {},
 }: KanbanColumnProps) {
+  const [folded, setFolded] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Completada":
@@ -36,12 +37,16 @@ export function KanbanColumn({
       case "En progreso":
         return "bg-blue-900";
       case "Cancelada":
-        return "bg-red-900"; // Changed from red to stone
+        return "bg-red-900";
       case "Backlog":
-        return "bg-yellow-900"; // Changed from yellow to stone
+        return "bg-yellow-900";
       default:
         return "bg-stone-900";
     }
+  };
+
+  const toggleFold = () => {
+    setFolded((prev) => !prev);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -51,22 +56,16 @@ export function KanbanColumn({
   const allTasksInColumnSelected =
     tasks.length > 0 && tasks.every((task) => selectedTasks.includes(task.id));
 
-  // Handle select all for this column
   const handleSelectAllInColumn = () => {
     const taskIdsInColumn = tasks.map((task) => task.id);
 
-    // If all tasks in this column are selected, deselect them
-    // Otherwise, add all unselected tasks to the selection
     if (allTasksInColumnSelected) {
-      // Since we can't directly modify selectedTasks (it's controlled by the parent),
-      // we'll simulate deselecting by calling handleTaskSelection for each task
       taskIdsInColumn.forEach((id) => {
         if (selectedTasks.includes(id)) {
           handleTaskSelection(id);
         }
       });
     } else {
-      // Add all unselected tasks to the selection
       taskIdsInColumn.forEach((id) => {
         if (!selectedTasks.includes(id)) {
           handleTaskSelection(id);
@@ -76,34 +75,56 @@ export function KanbanColumn({
   };
 
   return (
-    <div className="flex-1 min-w-64 flex flex-col h-full border-r border-oc-outline-light/60 last:border-r-0">
+    <div
+      className={`flex-col border-r border-oc-outline-light/60 last:border-r-0 transition-discrete duration-100 overflow-clip ${
+        folded ? "w-12" : "flex flex-1 min-w-64 h-full"
+      }`}
+    >
       <div
-        className={`px-4 py-3 font-medium border-b
-          border-oc-outline-light/60 flex justify-between items-center sticky top-0 z-10`}
+        className={`px-4 py-3 font-medium border-b border-oc-outline-light/60 flex justify-between items-center sticky top-0 z-10 ${
+          folded ? "flex-col items-center" : "flex-row"
+        }`}
       >
         <div className="flex items-center">
-          <span>{status}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span
-            className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${getStatusColor(
-              status
-            )} `}
+          {!folded && <span className="mr-2">{status}</span>}
+          <button
+            onClick={toggleFold}
+            className="text-xs rounded p-1 focus:outline-none"
           >
-            {tasks.length}
-          </span>
-          <input
-            type="checkbox"
-            className="w-4 h-4 mr-[4px]"
-            onChange={handleSelectAllInColumn}
-            checked={tasks.length > 0 && allTasksInColumnSelected}
-            disabled={tasks.length === 0}
-          />
+            {folded ? "→" : "←"}
+          </button>
         </div>
+        {!folded && (
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${getStatusColor(
+                status
+              )} `}
+            >
+              {tasks.length}
+            </span>
+            <input
+              type="checkbox"
+              className="w-4 h-4 mr-[5px]"
+              onChange={handleSelectAllInColumn}
+              checked={tasks.length > 0 && allTasksInColumnSelected}
+              disabled={tasks.length === 0}
+            />
+          </div>
+        )}
       </div>
+      {folded && (
+        <div className="flex justify-center w-full h-full">
+          <div className="mt-3 text-base w-6 h-6 flex items-center justify-center rounded-full">
+            {tasks.length}
+          </div>
+        </div>
+      )}
       <DroppableColumn
         status={status}
-        className="flex-1 overflow-y-auto p-2 space-y-2"
+        className={`flex-1 overflow-y-auto  p-2 space-y-2 transition-opacity duration-100 ${
+          folded ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
       >
         {tasks.map((task) => (
           <DraggableTask

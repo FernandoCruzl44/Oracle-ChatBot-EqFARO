@@ -1,4 +1,3 @@
-// app/views/TasksView.tsx
 import { useEffect, useState } from "react";
 import type { Task, Sprint } from "~/types";
 import TaskModal from "~/components/Modals/Task/TaskModal";
@@ -10,7 +9,7 @@ import { Header } from "./Header";
 import { Toolbar } from "./Toolbar";
 import { Tabs } from "./Tabs";
 import { KanbanBoard } from "./KanbanBoard";
-import { Table } from "./Table"; // Keep the Table component
+import { Table } from "./Table";
 import { Pagination } from "./Pagination";
 
 export default function TaskView() {
@@ -49,6 +48,8 @@ export default function TaskView() {
   const [transitioningSprint, setTransitioningSprint] = useState<Sprint | null>(
     null
   );
+  const [initialSprintSelectionDone, setInitialSprintSelectionDone] =
+    useState<boolean>(false);
 
   const tasksPerPage = 20;
 
@@ -114,9 +115,16 @@ export default function TaskView() {
     if (isInitialized && currentUser) {
       fetchTasks(activeTab);
 
+      selectSprint(null);
+      setInitialSprintSelectionDone(false);
+
       if (activeTab !== "all" && activeTab !== "team") {
         fetchSprints(Number(activeTab));
       } else if (activeTab === "team" && !isManager && currentUser.teamId) {
+        fetchSprints(currentUser.teamId);
+      } else if (activeTab === "all" && isManager) {
+        fetchSprints(undefined);
+      } else {
         fetchSprints(currentUser.teamId);
       }
     }
@@ -127,6 +135,75 @@ export default function TaskView() {
     fetchTasks,
     fetchSprints,
     isManager,
+    teams,
+  ]);
+
+  useEffect(() => {
+    if (!isLoadingSprints && !initialSprintSelectionDone) {
+      console.log(
+        `Sprint selection for tab: ${activeTab}, isManager: ${isManager}, sprints count: ${sprints.length}`
+      );
+
+      if (isManager && activeTab === "all") {
+        console.log("Manager on ALL tab - clearing sprint selection");
+        selectSprint(null);
+      } else if (sprints.length > 0) {
+        const today = new Date();
+        const sortedSprints = [...sprints].sort(
+          (a, b) =>
+            new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+        );
+
+        console.log(
+          "Available sprints for selection:",
+          sortedSprints.map(
+            (s) => `${s.id}: ${s.name} (${s.startDate} to ${s.endDate})`
+          )
+        );
+
+        const activeSprint = sortedSprints.find((sprint) => {
+          const startDate = new Date(sprint.startDate);
+          const endDate = new Date(sprint.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          return today >= startDate && today <= endDate;
+        });
+
+        if (activeSprint) {
+          console.log(
+            "Active sprint found:",
+            activeSprint.name,
+            "(ID:",
+            activeSprint.id,
+            ")"
+          );
+          selectSprint(activeSprint.id);
+        } else if (sortedSprints.length > 0) {
+          console.log(
+            "No active sprint found, selecting most recent:",
+            sortedSprints[0].name,
+            "(ID:",
+            sortedSprints[0].id,
+            ")"
+          );
+          selectSprint(sortedSprints[0].id);
+        } else {
+          console.log("No sprints available to select.");
+          selectSprint(null);
+        }
+      } else {
+        console.log("No sprints available to select.");
+        selectSprint(null);
+      }
+
+      setInitialSprintSelectionDone(true);
+    }
+  }, [
+    sprints,
+    selectSprint,
+    isLoadingSprints,
+    initialSprintSelectionDone,
+    isManager,
+    activeTab,
   ]);
 
   const handleTaskSelection = (taskId: number) => {
@@ -196,7 +273,6 @@ export default function TaskView() {
     setActiveTab(tab);
     setSearchTerm("");
     setSelectedTasks([]);
-    selectSprint(null);
     setCurrentPage(1);
   };
 
@@ -240,7 +316,14 @@ export default function TaskView() {
     (isManager && activeTab !== "all") || (!isManager && activeTab === "team");
 
   return (
-    <div className="p-6 bg-oc-neutral h-full">
+    <div
+      className="p-6 bg-[#181614] h-full pb-0"
+      style={{
+        backgroundImage:
+          "url(https://static.oracle.com/cdn/apex/20.2.0.00.20/themes/theme_42/1.6/images/rw/textures/texture-13.png)",
+        backgroundRepeat: "repeat",
+      }}
+    >
       <div className="h-full overflow-hidden flex flex-col">
         <Header currentUser={currentUser} />
 
@@ -262,6 +345,7 @@ export default function TaskView() {
           isLoadingTasks={isLoadingTasks}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          teams={teams}
         />
 
         <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm flex flex-col overflow-hidden">
@@ -274,7 +358,6 @@ export default function TaskView() {
             currentUser={currentUser}
           />
 
-          {/* Toggle between Table and KanbanBoard */}
           {viewMode === "table" ? (
             <Table
               paginatedTasks={paginatedTasks}
@@ -308,7 +391,6 @@ export default function TaskView() {
           )}
         </div>
 
-        {/* Keep pagination for now, could be modified or removed later */}
         <Pagination
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}

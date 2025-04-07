@@ -1,29 +1,33 @@
-// app/components/SprintSelector.tsx
 import { useState, useEffect, useRef } from "react";
-import type { Sprint } from "~/types";
+import type { Sprint, User } from "~/types";
 import useTaskStore from "~/store";
 import { EditSprintModal } from "../Modals/Sprint/EditSprintModal";
 
 interface SprintSelectorProps {
-  teamId: number;
+  user: User | null;
+  teamId: number | undefined;
   selectedSprintId: number | null;
   onSelectSprint: (sprintId: number | null) => void;
   onCreateSprint: () => void;
   isLoading: boolean;
+  teams?: any[];
 }
 
 export function SprintSelector({
+  user,
   teamId,
   selectedSprintId,
   onSelectSprint,
   onCreateSprint,
   isLoading,
+  teams = [],
 }: SprintSelectorProps) {
   const { sprints, getSprintsByTeam, fetchSprints } = useTaskStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedSprint, setSelectedSprint] = useState<Sprint | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isManager = user?.role === "manager";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -40,10 +44,17 @@ export function SprintSelector({
     };
   }, []);
 
-  const teamSprints = getSprintsByTeam(teamId).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const teamSprints =
+    teamId === undefined
+      ? sprints.sort((a, b) => a.name.localeCompare(b.name))
+      : getSprintsByTeam(teamId).sort((a, b) => a.name.localeCompare(b.name));
+
   const currentSprint = sprints.find((s) => s.id === selectedSprintId);
+
+  const getTeamNameById = (teamId: number) => {
+    const team = teams.find((t) => t.id === teamId);
+    return team ? team.name : null;
+  };
 
   const handleEditSprint = (sprint: Sprint) => {
     setSelectedSprint(sprint);
@@ -52,13 +63,38 @@ export function SprintSelector({
   };
 
   const handleSaveSprint = () => {
-    fetchSprints(teamId);
+    if (isManager && teamId === undefined) {
+      console.log("Manager saved sprint - fetching all sprints");
+      fetchSprints(undefined);
+    } else if (teamId !== undefined) {
+      console.log(`Fetching sprints for team ${teamId}`);
+      fetchSprints(teamId);
+    } else if (selectedSprint && selectedSprint.teamId) {
+      console.log(
+        `Fetching sprints for sprint's team ${selectedSprint.teamId}`
+      );
+      fetchSprints(selectedSprint.teamId);
+    }
+
     setIsEditModalOpen(false);
   };
 
   const handleDeleteSprint = () => {
     onSelectSprint(null);
-    fetchSprints(teamId);
+
+    if (isManager && teamId === undefined) {
+      console.log("Manager deleted sprint - fetching all sprints");
+      fetchSprints(undefined);
+    } else if (teamId !== undefined) {
+      console.log(`Fetching sprints for team ${teamId}`);
+      fetchSprints(teamId);
+    } else if (selectedSprint && selectedSprint.teamId) {
+      console.log(
+        `Fetching sprints for sprint's team ${selectedSprint.teamId}`
+      );
+      fetchSprints(selectedSprint.teamId);
+    }
+
     setIsEditModalOpen(false);
   };
 
@@ -75,8 +111,15 @@ export function SprintSelector({
       >
         <i className="fa fa-alarm-clock mr-2"></i>
         <span>
-          {currentSprint
-            ? currentSprint.name
+          {isLoading
+            ? "Cargando sprints..."
+            : currentSprint
+            ? currentSprint.name +
+              (teamId === undefined &&
+              currentSprint.teamId &&
+              getTeamNameById(currentSprint.teamId)
+                ? ` (${getTeamNameById(currentSprint.teamId)})`
+                : "")
             : teamSprints.length > 0
             ? "Todos los sprints"
             : "No hay sprints"}
@@ -122,33 +165,43 @@ export function SprintSelector({
                   className={`block w-full text-left px-4 py-2 text-sm ${
                     selectedSprintId === sprint.id
                       ? "text-blue-400"
-                      : "text-stone-700 dark:text-stone-400"
+                      : "text-white dark:text-stone-400"
                   }`}
                 >
                   {sprint.name}
+                  {teamId === undefined &&
+                    sprint.teamId &&
+                    getTeamNameById(sprint.teamId) && (
+                      <span className="ml-2 text-xs text-stone-500">
+                        ({getTeamNameById(sprint.teamId)})
+                      </span>
+                    )}
                 </button>
-                <button
-                  onClick={() => handleEditSprint(sprint)}
-                  className="opacity-0 group-hover:opacity-100 pr-2 text-stone-900 hover:text-stone-600 translate-y-1 dark:text-stone-400 dark:hover:text-stone-500"
-                  title="Editar sprint"
-                >
-                  <i className="fa fa-edit text-sm"></i>
-                </button>
+                {isManager && (
+                  <button
+                    onClick={() => handleEditSprint(sprint)}
+                    className="opacity-0 group-hover:opacity-100 pr-2 text-stone-900 hover:text-stone-600 translate-y-1 dark:text-stone-400 dark:hover:text-stone-500"
+                    title="Editar sprint"
+                  >
+                    <i className="fa fa-edit text-sm"></i>
+                  </button>
+                )}
               </div>
             ))}
-
-            <div className="border-t border-oc-outline-light/60 mt-1 pt-1 dark:border-stone-600">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  onCreateSprint();
-                }}
-                className="block w-full text-left px-4 py-2 text-sm rounded text-stone-700 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-600"
-              >
-                <i className="fa fa-plus mr-2"></i>
-                Nuevo sprint
-              </button>
-            </div>
+            {isManager && (
+              <div className="border-t border-oc-outline-light/60 mt-1 pt-1 dark:border-stone-600">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onCreateSprint();
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm rounded text-stone-700 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-600"
+                >
+                  <i className="fa fa-plus mr-2"></i>
+                  Nuevo sprint
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

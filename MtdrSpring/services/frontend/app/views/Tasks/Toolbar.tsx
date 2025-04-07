@@ -21,6 +21,7 @@ interface ToolbarProps {
   isLoadingTasks: boolean;
   viewMode: "table" | "kanban";
   setViewMode: (mode: "table" | "kanban") => void;
+  teams?: any[];
 }
 
 export function Toolbar({
@@ -41,6 +42,7 @@ export function Toolbar({
   isLoadingTasks,
   viewMode,
   setViewMode,
+  teams = [],
 }: ToolbarProps) {
   const currentUser = useTaskStore((state) => state.currentUser);
 
@@ -79,7 +81,6 @@ export function Toolbar({
             <span>Agrega tarea</span>
           </button>
 
-          {/* View Toggle Buttons */}
           <div className="flex rounded-lg border border-oc-outline-light overflow-hidden">
             <button
               onClick={() => setViewMode("kanban")}
@@ -107,17 +108,15 @@ export function Toolbar({
 
           {showSprintSelector && (
             <SprintSelector
-              teamId={
-                isManager
-                  ? (selectorTeamId as number)
-                  : (currentUser?.teamId as number)
-              }
+              user={currentUser}
+              teamId={selectorTeamId}
               selectedSprintId={selectedSprintId}
               onSelectSprint={selectSprint}
               onCreateSprint={
                 isManager ? () => setIsCreateSprintModalOpen(true) : () => {}
               }
               isLoading={isLoadingSprints}
+              teams={teams}
             />
           )}
 

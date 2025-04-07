@@ -16,7 +16,6 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Task } from "~/types";
 import { TaskCard } from "./TaskCard";
 
-// Draggable Task Component
 export function DraggableTask({
   task,
   onClick,
@@ -61,7 +60,6 @@ export function DraggableTask({
   );
 }
 
-// Droppable Column Component
 export function DroppableColumn({
   status,
   children,
@@ -86,7 +84,6 @@ export function DroppableColumn({
   );
 }
 
-// Main DnD Context Provider
 export function KanbanDndProvider({
   children,
   onDragEnd,
@@ -113,6 +110,7 @@ export function KanbanDndProvider({
     setActiveTask(task);
   };
 
+  // Update optimistico para tasks
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -120,7 +118,6 @@ export function KanbanDndProvider({
       const taskId = parseInt(active.id.toString().replace("task-", ""));
       const newStatus = (over.data.current as { status: string }).status;
 
-      // Apply optimistic update immediately
       onDragEnd(taskId, newStatus);
     }
 

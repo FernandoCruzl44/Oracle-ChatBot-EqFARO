@@ -22,8 +22,7 @@ export function Pagination({
   isLoadingTasks,
   viewMode = "table",
 }: PaginationProps) {
-  // For kanban view, we might want to show all tasks and skip pagination
-  // This is optional and depends on the user experience you want
+  // No pagination si es kanban y hay menos de 100 tareas
   if (viewMode === "kanban" && filteredTasks.length <= 100) {
     return (
       <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">

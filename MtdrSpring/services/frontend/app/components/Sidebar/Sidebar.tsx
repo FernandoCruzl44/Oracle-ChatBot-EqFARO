@@ -19,10 +19,12 @@ export default function Sidebar() {
     >
       <button
         onClick={toggleSidebar}
-        className="absolute left-2 top-3 flex justify-center items-center w-[40px] h-[40px] bg-oc-primary text-white rounded-lg border border-oc-outline-light cursor-pointer hover:bg-oc-amber/20 hover:text-oc-amber transition-colors z-10"
+        className="absolute left-2 top-3 flex justify-center items-center w-[40px] h-[40px] bg-oc-primary text-white rounded-lg border border-oc-outline-light cursor-pointer hover:bg-oc-amber/20 hover:text-oc-amber transition-colors z-10 group"
       >
         <i
-          className={`fa fa-chevron-${isExpanded ? "left" : "right"} text-xs`}
+          className={`fa fa-chevron-${
+            isExpanded ? "left" : "right"
+          } text-xs transition-transform group-active:scale-80`}
         ></i>
       </button>
 
