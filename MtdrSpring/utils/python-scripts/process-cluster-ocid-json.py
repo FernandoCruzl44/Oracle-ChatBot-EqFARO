@@ -1,3 +1,7 @@
+"""
+This script reads JSON from stdin, extracts the value of 'lab_oke_cluster_id',
+and prints the OCID.
+"""
 import sys
 import json
 
@@ -15,4 +19,4 @@ except KeyError as e:
 except json.decoder.JSONDecodeError as e:
     print("Error: Failed to decode JSON")
 except Exception as e:
-    print("Error: Encountered unexpected error")
+    print(f"Error: Encountered unexpected error: {e}")
