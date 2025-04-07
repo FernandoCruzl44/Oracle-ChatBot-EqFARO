@@ -57,16 +57,13 @@ public class SprintController {
             List<Sprint> sprints;
 
             if (teamId != null) {
-                // Check if user has access to this team
                 if (!isManager && (currentUser.getTeamId() == null || !currentUser.getTeamId().equals(teamId))) {
                     return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
                 }
                 sprints = sprintRepo.findByTeamId(teamId);
             } else if (isManager) {
-                // Managers can see all sprints if no team filter
                 sprints = sprintRepo.findAll();
             } else {
-                // Regular users can only see their team's sprints
                 if (currentUser.getTeamId() == null) {
                     return ResponseEntity.ok(List.of());
                 }
@@ -148,7 +145,6 @@ public class SprintController {
             List<Task> tasks = sprintRepo.findTasksBySprint(id);
             TaskRepository taskRepo = handle.attach(TaskRepository.class);
 
-            // Enhance tasks with assignees
             for (Task task : tasks) {
                 task.setAssignees(taskRepo.findAssigneesByTaskId(task.getId()));
                 if (task.getCreatorId() != null) {
@@ -196,7 +192,6 @@ public class SprintController {
             List<Task> incompleteTasks = sprintRepo.findIncompleteTasksBySprint(id);
             TaskRepository taskRepo = handle.attach(TaskRepository.class);
 
-            // Enhance tasks with assignees
             for (Task task : incompleteTasks) {
                 task.setAssignees(taskRepo.findAssigneesByTaskId(task.getId()));
                 if (task.getCreatorId() != null) {
@@ -225,12 +220,10 @@ public class SprintController {
             User currentUser = userRepo.findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Only managers can create sprints
             if (!"manager".equals(currentUser.getRole())) {
                 return ResponseEntity.status(403).body(Map.of("message", "Only managers can create sprints"));
             }
 
-            // Validate required fields
             if (!request.containsKey("teamId") || !request.containsKey("startDate") ||
                     !request.containsKey("endDate")) {
                 return ResponseEntity.badRequest()
@@ -239,7 +232,6 @@ public class SprintController {
 
             Long teamId = Long.valueOf(request.get("teamId").toString());
 
-            // Validate team exists
             TeamRepository teamRepo = handle.attach(TeamRepository.class);
             Optional<Team> teamOpt = teamRepo.findById(teamId);
             if (!teamOpt.isPresent()) {
@@ -247,7 +239,6 @@ public class SprintController {
                         .body(Map.of("message", "Team not found"));
             }
 
-            // Parse dates
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate, endDate;
             try {
@@ -268,7 +259,6 @@ public class SprintController {
             sprint.setStartDate(startDate);
             sprint.setEndDate(endDate);
 
-            // Set optional fields
             sprint.setName(request.containsKey("name") ? request.get("name").toString()
                     : "Sprint " + new SimpleDateFormat("yyyy-MM-dd").format(startDate));
             sprint.setStatus(request.containsKey("status") ? request.get("status").toString() : "PLANNED");
@@ -302,7 +292,6 @@ public class SprintController {
             User currentUser = userRepo.findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Only managers can update sprints
             if (!"manager".equals(currentUser.getRole())) {
                 return ResponseEntity.status(403).body(Map.of("message", "Only managers can update sprints"));
             }
@@ -316,7 +305,6 @@ public class SprintController {
 
             Sprint sprint = sprintOpt.get();
 
-            // Update fields if provided
             if (request.containsKey("name")) {
                 sprint.setName(request.get("name").toString());
             }
@@ -347,7 +335,6 @@ public class SprintController {
                 }
             }
 
-            // Ensure dates are valid
             if (sprint.getStartDate().after(sprint.getEndDate())) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "Start date cannot be after end date"));
@@ -375,7 +362,6 @@ public class SprintController {
             User currentUser = userRepo.findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Only managers can delete sprints
             if (!"manager".equals(currentUser.getRole())) {
                 return ResponseEntity.status(403).body(Map.of("message", "Only managers can delete sprints"));
             }
@@ -387,15 +373,12 @@ public class SprintController {
                 return ResponseEntity.notFound().build();
             }
 
-            // First move all tasks back to backlog
-            TaskRepository taskRepo = handle.attach(TaskRepository.class);
             List<Task> sprintTasks = sprintRepo.findTasksBySprint(id);
 
             for (Task task : sprintTasks) {
                 sprintRepo.removeTaskFromSprint(task.getId());
             }
 
-            // Then delete the sprint
             sprintRepo.delete(id);
 
             return ResponseEntity.ok(Map.of("message", "Sprint deleted"));
@@ -458,7 +441,6 @@ public class SprintController {
 
                 Task task = taskOpt.get();
 
-                // Only allow assigning tasks from the same team
                 if (!task.getTeamId().equals(sprint.getTeamId())) {
                     result.put("failed", (Integer) result.get("failed") + 1);
                     continue;
@@ -519,7 +501,6 @@ public class SprintController {
 
             Task task = taskOpt.get();
 
-            // Verify the task is actually in this sprint
             if (task.getSprintId() == null || !task.getSprintId().equals(sprintId)) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "Task is not assigned to this sprint"));
@@ -548,7 +529,6 @@ public class SprintController {
             User currentUser = userRepo.findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Only managers can end sprints
             if (!"manager".equals(currentUser.getRole())) {
                 return ResponseEntity.status(403).body(Map.of("message", "Only managers can end sprints"));
             }
@@ -562,18 +542,14 @@ public class SprintController {
 
             Sprint sprint = sprintOpt.get();
 
-            // Handle incomplete tasks
             if (request.containsKey("incompleteTasksAction")) {
                 String action = request.get("incompleteTasksAction").toString();
 
                 if ("moveToBacklog".equals(action)) {
-                    // Move incomplete tasks back to backlog
                     sprintRepo.moveIncompleteTasksToBacklog(sprintId);
                 } else if ("moveToNextSprint".equals(action) && request.containsKey("nextSprintId")) {
-                    // Move incomplete tasks to the next sprint
                     Long nextSprintId = Long.valueOf(request.get("nextSprintId").toString());
 
-                    // Verify next sprint exists and belongs to the same team
                     Optional<Sprint> nextSprintOpt = sprintRepo.findById(nextSprintId);
                     if (!nextSprintOpt.isPresent()) {
                         return ResponseEntity.badRequest()
@@ -590,7 +566,6 @@ public class SprintController {
                 }
             }
 
-            // Update sprint status to COMPLETED
             sprintRepo.updateSprintStatus(sprintId, "COMPLETED");
 
             return ResponseEntity.ok(Map.of("message", "Sprint completed successfully"));

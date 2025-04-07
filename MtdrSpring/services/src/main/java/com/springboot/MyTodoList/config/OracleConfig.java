@@ -38,7 +38,6 @@ public class OracleConfig {
                 logger.info("Using Username " + requiredProperty);
                 ds.setUser(requiredProperty);
 
-                // Better not to show the password, I guess (<- buena idea)
                 ds.setPassword(env.getRequiredProperty("dbpassword"));
 
                 return ds;
