@@ -1,13 +1,13 @@
 package com.springboot.MyTodoList.controller;
 
 import com.springboot.MyTodoList.model.User;
-import com.springboot.MyTodoList.model.Task;
-import com.springboot.MyTodoList.model.Comment;
-import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.repository.UserRepository;
 import com.springboot.MyTodoList.repository.TaskRepository;
 import com.springboot.MyTodoList.repository.CommentRepository;
 import com.springboot.MyTodoList.repository.SprintRepository;
+import com.springboot.MyTodoList.model.Task;
+import com.springboot.MyTodoList.model.Comment;
+import com.springboot.MyTodoList.model.Sprint;
 
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -33,54 +33,47 @@ public class BotController extends TelegramLongPollingBot {
 	private static final Logger logger = LoggerFactory.getLogger(BotController.class);
 
 	private final Jdbi jdbi;
-	private final String botUsername;
-	private final Map<Long, ConversationContext> chatContexts = new ConcurrentHashMap<>();
 
-	// Repositories
 	private UserRepository userRepository;
 	private TaskRepository taskRepository;
 	private CommentRepository commentRepository;
 	private SprintRepository sprintRepository;
 
-	// Command constants
-	private static final String CMD_LOGIN = "/login";
-	private static final String CMD_LOGOUT = "/logout";
-	private static final String CMD_START = "/start";
-	private static final String CMD_TASKS = "/tasks";
-	private static final String CMD_WHOAMI = "/whoami";
-	private static final String CMD_CANCEL = "/cancel";
+	private final String botUsername;
 
-	// Callback prefixes
-	private static final String CB_LOGIN_USER = "login_";
-	private static final String CB_TASK = "task_";
-	private static final String CB_SHOW_COMMENTS = "showComments";
-	private static final String CB_ADD_COMMENT = "addComment";
-	private static final String CB_ADD_TASK = "addTaskTitle";
-	private static final String CB_SPRINT_SELECT = "sprint_select_";
-	private static final String CB_NO_SPRINT = "no_sprint";
-	private static final String CB_STATUS_SELECT = "status_select_";
-	private static final String CB_CHANGE_STATUS = "change_status";
-	private static final String CB_TAG_SELECT = "tag_select_";
-	private static final String CB_CHANGE_REAL_HOURS = "real_hours";
-	private static final String CB_BACK_TO_LIST = "back_to_list";
-	private static final String CB_BACK_TO_TASK = "back_to_task";
+	private static final String LOGIN_USER_PREFIX = "login_";
+	private static final String TASK_PREFIX = "task_";
+	private static final String SHOW_COMMENTS = "showComments";
+	private static final String ADD_COMMENT = "addComment";
+	private static final String ADD_TASK_TITLE = "addTaskTitle";
+	private static final String SPRINT_SELECT_PREFIX = "sprint_select_";
+	private static final String NO_SPRINT_OPTION = "no_sprint";
+	private static final String STATUS_SELECT_PREFIX = "status_select_";
+	private static final String CHANGE_STATUS = "change_status";
+	private static final String TAG_SELECT_PREFIX = "tag_select_";
+	private static final String FEATURE = "Feature";
+	private static final String ISSUE = "Issue";
+	private static final String CHANGE_REAL_HOURS = "real_hours";
 
-	// Task tags
-	private static final String TAG_FEATURE = "Feature";
-	private static final String TAG_ISSUE = "Issue";
+	// TODO: Se usan?
+	// private static final String ADD_TASK_DESCRIPTION = "addTaskDescription";
+	// private static final String ADD_TASK_ESTIMATED_HOURS =
+	// "addTaskEstimatedHours";
+	// private static final String ADD_TASK_SPRINT = "addTaskSprint";
+
+	private Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
 	public BotController(String botToken, String botUsername, Jdbi jdbi) {
 		super(botToken);
 		this.botUsername = botUsername;
 		this.jdbi = jdbi;
 
-		// Initialize repositories
 		this.userRepository = jdbi.onDemand(UserRepository.class);
 		this.taskRepository = jdbi.onDemand(TaskRepository.class);
 		this.commentRepository = jdbi.onDemand(CommentRepository.class);
 		this.sprintRepository = jdbi.onDemand(SprintRepository.class);
 
-		logger.info("BotController initialized for username: {}", botUsername);
+		logger.info("BotController initialized for bot username: {}", botUsername);
 	}
 
 	@Override
@@ -88,1006 +81,7 @@ public class BotController extends TelegramLongPollingBot {
 		return this.botUsername;
 	}
 
-	@Override
-	public void onUpdateReceived(Update update) {
-		long chatId = 0;
-		String messageText = null;
-		String callbackData = null;
-
-		try {
-			final long finalChatId;
-			if (update.hasCallbackQuery()) {
-				finalChatId = update.getCallbackQuery().getMessage().getChatId();
-				callbackData = update.getCallbackQuery().getData();
-				logger.debug("Handling callback query from chat {}: {}", finalChatId, callbackData);
-			} else if (update.hasMessage() && update.getMessage().hasText()) {
-				finalChatId = update.getMessage().getChatId();
-				messageText = update.getMessage().getText();
-				logger.debug("Handling message from chat {}: {}", finalChatId, messageText);
-			} else {
-				// Ignore non-text messages
-				return;
-			}
-
-			// Get or create conversation context for this chat
-			ConversationContext context = chatContexts.computeIfAbsent(finalChatId,
-					id -> new ConversationContext(finalChatId, this));
-
-			// Process the update
-			if (messageText != null) {
-				handleTextMessage(context, messageText);
-			} else if (callbackData != null) {
-				handleCallbackQuery(context, callbackData);
-			}
-		} catch (Exception e) {
-			logger.error("Unhandled exception during update processing: {}", e.getMessage(), e);
-			try {
-				// Guardar el chatId en una variable final para usarlo dentro del bloque
-				final long finalChatId = chatId;
-				if (update.hasMessage() && finalChatId != 0) {
-					sendMessage(finalChatId,
-							"Ocurrió un error inesperado. Por favor, intenta de nuevo más tarde o usa /cancel.");
-
-					// Reset conversation to a safe state
-					ConversationContext context = chatContexts.get(finalChatId);
-					if (context != null) {
-						context.transitionTo(new IdleState());
-					}
-				}
-			} catch (Exception ex) {
-				logger.error("Failed to send error message to user: {}", ex.getMessage(), ex);
-			}
-		}
-	}
-
-	/**
-	 * Utility method to send a message to a chat
-	 */
-	void sendMessage(long chatId, String text) {
-		sendMessage(chatId, text, null);
-	}
-
-	/**
-	 * Utility method to send a message with a keyboard to a chat
-	 */
-	void sendMessage(long chatId, String text, InlineKeyboardMarkup markup) {
-		SendMessage message = new SendMessage();
-		message.setChatId(String.valueOf(chatId));
-		message.setText(text);
-		message.enableMarkdown(true);
-
-		if (markup != null) {
-			message.setReplyMarkup(markup);
-		}
-
-		try {
-			execute(message);
-		} catch (TelegramApiException e) {
-			logger.error("Telegram API error sending message to chat {}: {}", chatId, e.getMessage(), e);
-		} catch (Exception e) {
-			logger.error("Unexpected error sending message to chat {}: {}", chatId, e.getMessage(), e);
-		}
-	}
-
-	/**
-	 * Handle text messages based on command or current state
-	 */
-	private void handleTextMessage(ConversationContext context, String text) {
-		// Check for command messages first
-		if (text.startsWith("/")) {
-			switch (text.toLowerCase()) {
-				case CMD_LOGIN:
-					context.transitionTo(new LoginState());
-					return;
-				case CMD_LOGOUT:
-					context.logout();
-					return;
-				case CMD_START:
-				case CMD_TASKS:
-					context.showTasksOrLogin();
-					return;
-				case CMD_WHOAMI:
-					context.showCurrentUser();
-					return;
-				case CMD_CANCEL:
-					context.cancel();
-					return;
-				default:
-					context.sendMessage("Comando no reconocido. Usa /tasks para ver tus tareas o /cancel para anular.");
-					return;
-			}
-		}
-
-		// If not a command, delegate to the current state
-		context.getCurrentState().handleTextMessage(context, text);
-	}
-
-	/**
-	 * Handle callback queries by delegating to the current state
-	 */
-	private void handleCallbackQuery(ConversationContext context, String callbackData) {
-		// Special case for login callbacks which work from any state
-		if (callbackData.startsWith(CB_LOGIN_USER)) {
-			String userIdStr = callbackData.substring(CB_LOGIN_USER.length());
-			try {
-				long userId = Long.parseLong(userIdStr);
-				context.login(userId);
-			} catch (NumberFormatException e) {
-				logger.error("Invalid user ID format in login callback: {}", callbackData, e);
-				context.sendMessage("Error interno (formato de ID de usuario inválido).");
-			}
-			return;
-		}
-
-		// For all other callbacks, check if user is logged in
-		if (context.getUser() == null && !callbackData.startsWith(CB_LOGIN_USER)) {
-			context.sendMessage("No has iniciado sesión actualmente. Inicia sesión con '/login' para continuar.");
-			context.transitionTo(new LoginState());
-			return;
-		}
-
-		// Delegate to current state
-		context.getCurrentState().handleCallbackQuery(context, callbackData);
-	}
-
-	/**
-	 * Conversation context holds the current state and user information
-	 */
-	public class ConversationContext {
-		private final long chatId;
-		private final BotController bot;
-		private ConversationState currentState;
-		private User user;
-		private Task currentTask;
-		private Long selectedTaskId;
-
-		public ConversationContext(long chatId, BotController bot) {
-			this.chatId = chatId;
-			this.bot = bot;
-			this.currentState = new IdleState();
-
-			// Check if user is already logged in
-			Optional<User> existingUser = userRepository.findByChatId(chatId);
-			existingUser.ifPresent(u -> this.user = u);
-		}
-
-		public void transitionTo(ConversationState newState) {
-			logger.debug("Chat {} transitioning from {} to {}",
-					chatId,
-					currentState.getClass().getSimpleName(),
-					newState.getClass().getSimpleName());
-
-			this.currentState = newState;
-			newState.enter(this);
-		}
-
-		public void sendMessage(String text) {
-			bot.sendMessage(chatId, text);
-		}
-
-		public void sendMessage(String text, InlineKeyboardMarkup markup) {
-			bot.sendMessage(chatId, text, markup);
-		}
-
-		public User getUser() {
-			return user;
-		}
-
-		public Long getChatId() {
-			return chatId;
-		}
-
-		public Task getCurrentTask() {
-			return currentTask;
-		}
-
-		public void setCurrentTask(Task task) {
-			this.currentTask = task;
-		}
-
-		public Long getSelectedTaskId() {
-			return selectedTaskId;
-		}
-
-		public void setSelectedTaskId(Long taskId) {
-			this.selectedTaskId = taskId;
-
-			// If taskId is set, automatically load the Task
-			if (taskId != null) {
-				taskRepository.findById(taskId).ifPresent(this::setCurrentTask);
-			} else {
-				setCurrentTask(null);
-			}
-		}
-
-		public ConversationState getCurrentState() {
-			return currentState;
-		}
-
-		/**
-		 * Log in as a specific user
-		 */
-		public void login(long userId) {
-			try {
-				// Update database
-				userRepository.forgetChatId(chatId);
-				userRepository.setChatIdForUser(userId, chatId);
-
-				// Update context
-				Optional<User> userOpt = userRepository.findById(userId);
-				if (userOpt.isPresent()) {
-					this.user = userOpt.get();
-					sendMessage("Has iniciado sesión como usuario: " + user.getName());
-					sendMessage("Puedes cerrar sesión con '/logout' en cualquier momento");
-
-					// Show tasks after login
-					transitionTo(new TaskListState());
-				} else {
-					logger.error("Login failed: User ID {} not found.", userId);
-					sendMessage("Error al iniciar sesión: Usuario no encontrado.");
-					transitionTo(new IdleState());
-				}
-			} catch (Exception e) {
-				logger.error("Error during login process: {}", e.getMessage(), e);
-				sendMessage("Error al iniciar sesión. Por favor, intenta de nuevo.");
-				transitionTo(new IdleState());
-			}
-		}
-
-		/**
-		 * Log out current user
-		 */
-		public void logout() {
-			if (user != null) {
-				sendMessage("Terminando sesión como " + user.getName());
-				userRepository.forgetChatId(chatId);
-				user = null;
-				currentTask = null;
-				selectedTaskId = null;
-				transitionTo(new IdleState());
-			} else {
-				sendMessage("No has iniciado sesión actualmente.");
-			}
-		}
-
-		/**
-		 * Cancel current action and go back to task list or idle state
-		 */
-		public void cancel() {
-			sendMessage("Acción cancelada.");
-			if (user != null) {
-				transitionTo(new TaskListState());
-			} else {
-				transitionTo(new IdleState());
-			}
-		}
-
-		/**
-		 * Show tasks if logged in, otherwise prompt for login
-		 */
-		public void showTasksOrLogin() {
-			if (user != null) {
-				sendMessage(
-						"Sesión iniciada como " + user.getName() + ". Usa '/logout' para ingresar como otro usuario.");
-				transitionTo(new TaskListState());
-			} else {
-				sendMessage("No hay sesión iniciada. Por favor, usa /login.");
-				transitionTo(new LoginState());
-			}
-		}
-
-		/**
-		 * Show current user info
-		 */
-		public void showCurrentUser() {
-			if (user != null) {
-				sendMessage("Sesión de " + user.getName());
-			} else {
-				sendMessage("No has iniciado sesión. Usa /login.");
-			}
-		}
-	}
-
-	/**
-	 * Base class for all conversation states
-	 */
-	public abstract class ConversationState {
-		/**
-		 * Called when entering this state
-		 */
-		public abstract void enter(ConversationContext context);
-
-		/**
-		 * Handle text messages in this state
-		 */
-		public abstract void handleTextMessage(ConversationContext context, String text);
-
-		/**
-		 * Handle callback queries in this state
-		 */
-		public abstract void handleCallbackQuery(ConversationContext context, String callbackData);
-	}
-
-	/**
-	 * Idle state - initial state when no user is logged in
-	 */
-	public class IdleState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			// No action needed when entering idle state
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			// In idle state, only commands are handled, which is done in the parent method
-			context.sendMessage("Por favor, inicia sesión con /login o usa /start para comenzar.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			// In idle state, only login callbacks are handled, which is done in the parent
-			// method
-			context.sendMessage("Por favor, inicia sesión primero.");
-		}
-	}
-
-	/**
-	 * Login state - showing user list for login
-	 */
-	public class LoginState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			List<User> allUsers = userRepository.findAll(100000, 0);
-
-			if (allUsers.isEmpty()) {
-				context.sendMessage("No hay usuarios registrados.");
-				context.transitionTo(new IdleState());
-				return;
-			}
-
-			List<TelegramUI.ButtonData> buttons = allUsers.stream()
-					.map(user -> new TelegramUI.ButtonData(
-							user.getName() + " (" + user.getEmail() + ")",
-							CB_LOGIN_USER + user.getId()))
-					.collect(Collectors.toList());
-
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			context.sendMessage("Selecciona tu usuario:", markup);
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			// In login state, only expect commands which are handled by parent
-			context.sendMessage("Por favor, selecciona un usuario de la lista.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			// Login callbacks are handled in the parent method
-			// This is reached only for non-login callbacks
-			context.sendMessage("Por favor, selecciona un usuario primero.");
-		}
-	}
-
-	/**
-	 * Task list state - showing tasks for the current user
-	 */
-	public class TaskListState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			User user = context.getUser();
-			if (user == null) {
-				logger.error("Attempted to enter TaskListState without a logged in user");
-				context.sendMessage("Error: No has iniciado sesión.");
-				context.transitionTo(new IdleState());
-				return;
-			}
-
-			List<Task> tasks = taskRepository.findTasksAssignedToUser(user.getId());
-
-			List<TelegramUI.ButtonData> buttons = tasks.stream()
-					.map(task -> new TelegramUI.ButtonData(
-							task.getTitle() + " [ID: " + task.getId() + "]",
-							CB_TASK + task.getId()))
-					.collect(Collectors.toList());
-
-			buttons.add(new TelegramUI.ButtonData("+ Agregar tarea", CB_ADD_TASK));
-
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			String message = tasks.isEmpty()
-					? "No tienes tareas asignadas:"
-					: "Estas son tus tareas asignadas:";
-
-			context.sendMessage(message, markup);
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			// In task list, only expect commands which are handled by parent
-			context.sendMessage("Por favor, selecciona una tarea de la lista o usa los comandos disponibles.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			if (callbackData.startsWith(CB_TASK)) {
-				try {
-					Long taskId = Long.parseLong(callbackData.substring(CB_TASK.length()));
-					context.setSelectedTaskId(taskId);
-					context.transitionTo(new TaskDetailsState());
-				} catch (NumberFormatException e) {
-					logger.error("Invalid task ID format in task callback: {}", callbackData, e);
-					context.sendMessage("Error interno (formato de ID de tarea inválido).");
-				}
-			} else if (callbackData.equals(CB_ADD_TASK)) {
-				context.setCurrentTask(new Task());
-				context.transitionTo(new AddTaskTitleState());
-			} else {
-				context.sendMessage("Acción no reconocida.");
-			}
-		}
-	}
-
-	/**
-	 * Task details state - showing details of a specific task
-	 */
-	public class TaskDetailsState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			Task task = context.getCurrentTask();
-			if (task == null) {
-				logger.error("Attempted to enter TaskDetailsState without a selected task");
-				context.sendMessage("Error: No hay tarea seleccionada.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			String sprintName = "Sin sprint";
-			if (task.getSprintId() != null) {
-				sprintName = sprintRepository.findById(task.getSprintId())
-						.map(Sprint::getName)
-						.orElse("Sprint ID " + task.getSprintId() + " no encontrado");
-			}
-
-			String messageText = String.format(
-					"Tarea: %s\nDescripción: %s\nTag: %s\nSprint: %s\nEstado: %s\nInicio: %s\nFin: %s\nHoras Estimadas: %s\nHoras Reales: %s\n",
-					task.getTitle(),
-					task.getDescription(),
-					task.getTag() != null ? task.getTag() : "--",
-					sprintName,
-					task.getStatus(),
-					task.getStartDate() != null ? task.getStartDate() : "--",
-					task.getEndDate() != null ? task.getEndDate() : "--",
-					(task.getEstimatedHours() != null) ? task.getEstimatedHours() : "--",
-					(task.getActualHours() != null) ? task.getActualHours() : "--");
-
-			List<TelegramUI.ButtonData> buttons = Arrays.asList(
-					new TelegramUI.ButtonData("Ver comentarios", CB_SHOW_COMMENTS),
-					new TelegramUI.ButtonData("Agregar comentario", CB_ADD_COMMENT),
-					new TelegramUI.ButtonData("Cambiar estatus", CB_CHANGE_STATUS),
-					new TelegramUI.ButtonData("Colocar horas reales", CB_CHANGE_REAL_HOURS),
-					new TelegramUI.ButtonData("← Volver a la lista", CB_BACK_TO_LIST));
-
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			context.sendMessage(messageText, markup);
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			// In task details, only expect commands which are handled by parent
-			context.sendMessage("Por favor, selecciona una acción de las opciones disponibles.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			switch (callbackData) {
-				case CB_SHOW_COMMENTS:
-					context.transitionTo(new ShowCommentsState());
-					break;
-				case CB_ADD_COMMENT:
-					context.transitionTo(new AddCommentState());
-					break;
-				case CB_CHANGE_STATUS:
-					context.transitionTo(new ChangeStatusState());
-					break;
-				case CB_CHANGE_REAL_HOURS:
-					context.transitionTo(new ChangeRealHoursState());
-					break;
-				case CB_BACK_TO_LIST:
-					context.transitionTo(new TaskListState());
-					break;
-				default:
-					context.sendMessage("Acción no reconocida.");
-			}
-		}
-	}
-
-	/**
-	 * Show comments state - displays comments for a task
-	 */
-	public class ShowCommentsState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			Long taskId = context.getSelectedTaskId();
-			if (taskId == null) {
-				context.sendMessage("No has seleccionado ninguna tarea.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			List<Comment> comments = commentRepository.findByTaskId(taskId);
-			if (comments.isEmpty()) {
-				context.sendMessage("No hay comentarios para esta tarea.");
-			} else {
-				StringBuilder sb = new StringBuilder("Comentarios:\n");
-				for (Comment comment : comments) {
-					sb.append(String.format(
-							"[%s]: %s\n",
-							(comment.getCreatorName() != null ? comment.getCreatorName() : "Desconocido"),
-							comment.getContent()));
-				}
-				context.sendMessage(sb.toString());
-			}
-
-			List<TelegramUI.ButtonData> buttons = Arrays.asList(
-					new TelegramUI.ButtonData("← Volver a la tarea", CB_BACK_TO_TASK));
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			context.sendMessage("Selecciona una acción:", markup);
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			if (CB_BACK_TO_TASK.equals(callbackData)) {
-				context.transitionTo(new TaskDetailsState());
-			}
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			context.sendMessage("Por favor, usa los botones disponibles o /cancel para cancelar.");
-		}
-	}
-
-	/**
-	 * Add comment state - allows adding a comment to a task
-	 */
-	public class AddCommentState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			if (context.getSelectedTaskId() == null) {
-				context.sendMessage("Error: No hay tarea seleccionada para añadir comentario.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			context.sendMessage("Por favor, escribe tu comentario ahora:");
-			context.sendMessage("Puedes cancelar esta acción en todo momento con /cancel");
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			Long taskId = context.getSelectedTaskId();
-			User user = context.getUser();
-
-			if (taskId == null || user == null) {
-				context.sendMessage("No se puede crear comentario: Falta tarea o usuario.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			Comment comment = new Comment();
-			comment.setTaskId(taskId);
-			comment.setContent(text);
-			comment.setCreatorId(user.getId());
-			comment.setCreatorName(user.getName());
-			comment.setCreatedAt(new Date());
-
-			commentRepository.insert(comment);
-			context.sendMessage("Comentario agregado correctamente.");
-
-			// Return to task details
-			context.transitionTo(new TaskDetailsState());
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			context.sendMessage("Por favor, escribe el comentario o usa /cancel para cancelar.");
-		}
-	}
-
-	/**
-	 * Change task status state
-	 */
-	public class ChangeStatusState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			if (context.getSelectedTaskId() == null) {
-				context.sendMessage("Error: No hay tarea seleccionada para cambiar estado.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			List<TelegramUI.ButtonData> buttons = new ArrayList<>();
-			Arrays.stream(TaskStatus.values())
-					.forEach(status -> buttons.add(new TelegramUI.ButtonData(
-							status.getDisplayName(),
-							CB_STATUS_SELECT + status.name())));
-
-			buttons.add(new TelegramUI.ButtonData("← Volver a la tarea", CB_BACK_TO_TASK));
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			context.sendMessage("Selecciona el nuevo estado para la tarea:", markup);
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			context.sendMessage("Por favor, selecciona un estado de la lista o usa /cancel para cancelar.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			if (CB_BACK_TO_TASK.equals(callbackData)) {
-				context.transitionTo(new TaskDetailsState());
-				return;
-			}
-
-			if (!callbackData.startsWith(CB_STATUS_SELECT)) {
-				context.sendMessage("Acción no reconocida.");
-				return;
-			}
-
-			String statusName = callbackData.substring(CB_STATUS_SELECT.length());
-			Long taskId = context.getSelectedTaskId();
-
-			try {
-				TaskStatus selectedStatus = TaskStatus.valueOf(statusName);
-
-				if (selectedStatus == TaskStatus.COMPLETED) {
-					String endDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
-					taskRepository.updateEndDate(taskId, endDate);
-					context.sendMessage("Fecha Final declarada como " + endDate);
-				}
-
-				taskRepository.updateStatus(taskId, selectedStatus.getDisplayName());
-				context.sendMessage("Estado actualizado a: " + selectedStatus.getDisplayName());
-
-				// Go back to task list
-				context.transitionTo(new TaskListState());
-			} catch (IllegalArgumentException e) {
-				logger.error("Invalid status name in status select callback: {}", callbackData, e);
-				context.sendMessage("Error interno (nombre de estado inválido).");
-				context.transitionTo(new TaskDetailsState());
-			}
-		}
-	}
-
-	/**
-	 * Change real hours state
-	 */
-	public class ChangeRealHoursState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			if (context.getSelectedTaskId() == null) {
-				context.sendMessage("Error: No hay tarea seleccionada para añadir horas reales.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			List<TelegramUI.ButtonData> buttons = Arrays.asList(
-					new TelegramUI.ButtonData("← Volver a la tarea", CB_BACK_TO_TASK));
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-
-			context.sendMessage("Por favor, escribe las horas reales de la tarea (número):", markup);
-			context.sendMessage("Puedes cancelar esta acción en todo momento con /cancel");
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			Long taskId = context.getSelectedTaskId();
-
-			if (taskId == null) {
-				context.sendMessage("Error: No hay tarea seleccionada para añadir horas reales.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			try {
-				double realHours = Double.parseDouble(text);
-				taskRepository.updateRealHours(taskId, realHours);
-				context.sendMessage("Horas reales actualizadas.");
-				context.transitionTo(new TaskListState());
-			} catch (NumberFormatException e) {
-				logger.warn("Invalid number format for real hours: {}", text);
-				context.sendMessage("Formato inválido. Por favor, escribe un número para las horas reales (ej: 3):");
-			}
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			if (CB_BACK_TO_TASK.equals(callbackData)) {
-				context.transitionTo(new TaskDetailsState());
-			} else {
-				context.sendMessage("Por favor, escribe las horas reales o usa los botones disponibles.");
-			}
-		}
-	}
-
-	/**
-	 * Add task flow - multiple states for each step
-	 */
-	public class AddTaskTitleState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			Task newTask = new Task();
-			context.setCurrentTask(newTask);
-			context.sendMessage("Por favor, escribe el título de la tarea:");
-			context.sendMessage("Puedes cancelar esta acción en todo momento con /cancel");
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			Task task = context.getCurrentTask();
-			if (task == null) {
-				context.sendMessage("Error: No se encontró la tarea en progreso.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			task.setTitle(text);
-			context.transitionTo(new AddTaskDescriptionState());
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			context.sendMessage("Por favor, escribe el título de la tarea o usa /cancel para cancelar.");
-		}
-	}
-
-	/**
-	 * Add task description state
-	 */
-	public class AddTaskDescriptionState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			context.sendMessage("Por favor, escribe la descripción de la tarea:");
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			Task task = context.getCurrentTask();
-			if (task == null) {
-				context.sendMessage("Error: No se encontró la tarea en progreso.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			task.setDescription(text);
-			context.transitionTo(new AddTaskEstimatedHoursState());
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			context.sendMessage("Por favor, escribe la descripción de la tarea o usa /cancel para cancelar.");
-		}
-	}
-
-	/**
-	 * Add task estimated hours state
-	 */
-	public class AddTaskEstimatedHoursState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			context.sendMessage("Por favor, escribe las horas estimadas de la tarea (número):");
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			Task task = context.getCurrentTask();
-			if (task == null) {
-				context.sendMessage("Error: No se encontró la tarea en progreso.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			try {
-				task.setEstimatedHours(Double.parseDouble(text));
-				context.transitionTo(new AddTaskTagState());
-			} catch (NumberFormatException e) {
-				logger.warn("Invalid number format for estimated hours: {}", text);
-				context.sendMessage(
-						"Formato inválido. Por favor, escribe un número para las horas estimadas (ej: 2.5):");
-			}
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			context.sendMessage("Por favor, escribe las horas estimadas o usa /cancel para cancelar.");
-		}
-	}
-
-	/**
-	 * Add task tag state
-	 */
-	public class AddTaskTagState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			List<TelegramUI.ButtonData> buttons = Arrays.asList(
-					new TelegramUI.ButtonData(TAG_FEATURE, CB_TAG_SELECT + TAG_FEATURE),
-					new TelegramUI.ButtonData(TAG_ISSUE, CB_TAG_SELECT + TAG_ISSUE));
-
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			context.sendMessage("Selecciona el tag para la tarea:", markup);
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			context.sendMessage(
-					"Por favor, selecciona un tag de las opciones disponibles o usa /cancel para cancelar.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			if (!callbackData.startsWith(CB_TAG_SELECT)) {
-				context.sendMessage("Acción no reconocida.");
-				return;
-			}
-
-			String tag = callbackData.substring(CB_TAG_SELECT.length());
-			Task task = context.getCurrentTask();
-
-			if (task == null) {
-				context.sendMessage("Error: No se encontró la tarea en progreso.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			if (TAG_FEATURE.equals(tag) || TAG_ISSUE.equals(tag)) {
-				task.setTag(tag);
-				context.transitionTo(new AddTaskSprintState());
-			} else {
-				logger.warn("Invalid tag received: {}", tag);
-				context.sendMessage("Tag inválido seleccionado.");
-				enter(context); // Show tag options again
-			}
-		}
-	}
-
-	/**
-	 * Add task sprint state
-	 */
-	public class AddTaskSprintState extends ConversationState {
-		@Override
-		public void enter(ConversationContext context) {
-			User user = context.getUser();
-			if (user == null || user.getTeamId() == null) {
-				logger.warn("No team ID available for user. Task will have no sprint.");
-				context.sendMessage("No se pudo determinar tu equipo. No se asignará ningún sprint.");
-				finishTaskCreation(context);
-				return;
-			}
-
-			List<Sprint> sprints = sprintRepository.findByTeamId(user.getTeamId());
-			if (sprints.isEmpty()) {
-				context.sendMessage(
-						"No hay sprints disponibles para tu equipo. La tarea se creará sin asignar a un sprint.");
-				finishTaskCreation(context);
-				return;
-			}
-
-			List<TelegramUI.ButtonData> buttons = sprints.stream()
-					.map(sprint -> new TelegramUI.ButtonData(
-							sprint.getName(),
-							CB_SPRINT_SELECT + sprint.getId()))
-					.collect(Collectors.toList());
-
-			buttons.add(new TelegramUI.ButtonData("Sin sprint", CB_SPRINT_SELECT + CB_NO_SPRINT));
-
-			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-			context.sendMessage("Selecciona el sprint para esta tarea:", markup);
-		}
-
-		@Override
-		public void handleTextMessage(ConversationContext context, String text) {
-			context.sendMessage(
-					"Por favor, selecciona un sprint de las opciones disponibles o usa /cancel para cancelar.");
-		}
-
-		@Override
-		public void handleCallbackQuery(ConversationContext context, String callbackData) {
-			if (!callbackData.startsWith(CB_SPRINT_SELECT)) {
-				context.sendMessage("Acción no reconocida.");
-				return;
-			}
-
-			String sprintIdStr = callbackData.substring(CB_SPRINT_SELECT.length());
-			Task task = context.getCurrentTask();
-
-			if (task == null) {
-				context.sendMessage("Error: No se encontró la tarea en progreso.");
-				context.transitionTo(new TaskListState());
-				return;
-			}
-
-			try {
-				if (CB_NO_SPRINT.equals(sprintIdStr)) {
-					task.setSprintId(null);
-				} else {
-					Long sprintId = Long.parseLong(sprintIdStr);
-					task.setSprintId(sprintId);
-				}
-
-				finishTaskCreation(context);
-			} catch (NumberFormatException e) {
-				logger.error("Invalid sprint ID format: {}", sprintIdStr, e);
-				context.sendMessage("Error interno (formato de ID de sprint inválido).");
-				context.transitionTo(new TaskListState());
-			}
-		}
-
-		/**
-		 * Complete task creation process
-		 */
-		private void finishTaskCreation(ConversationContext context) {
-			context.sendMessage("Procesando la creación de la tarea...");
-
-			try {
-				Long taskId = createNewTask(context);
-
-				if (taskId != null) {
-					context.sendMessage("¡Tarea creada correctamente con ID: " + taskId + "!");
-					context.setSelectedTaskId(taskId);
-				} else {
-					context.sendMessage("Error al crear la tarea. Por favor, intenta nuevamente.");
-				}
-
-				context.transitionTo(new TaskListState());
-			} catch (Exception e) {
-				logger.error("Error creating task: {}", e.getMessage(), e);
-				context.sendMessage("Error al crear la tarea: " + e.getMessage());
-				context.transitionTo(new TaskListState());
-			}
-		}
-
-		/**
-		 * Create new task in database
-		 */
-		private Long createNewTask(ConversationContext context) {
-			Task task = context.getCurrentTask();
-			User user = context.getUser();
-
-			if (task == null || user == null) {
-				logger.error("Cannot create task: missing task data or user");
-				return null;
-			}
-
-			return jdbi.withHandle(handle -> {
-				TaskRepository taskRepo = handle.attach(TaskRepository.class);
-
-				task.setCreatorId(user.getId());
-				task.setStartDate(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-				task.setActualHours(null);
-				task.setEndDate(null);
-				task.setStatus(TaskStatus.BACKLOG.getDisplayName());
-				task.setCreatorName(user.getName());
-				task.setTeamId(user.getTeamId());
-
-				Long newTaskId = taskRepo.insert(task);
-
-				if (newTaskId != null) {
-					taskRepo.addAssignee(newTaskId, user.getId());
-					logger.info("Task {} created with ID {} and assigned to user {}",
-							task.getTitle(), newTaskId, user.getId());
-				} else {
-					logger.error("Task insertion failed for task title: {}", task.getTitle());
-				}
-
-				return newTaskId;
-			});
-		}
-	}
-
-	/**
-	 * Utility class for creating Telegram UI elements
-	 */
-	public static class TelegramUI {
+	private static class TelegramUI {
 		public static InlineKeyboardButton createButton(String text, String callbackData) {
 			InlineKeyboardButton button = new InlineKeyboardButton();
 			button.setText(text);
@@ -1124,9 +118,28 @@ public class BotController extends TelegramLongPollingBot {
 		}
 	}
 
-	/**
-	 * Task status enum
-	 */
+	private void sendMessage(long chatId, String text) {
+		sendMessage(chatId, text, null);
+	}
+
+	private void sendMessage(long chatId, String text, InlineKeyboardMarkup markup) {
+		SendMessage message = new SendMessage();
+		message.setChatId(String.valueOf(chatId));
+		message.setText(text);
+
+		if (markup != null) {
+			message.setReplyMarkup(markup);
+		}
+
+		try {
+			execute(message);
+		} catch (TelegramApiException e) {
+			logger.error("Telegram API error sending message to chat {}: {}", chatId, e.getMessage(), e);
+		} catch (Exception e) {
+			logger.error("Unexpected error sending message to chat {}: {}", chatId, e.getMessage(), e);
+		}
+	}
+
 	public enum TaskStatus {
 		BACKLOG("Backlog"),
 		IN_PROGRESS("En progreso"),
@@ -1163,5 +176,673 @@ public class BotController extends TelegramLongPollingBot {
 					.filter(status -> status.displayName.equalsIgnoreCase(displayName))
 					.findFirst();
 		}
+	}
+
+	private static class UserState {
+		Long loggedInUserId;
+		String userName;
+		Long selectedTaskId;
+		String currentAction = "NORMAL";
+		Task NewTask;
+
+		UserState() {
+			reset();
+		}
+
+		void reset() {
+			this.loggedInUserId = null;
+			this.userName = null;
+			softReset();
+		}
+
+		void softReset() {
+			this.selectedTaskId = null;
+			this.currentAction = "NORMAL";
+			this.NewTask = null;
+		}
+
+		@Override
+		public String toString() {
+			return "UserState{" +
+					"loggedInUserId=" + loggedInUserId +
+					", userName='" + userName + '\'' +
+					", selectedTaskId=" + selectedTaskId +
+					", currentAction='" + currentAction + '\'' +
+					", hasNewTask=" + (NewTask != null) +
+					'}';
+		}
+	}
+
+	private UserState findUserOrNewState(long chatId) {
+		UserState newState = new UserState();
+		userRepository.findByChatId(chatId).ifPresent(user -> {
+			newState.loggedInUserId = user.getId();
+			newState.userName = user.getName();
+			logger.debug("Found existing user {} for chat {}", newState.userName, chatId);
+		});
+		return newState;
+	}
+
+	@Override
+	public void onUpdateReceived(Update update) {
+		long chatId = 0;
+		String text = null;
+		String callbackData = null;
+		boolean isCallback = update.hasCallbackQuery();
+		boolean isMessage = update.hasMessage() && update.getMessage().hasText();
+
+		try {
+			if (isCallback) {
+				chatId = update.getCallbackQuery().getMessage().getChatId();
+				callbackData = update.getCallbackQuery().getData();
+				logger.debug("Handling callback query from Tel_ID {}: {}", chatId, callbackData);
+			} else if (isMessage) {
+				chatId = update.getMessage().getChatId();
+				text = update.getMessage().getText();
+				logger.debug("Handling message from Tel_ID {}: {}", chatId, text);
+			} else {
+				return;
+			}
+
+			final long finalChatId = chatId;
+			UserState state = userStates.computeIfAbsent(chatId, k -> findUserOrNewState(finalChatId));
+
+			if (state == null) {
+				logger.error("UserState became null after computeIfAbsent for chat ID: {}", chatId);
+				UserState finalState = findUserOrNewState(chatId);
+				if (finalState == null) {
+					sendMessage(chatId,
+							"Error interno del bot (estado de usuario). Por favor, intente de nuevo más tarde.");
+					return;
+				}
+				userStates.put(chatId, finalState);
+				state = finalState;
+			}
+
+			if (isMessage) {
+				logger.debug("Processing text '{}' in context {}", text, state);
+				handleTextMessage(chatId, text, state);
+			} else if (isCallback) {
+				logger.debug("Processing callback '{}' in context {}", callbackData, state);
+
+				if (state.loggedInUserId == null && !callbackData.startsWith(LOGIN_USER_PREFIX)) {
+					logger.debug("Chat {} received callback '{}' but is not logged in.", chatId, callbackData);
+					sendMessage(chatId,
+							"No has iniciado sesión actualmente. Inicia sesión con '/login' para continuar.");
+					return;
+				}
+
+				handleCallback(chatId, callbackData, state);
+			}
+		} catch (Exception e) {
+			logger.error("Unhandled exception during onUpdateReceived for chat {}: {}",
+					chatId, e.getMessage(), e);
+
+			if (chatId != 0) {
+				sendMessage(chatId,
+						"Ocurrió un error inesperado procesando tu solicitud. " +
+								"Por favor, intenta de nuevo más tarde o usa /cancel.");
+
+				UserState errorState = userStates.get(chatId);
+				if (errorState != null) {
+					errorState.softReset();
+				}
+			}
+		}
+	}
+
+	private void showUserList(long chatId) {
+		List<User> allUsers = userRepository.findAll(100000, 0);
+
+		if (allUsers.isEmpty()) {
+			sendMessage(chatId, "No hay usuarios registrados.");
+			return;
+		}
+
+		List<TelegramUI.ButtonData> buttons = allUsers.stream()
+				.map(user -> new TelegramUI.ButtonData(
+						user.getName() + " (" + user.getEmail() + ")",
+						LOGIN_USER_PREFIX + user.getId()))
+				.collect(Collectors.toList());
+
+		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
+		sendMessage(chatId, "Selecciona tu usuario:", markup);
+	}
+
+	private void listTasksForUser(long chatId, Long userId) {
+		List<Task> tasks = taskRepository.findTasksAssignedToUser(userId);
+
+		List<TelegramUI.ButtonData> buttons = tasks.stream()
+				.map(task -> new TelegramUI.ButtonData(
+						task.getTitle() + " [ID: " + task.getId() + "]",
+						TASK_PREFIX + task.getId()))
+				.collect(Collectors.toList());
+
+		buttons.add(new TelegramUI.ButtonData("Agregar tarea", ADD_TASK_TITLE));
+
+		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
+		String message = tasks.isEmpty() ? "No tienes tareas asignadas:" : "Estas son tus tareas asignadas:";
+
+		sendMessage(chatId, message, markup);
+	}
+
+	private void showTaskDetails(long chatId, Long taskId) {
+		Optional<Task> optTask = taskRepository.findById(taskId);
+		if (optTask.isEmpty()) {
+			sendMessage(chatId, "Tarea no encontrada con ID: " + taskId);
+			return;
+		}
+
+		Task task = optTask.get();
+
+		String sprintName = "Sin sprint";
+		if (task.getSprintId() != null) {
+			sprintName = sprintRepository.findById(task.getSprintId())
+					.map(Sprint::getName)
+					.orElse("Sprint ID " + task.getSprintId() + " no encontrado");
+		}
+
+		String messageText = String.format(
+				"Tarea: %s\nDescripción: %s\nTag: %s\nSprint: %s\nEstado: %s\nInicio: %s\nFin: %s\nHoras Estimadas: %s\nHoras Reales: %s\n",
+				task.getTitle(),
+				task.getDescription(),
+				task.getTag() != null ? task.getTag() : "--",
+				sprintName,
+				task.getStatus(),
+				task.getStartDate() != null ? task.getStartDate() : "--",
+				task.getEndDate() != null ? task.getEndDate() : "--",
+				(task.getEstimatedHours() != null) ? task.getEstimatedHours() : "--",
+				(task.getActualHours() != null) ? task.getActualHours() : "--");
+
+		List<TelegramUI.ButtonData> buttons = Arrays.asList(
+				new TelegramUI.ButtonData("Ver comentarios", SHOW_COMMENTS),
+				new TelegramUI.ButtonData("Agregar comentario", ADD_COMMENT),
+				new TelegramUI.ButtonData("Cambiar estatus", CHANGE_STATUS),
+				new TelegramUI.ButtonData("Colocar horas reales", CHANGE_REAL_HOURS));
+
+		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
+		sendMessage(chatId, messageText, markup);
+	}
+
+	private void showComments(long chatId, Long taskId) {
+		if (taskId == null) {
+			sendMessage(chatId, "No has seleccionado ninguna tarea.");
+			return;
+		}
+
+		List<Comment> comments = commentRepository.findByTaskId(taskId);
+		if (comments.isEmpty()) {
+			sendMessage(chatId, "No hay comentarios para esta tarea.");
+			return;
+		}
+
+		StringBuilder sb = new StringBuilder("Comentarios:\n");
+		for (Comment comment : comments) {
+			sb.append(String.format(
+					"- %s dice: %s\n",
+					(comment.getCreatorName() != null ? comment.getCreatorName() : "Desconocido"),
+					comment.getContent()));
+		}
+		sendMessage(chatId, sb.toString());
+	}
+
+	private void addNewComment(long chatId, Long taskId, Long userId, String content) {
+		if (taskId == null || userId == null) {
+			sendMessage(chatId, "No se puede crear comentario: Falta tarea o usuario.");
+			return;
+		}
+
+		String authorName = userRepository.findById(userId)
+				.map(User::getName)
+				.orElse("Usuario ID " + userId);
+
+		Comment comment = new Comment();
+		comment.setTaskId(taskId);
+		comment.setContent(content);
+		comment.setCreatorId(userId);
+		comment.setCreatorName(authorName);
+		comment.setCreatedAt(new Date());
+
+		commentRepository.insert(comment);
+		sendMessage(chatId, "Comentario agregado correctamente.");
+	}
+
+	private void createNewTask(Long chatId, UserState state) {
+		Long taskId = jdbi.withHandle(handle -> {
+			TaskRepository taskRepo = handle.attach(TaskRepository.class);
+			UserRepository userRepo = handle.attach(UserRepository.class);
+
+			state.NewTask.setCreatorId(state.loggedInUserId);
+			state.NewTask.setStartDate(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+			state.NewTask.setActualHours(null);
+			state.NewTask.setEndDate(null);
+			state.NewTask.setStatus(TaskStatus.BACKLOG.getDisplayName());
+
+			Optional<User> currentUserOpt = userRepo.findById(state.loggedInUserId);
+			if (currentUserOpt.isEmpty()) {
+				logger.error("Cannot create task: logged in user ID {} not found in DB.", state.loggedInUserId);
+				sendMessage(chatId, "Error: No se pudo encontrar tu usuario para crear la tarea.");
+				return null;
+			}
+
+			User currentUser = currentUserOpt.get();
+			state.NewTask.setCreatorName(currentUser.getName());
+			state.NewTask.setTeamId(currentUser.getTeamId());
+
+			if (currentUser.getTeamId() == null) {
+				logger.warn("User {} has no team ID, task {} will not have a team ID.",
+						currentUser.getName(), state.NewTask.getTitle());
+			}
+
+			Long newTaskId = taskRepo.insert(state.NewTask);
+
+			if (newTaskId != null) {
+				taskRepo.addAssignee(newTaskId, state.loggedInUserId);
+				logger.info("Task {} created with ID {} and assigned to user {}",
+						state.NewTask.getTitle(), newTaskId, state.loggedInUserId);
+			} else {
+				logger.error("Task insertion failed for task title: {}", state.NewTask.getTitle());
+			}
+
+			return newTaskId;
+		});
+
+		if (taskId != null) {
+			sendMessage(chatId, "¡Tarea creada correctamente con ID: " + taskId + "!");
+			state.selectedTaskId = taskId;
+			state.currentAction = "NORMAL";
+			listTasksForUser(chatId, state.loggedInUserId);
+		} else {
+			sendMessage(chatId, "Error al crear la tarea. Por favor, intenta nuevamente.");
+			state.currentAction = "NORMAL";
+			listTasksForUser(chatId, state.loggedInUserId);
+		}
+	}
+
+	// TODO: eraseTask() no se usa?
+	/*
+	 * private void eraseTask(long chatId, Long taskId, Long userId) {
+	 * if (taskId == null) {
+	 * sendMessage(chatId, "No se puede eliminar la tarea: ID no válido.");
+	 * return;
+	 * }
+	 * 
+	 * int deletedRows = taskRepository.delete(taskId);
+	 * 
+	 * if (deletedRows > 0) {
+	 * sendMessage(chatId, "Tarea eliminada correctamente.");
+	 * logger.info("Task {} deleted by user {}", taskId, userId);
+	 * } else {
+	 * sendMessage(chatId, "No se pudo eliminar la tarea (quizás ya no existía).");
+	 * logger.warn("Attempted to delete non-existent task {} by user {}", taskId,
+	 * userId);
+	 * }
+	 * 
+	 * listTasksForUser(chatId, userId);
+	 * }
+	 */
+
+	private void showSprintsForTeam(long chatId, Long teamId) {
+		List<Sprint> sprints = sprintRepository.findByTeamId(teamId);
+		UserState state = userStates.get(chatId);
+
+		if (sprints.isEmpty()) {
+			sendMessage(chatId,
+					"No hay sprints disponibles para tu equipo. La tarea se creará sin asignar a un sprint.");
+
+			if (state != null && state.NewTask != null) {
+				state.NewTask.setSprintId(null);
+				createNewTask(chatId, state);
+			} else {
+				logger.error("State or NewTask is null when trying to create task without sprint for chat {}", chatId);
+				sendMessage(chatId, "Error interno al procesar la creación de la tarea.");
+			}
+			return;
+		}
+
+		List<TelegramUI.ButtonData> buttons = sprints.stream()
+				.map(sprint -> new TelegramUI.ButtonData(
+						sprint.getName(),
+						SPRINT_SELECT_PREFIX + sprint.getId()))
+				.collect(Collectors.toList());
+
+		buttons.add(new TelegramUI.ButtonData("Sin sprint", SPRINT_SELECT_PREFIX + NO_SPRINT_OPTION));
+
+		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
+		sendMessage(chatId, "Selecciona el sprint para esta tarea:", markup);
+	}
+
+	private void showTagOptions(long chatId) {
+		List<TelegramUI.ButtonData> buttons = Arrays.asList(
+				new TelegramUI.ButtonData(FEATURE, TAG_SELECT_PREFIX + FEATURE),
+				new TelegramUI.ButtonData(ISSUE, TAG_SELECT_PREFIX + ISSUE));
+
+		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
+		sendMessage(chatId, "Selecciona el tag para la tarea:", markup);
+	}
+
+	private void showStatusOptions(long chatId, long taskId) {
+		List<TelegramUI.ButtonData> buttons = Arrays.stream(TaskStatus.values())
+				.map(status -> new TelegramUI.ButtonData(
+						status.getDisplayName(),
+						STATUS_SELECT_PREFIX + status.name()))
+				.collect(Collectors.toList());
+
+		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
+		sendMessage(chatId, "Selecciona el nuevo estado para la tarea:", markup);
+	}
+
+	private void handleTextMessage(long chatId, String text, UserState state) {
+		if ("/login".equalsIgnoreCase(text)) {
+			showUserList(chatId);
+			return;
+		}
+
+		if ("/logout".equalsIgnoreCase(text)) {
+			userRepository.forgetChatId(chatId);
+			sendMessage(chatId, "Terminando sesión como " + state.userName);
+			state.reset();
+			return;
+		}
+
+		if ("/start".equalsIgnoreCase(text) || "/tasks".equalsIgnoreCase(text)) {
+			if (state.loggedInUserId == null) {
+				sendMessage(chatId, "No hay sesión iniciada. Por favor, usa /login.");
+				showUserList(chatId);
+			} else {
+				sendMessage(chatId, "Sesión iniciada como " + state.userName
+						+ " automáticamente. Usa '/logout' para ingresar como otro usuario.");
+				listTasksForUser(chatId, state.loggedInUserId);
+			}
+			return;
+		}
+
+		if ("/whoami".equalsIgnoreCase(text)) {
+			if (state.loggedInUserId == null || state.userName == null) {
+				sendMessage(chatId, "No has iniciado sesión. Usa /login.");
+			} else {
+				sendMessage(chatId, "Sesión de " + state.userName);
+			}
+			return;
+		}
+
+		if ("/cancel".equalsIgnoreCase(text)) {
+			boolean wasInProgress = !"NORMAL".equals(state.currentAction);
+			state.softReset();
+			sendMessage(chatId, "Acción cancelada.");
+			if (wasInProgress && state.loggedInUserId != null) {
+				listTasksForUser(chatId, state.loggedInUserId);
+			}
+			return;
+		}
+
+		switch (state.currentAction) {
+			case "ADDING_COMMENT":
+				if (state.selectedTaskId == null) {
+					sendMessage(chatId,
+							"Error: No hay tarea seleccionada para añadir comentario. Usa /cancel.");
+				} else {
+					addNewComment(chatId, state.selectedTaskId, state.loggedInUserId, text);
+					state.currentAction = "NORMAL";
+					showTaskDetails(chatId, state.selectedTaskId);
+				}
+				break;
+
+			case "ADDING_TASK_TITLE":
+				state.NewTask = new Task();
+				state.NewTask.setTitle(text);
+				state.currentAction = "ADDING_TASK_DESCRIPTION";
+				sendMessage(chatId, "Por favor, escribe la descripción de la tarea:");
+				sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+				break;
+
+			case "ADDING_TASK_DESCRIPTION":
+				if (state.NewTask == null) {
+					sendMessage(chatId, "Error: No se encontró la tarea en progreso. Usa /cancel.");
+					state.softReset();
+					break;
+				}
+				state.NewTask.setDescription(text);
+				state.currentAction = "ADDING_TASK_ESTIMATED_HOURS";
+				sendMessage(chatId, "Por favor, escribe las horas estimadas de la tarea (número):");
+				break;
+
+			case "ADDING_TASK_ESTIMATED_HOURS":
+				if (state.NewTask == null) {
+					sendMessage(chatId, "Error: No se encontró la tarea en progreso. Usa /cancel.");
+					state.softReset();
+					break;
+				}
+				try {
+					state.NewTask.setEstimatedHours(Double.parseDouble(text));
+					showTagOptions(chatId);
+				} catch (NumberFormatException e) {
+					logger.warn("Invalid number format for estimated hours from chat {}: {}", chatId, text);
+					sendMessage(chatId,
+							"Formato inválido. Por favor, escribe un número para las horas estimadas (ej: 2.5):");
+				}
+				break;
+
+			case "ADDING_TASK_REAL_TIME":
+				if (state.selectedTaskId == null) {
+					sendMessage(chatId,
+							"Error: No hay tarea seleccionada para añadir horas reales. Usa /cancel.");
+					state.softReset();
+					break;
+				}
+				try {
+					double realHours = Double.parseDouble(text);
+					taskRepository.updateRealHours(state.selectedTaskId, realHours);
+					sendMessage(chatId, "Horas reales actualizadas.");
+					state.softReset();
+					listTasksForUser(chatId, state.loggedInUserId);
+				} catch (NumberFormatException e) {
+					logger.warn("Invalid number format for real hours from chat {}: {}", chatId, text);
+					sendMessage(chatId,
+							"Formato inválido. Por favor, escribe un número para las horas reales (ej: 3):");
+				}
+				break;
+
+			default:
+				sendMessage(chatId,
+						"Comando no reconocido o acción inesperada. " +
+								"Usa /tasks para ver tus tareas o /cancel para anular.");
+				logger.warn("Unrecognized command or unexpected state '{}' for chat {}: {}",
+						state.currentAction, chatId, text);
+				break;
+		}
+	}
+
+	private void handleCallback(long chatId, String callbackData, UserState state) {
+		if (callbackData.startsWith(LOGIN_USER_PREFIX)) {
+			try {
+				String userIdString = callbackData.substring(LOGIN_USER_PREFIX.length());
+				Long userId = Long.parseLong(userIdString);
+
+				userRepository.forgetChatId(chatId);
+				userRepository.setChatIdForUser(userId, chatId);
+
+				Optional<User> userOpt = userRepository.findById(userId);
+
+				if (userOpt.isPresent()) {
+					User user = userOpt.get();
+					state.loggedInUserId = userId;
+					state.userName = user.getName();
+					state.currentAction = "NORMAL";
+					sendMessage(chatId, "Has iniciado sesión como usuario: " + user.getName());
+					sendMessage(chatId, "Puedes cerrar sesión con '/logout' en cualquier momento");
+					listTasksForUser(chatId, userId);
+				} else {
+					logger.error("Login failed: User ID {} not found after callback.", userId);
+					sendMessage(chatId, "Error al iniciar sesión: Usuario no encontrado.");
+					state.reset();
+				}
+			} catch (NumberFormatException e) {
+				logger.error("Invalid user ID format in login callback: {}", callbackData, e);
+				sendMessage(chatId, "Error interno (formato de ID de usuario inválido).");
+			}
+			return;
+		}
+
+		if (callbackData.startsWith(TASK_PREFIX)) {
+			try {
+				String taskIdString = callbackData.substring(TASK_PREFIX.length());
+				Long taskId = Long.parseLong(taskIdString);
+				state.selectedTaskId = taskId;
+				state.currentAction = "NORMAL";
+				showTaskDetails(chatId, taskId);
+			} catch (NumberFormatException e) {
+				logger.error("Invalid task ID format in task callback: {}", callbackData, e);
+				sendMessage(chatId, "Error interno (formato de ID de tarea inválido).");
+			}
+			return;
+		}
+
+		if (SHOW_COMMENTS.equals(callbackData)) {
+			if (state.selectedTaskId == null) {
+				sendMessage(chatId, "Por favor, selecciona una tarea primero.");
+			} else {
+				showComments(chatId, state.selectedTaskId);
+				showTaskDetails(chatId, state.selectedTaskId);
+			}
+			return;
+		}
+
+		if (ADD_COMMENT.equals(callbackData)) {
+			if (state.selectedTaskId == null) {
+				sendMessage(chatId, "Por favor, selecciona una tarea primero.");
+			} else {
+				state.currentAction = "ADDING_COMMENT";
+				sendMessage(chatId, "Por favor, escribe tu comentario ahora:");
+				sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+			}
+			return;
+		}
+
+		if (ADD_TASK_TITLE.equals(callbackData)) {
+			state.currentAction = "ADDING_TASK_TITLE";
+			state.NewTask = new Task();
+			sendMessage(chatId, "Por favor, escribe el título de la tarea:");
+			sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+			return;
+		}
+
+		if (callbackData.startsWith(SPRINT_SELECT_PREFIX)) {
+			if (state.NewTask == null || !"ADDING_TASK_SPRINT".equals(state.currentAction)) {
+				sendMessage(chatId, "Acción inesperada. Usa /cancel para reiniciar.");
+				logger.warn("Received SPRINT_SELECT callback in unexpected state {} for chat {}",
+						state.currentAction, chatId);
+				state.softReset();
+				return;
+			}
+
+			String sprintIdStr = callbackData.substring(SPRINT_SELECT_PREFIX.length());
+			try {
+				if (NO_SPRINT_OPTION.equals(sprintIdStr)) {
+					state.NewTask.setSprintId(null);
+				} else {
+					Long sprintId = Long.parseLong(sprintIdStr);
+					state.NewTask.setSprintId(sprintId);
+				}
+
+				sendMessage(chatId, "Procesando la creación de la tarea...");
+				createNewTask(chatId, state);
+			} catch (NumberFormatException e) {
+				logger.error("Invalid sprint ID format in sprint select callback: {}", callbackData, e);
+				sendMessage(chatId, "Error interno (formato de ID de sprint inválido).");
+			}
+			return;
+		}
+
+		if (CHANGE_STATUS.equals(callbackData)) {
+			if (state.selectedTaskId == null) {
+				sendMessage(chatId, "Por favor, selecciona una tarea primero.");
+			} else {
+				sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+				showStatusOptions(chatId, state.selectedTaskId);
+			}
+			return;
+		}
+
+		if (callbackData.startsWith(STATUS_SELECT_PREFIX)) {
+			if (state.selectedTaskId == null) {
+				sendMessage(chatId,
+						"Error: No hay tarea seleccionada para cambiar estado. Usa /cancel.");
+				state.softReset();
+				return;
+			}
+
+			String statusName = callbackData.substring(STATUS_SELECT_PREFIX.length());
+			try {
+				TaskStatus selectedStatus = TaskStatus.valueOf(statusName);
+
+				if (selectedStatus == TaskStatus.COMPLETED) {
+					String endDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+					taskRepository.updateEndDate(state.selectedTaskId, endDate);
+					sendMessage(chatId, "Fecha Final declarada como " + endDate);
+				}
+
+				taskRepository.updateStatus(state.selectedTaskId, selectedStatus.getDisplayName());
+				sendMessage(chatId, "Estado actualizado a: " + selectedStatus.getDisplayName());
+
+				state.currentAction = "NORMAL";
+				listTasksForUser(chatId, state.loggedInUserId);
+			} catch (IllegalArgumentException e) {
+				logger.error("Invalid status name in status select callback: {}", callbackData, e);
+				sendMessage(chatId, "Error interno (nombre de estado inválido).");
+			}
+			return;
+		}
+
+		if (callbackData.startsWith(TAG_SELECT_PREFIX)) {
+			if (state.NewTask == null || !state.currentAction.startsWith("ADDING_TASK")) {
+				sendMessage(chatId, "Acción inesperada. Usa /cancel para reiniciar.");
+				logger.warn("Received TAG_SELECT callback in unexpected state {} for chat {}",
+						state.currentAction, chatId);
+				state.softReset();
+				return;
+			}
+
+			String tag = callbackData.substring(TAG_SELECT_PREFIX.length());
+			if (FEATURE.equals(tag) || ISSUE.equals(tag)) {
+				state.NewTask.setTag(tag);
+				state.currentAction = "ADDING_TASK_SPRINT";
+				sendMessage(chatId, "Por favor, selecciona el sprint para la tarea:");
+				sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+
+				Long teamId = userRepository.findById(state.loggedInUserId)
+						.map(User::getTeamId)
+						.orElse(null);
+
+				if (teamId != null) {
+					showSprintsForTeam(chatId, teamId);
+				} else {
+					logger.warn("Could not determine team ID for user {} (ID: {}). Task will have no sprint.",
+							state.userName, state.loggedInUserId);
+					sendMessage(chatId, "No se pudo determinar tu equipo. No se asignará ningún sprint.");
+					state.NewTask.setSprintId(null);
+					createNewTask(chatId, state);
+				}
+			} else {
+				logger.warn("Invalid tag received in callback for chat {}: {}", chatId, callbackData);
+				sendMessage(chatId, "Tag inválido seleccionado.");
+				showTagOptions(chatId);
+			}
+			return;
+		}
+
+		if (CHANGE_REAL_HOURS.equals(callbackData)) {
+			if (state.selectedTaskId == null) {
+				sendMessage(chatId, "Por favor, selecciona una tarea primero.");
+			} else {
+				state.currentAction = "ADDING_TASK_REAL_TIME";
+				sendMessage(chatId, "Por favor, escribe las horas reales de la tarea (número):");
+				sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
+			}
+			return;
+		}
+
+		sendMessage(chatId, "Acción no reconocida.");
+		logger.warn("Unrecognized callback data received for chat {}: {}", chatId, callbackData);
 	}
 }
