@@ -1,0 +1,36 @@
+name: Lint
+
+on:
+  push: null
+  pull_request: null
+
+permissions: {}
+
+jobs:
+  build:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Super-Linter
+        uses: super-linter/super-linter@v7.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_YAML: true
+          VALIDATE_JSON: true
+          VALIDATE_PYTHON_PYLINT: true
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_TSX: true
+
+          # Ignore specific directories or files
+          FILTER_REGEX_EXCLUDE: (MtdrSpring/services/frontend/node_modules/|MtdrSpring/services/target/|target/|node_modules/)
