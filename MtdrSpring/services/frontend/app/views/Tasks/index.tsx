@@ -41,7 +41,8 @@ export default function TaskView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
+  const viewMode = useTaskStore((state) => state.viewMode);
+  const setViewMode = useTaskStore((state) => state.setViewMode);
   const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);

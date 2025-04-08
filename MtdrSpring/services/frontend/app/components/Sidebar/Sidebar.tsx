@@ -1,20 +1,18 @@
 // app/components/Sidebar.tsx
-import { useState } from "react";
+import { useEffect } from "react";
 import SidebarHeader from "./SidebarHeader";
 import SidebarMenu from "./SidebarMenu";
 import SidebarProfile from "./SidebarProfile";
+import useTaskStore from "~/store";
 
 export default function Sidebar() {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const toggleSidebar = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const isSidebarExpanded = useTaskStore((state) => state.isSidebarExpanded);
+  const toggleSidebar = useTaskStore((state) => state.toggleSidebar);
 
   return (
     <div
       className={`h-full bg-oc-primary text-white flex flex-col text-sm border-r-1 border-oc-outline-light transition-all duration-100 ease-out ${
-        isExpanded ? "w-56" : "w-[3.5rem]"
+        isSidebarExpanded ? "w-56" : "w-[3.5rem]"
       }`}
     >
       <button
@@ -23,15 +21,15 @@ export default function Sidebar() {
       >
         <i
           className={`fa fa-chevron-${
-            isExpanded ? "left" : "right"
+            isSidebarExpanded ? "left" : "right"
           } text-xs transition-transform group-active:scale-80`}
         ></i>
       </button>
 
-      <SidebarHeader isExpanded={isExpanded} />
-      <SidebarMenu isExpanded={isExpanded} />
+      <SidebarHeader isExpanded={isSidebarExpanded} />
+      <SidebarMenu isExpanded={isSidebarExpanded} />
       <div className="flex-grow"></div>
-      <SidebarProfile isExpanded={isExpanded} />
+      <SidebarProfile isExpanded={isSidebarExpanded} />
     </div>
   );
 }

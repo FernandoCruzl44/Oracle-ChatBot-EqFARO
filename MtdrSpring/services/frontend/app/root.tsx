@@ -7,6 +7,8 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { CookiesProvider } from "react-cookie";
+import { CookieInitializer } from "./components/CookieInitializer";
 import type { Route } from "./+types/root";
 import "./app.css";
 import "./font-apex.css";
@@ -46,7 +48,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return (
+    <html lang="en">
+      <head>
+        <Meta />
+        <Links />
+      </head>
+      <body className="bg-oc-bg text-oc-text">
+        <CookiesProvider>
+          <CookieInitializer />
+          <Outlet />
+          <ScrollRestoration />
+          <Scripts />
+        </CookiesProvider>
+      </body>
+    </html>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

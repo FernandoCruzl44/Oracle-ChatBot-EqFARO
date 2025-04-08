@@ -16,11 +16,11 @@ interface ToolbarProps {
   isManager: boolean;
   setIsCreateSprintModalOpen: (value: boolean) => void;
   isLoadingSprints: boolean;
+  viewMode: "table" | "kanban";
+  setViewMode: (mode: "table" | "kanban") => void;
   selectedTasks: number[];
   handleDeleteTasks: () => void;
   isLoadingTasks: boolean;
-  viewMode: "table" | "kanban";
-  setViewMode: (mode: "table" | "kanban") => void;
   teams?: any[];
 }
 
@@ -37,15 +37,14 @@ export function Toolbar({
   isManager,
   setIsCreateSprintModalOpen,
   isLoadingSprints,
+  viewMode,
+  setViewMode,
   selectedTasks,
   handleDeleteTasks,
   isLoadingTasks,
-  viewMode,
-  setViewMode,
   teams = [],
 }: ToolbarProps) {
   const currentUser = useTaskStore((state) => state.currentUser);
-
   return (
     <div className="py-4 flex items-center justify-between">
       <div className="flex flex-row gap-2 items-center">

@@ -4,6 +4,7 @@ import type { CommentSlice } from "./slices/commentSlice";
 import type { TeamSlice } from "./slices/teamSlice";
 import type { UserSlice } from "./slices/userSlice";
 import type { SprintSlice } from "./slices/sprintSlice";
+import type { PreferencesSlice } from "./slices/preferencesSlice";
 
 export interface StoreState {
   error: string | null;
@@ -13,4 +14,5 @@ export type TaskStore = TaskSlice &
   UserSlice &
   TeamSlice &
   CommentSlice &
-  SprintSlice;
+  SprintSlice &
+  PreferencesSlice;
