@@ -11,13 +11,13 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`h-full bg-oc-primary text-white flex flex-col text-sm border-r-1 border-oc-outline-light transition-all duration-100 ease-out ${
+      className={`bg-oc-primary border-oc-outline-light flex h-full flex-col border-r-1 text-sm text-white transition-all duration-100 ease-out ${
         isSidebarExpanded ? "w-56" : "w-[3.5rem]"
       }`}
     >
       <button
         onClick={toggleSidebar}
-        className="absolute left-2 top-3 flex justify-center items-center w-[40px] h-[40px] bg-oc-primary text-white rounded-lg border border-oc-outline-light cursor-pointer hover:bg-oc-amber/20 hover:text-oc-amber transition-colors z-10 group"
+        className="bg-oc-primary border-oc-outline-light hover:bg-oc-amber/20 hover:text-oc-amber group absolute top-3 left-2 z-10 flex h-[40px] w-[40px] cursor-pointer items-center justify-center rounded-lg border text-white transition-colors"
       >
         <i
           className={`fa fa-chevron-${

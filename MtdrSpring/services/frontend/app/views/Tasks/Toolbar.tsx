@@ -46,21 +46,21 @@ export function Toolbar({
 }: ToolbarProps) {
   const currentUser = useTaskStore((state) => state.currentUser);
   return (
-    <div className="py-4 flex items-center justify-between">
-      <div className="flex flex-row gap-2 items-center">
+    <div className="flex items-center justify-between py-4">
+      <div className="flex flex-row items-center gap-2">
         <div className="relative w-72">
           <input
             type="text"
             placeholder="Buscar por título"
-            className="w-full pl-8 pr-10 py-2 rounded-lg border border-oc-outline-light text-white bg-oc-primary text-sm"
+            className="border-oc-outline-light bg-oc-primary w-full rounded-lg border py-2 pr-10 pl-8 text-sm text-white"
             value={searchTerm}
             onChange={handleSearch}
             disabled={isLoadingTasks}
           />
-          <i className="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white"></i>
+          <i className="fa fa-search absolute top-1/2 left-3 -translate-y-1/2 transform text-white"></i>
           {searchTerm && (
             <i
-              className="fa fa-times-circle absolute right-3 top-1/2 transform -translate-y-1/2 text-oc-brown/80 cursor-pointer"
+              className="fa fa-times-circle text-oc-brown/80 absolute top-1/2 right-3 -translate-y-1/2 transform cursor-pointer"
               onClick={() => {
                 setSearchTerm("");
                 setCurrentPage(1);
@@ -71,8 +71,8 @@ export function Toolbar({
         <div className="flex gap-2">
           <button
             onClick={handleAddTaskClick}
-            className={`px-4 py-2 bg-oc-primary hover:bg-black rounded-lg border border-oc-outline-light flex items-center text-white text-sm ${
-              isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""
+            className={`bg-oc-primary border-oc-outline-light flex items-center rounded-lg border px-4 py-2 text-sm text-white hover:bg-black ${
+              isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
             }`}
             disabled={isLoadingTasks}
           >
@@ -80,13 +80,13 @@ export function Toolbar({
             <span>Agrega tarea</span>
           </button>
 
-          <div className="flex rounded-lg border border-oc-outline-light overflow-hidden">
+          <div className="border-oc-outline-light flex overflow-hidden rounded-lg border">
             <button
               onClick={() => setViewMode("kanban")}
-              className={`px-3 py-2 flex items-center text-sm ${
+              className={`flex items-center px-3 py-2 text-sm ${
                 viewMode === "kanban"
                   ? "bg-stone-700 text-white"
-                  : "bg-oc-primary text-stone-400 hover:text-white hover:bg-black"
+                  : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
               }`}
               title="Vista de kanban"
             >
@@ -94,10 +94,10 @@ export function Toolbar({
             </button>
             <button
               onClick={() => setViewMode("table")}
-              className={`px-3 py-2 flex items-center text-sm ${
+              className={`flex items-center px-3 py-2 text-sm ${
                 viewMode === "table"
                   ? "bg-stone-700 text-white"
-                  : "bg-oc-primary text-stone-400 hover:text-white hover:bg-black"
+                  : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
               }`}
               title="Vista de tabla"
             >
@@ -122,7 +122,7 @@ export function Toolbar({
           {selectedTasks.length > 0 && (
             <button
               onClick={handleDeleteTasks}
-              className="px-4 py-2 hover:bg-red-900/50 rounded-lg border border-red-400 flex items-center text-red-400 text-sm transition-colors"
+              className="flex items-center rounded-lg border border-red-400 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-900/50"
             >
               <i className="fa fa-trash mr-2"></i>
               <span>Eliminar ({selectedTasks.length})</span>

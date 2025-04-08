@@ -17,7 +17,7 @@ interface TableProps {
   handleStatusChange: (
     taskId: number,
     newStatus: string,
-    taskData: Partial<Task>
+    taskData: Partial<Task>,
   ) => void;
   showAssigneesColumn: boolean;
   sprints: any[];
@@ -56,9 +56,9 @@ export function Table({
   const columnCount = tableHeaders.length;
 
   return (
-    <div className="overflow-y-auto flex-grow">
-      <table className="min-w-full text-white table-fixed ">
-        <thead className="sticky top-0 z-10 bg-oc-primary">
+    <div className="flex-grow overflow-y-auto">
+      <table className="min-w-full table-fixed text-white">
+        <thead className="bg-oc-primary sticky top-0 z-10">
           <tr style={{ boxShadow: "0 1px 0px #343231" }}>
             {tableHeaders.map((header) => (
               <td
@@ -70,7 +70,7 @@ export function Table({
                 {header.id === "checkbox" ? (
                   <input
                     type="checkbox"
-                    className="w-4 h-4 translate-y-0.5"
+                    className="h-4 w-4 translate-y-0.5"
                     onChange={handleSelectAll}
                     checked={
                       paginatedTasks.length > 0 &&
@@ -92,9 +92,9 @@ export function Table({
             <tr>
               <td
                 colSpan={columnCount}
-                className="py-4 px-6 text-center text-red-500"
+                className="px-6 py-4 text-center text-red-500"
               >
-                <div className="flex justify-center items-center">
+                <div className="flex items-center justify-center">
                   <i className="fa fa-exclamation-circle mr-2"></i>
                   {error}
                 </div>
@@ -104,9 +104,9 @@ export function Table({
             <tr>
               <td
                 colSpan={columnCount}
-                className="py-4 px-6 text-center text-stone-500"
+                className="px-6 py-4 text-center text-stone-500"
               >
-                <div className="flex justify-center items-center">
+                <div className="flex items-center justify-center">
                   <i className="fa fa-info-circle mr-2"></i>
                   {searchTerm
                     ? "No hay tareas que coincidan con la búsqueda"
@@ -118,27 +118,27 @@ export function Table({
             paginatedTasks.map((task, index) => (
               <tr
                 key={task.id}
-                className={`border-oc-outline-light/60 hover:bg-stone-700/30 transition-colors ${
+                className={`border-oc-outline-light/60 transition-colors hover:bg-stone-700/30 ${
                   index === paginatedTasks.length - 1 ? "" : "border-b"
                 }`}
               >
                 <td
-                  className="w-12 px-5 py-3 translate-y-0.5"
+                  className="w-12 translate-y-0.5 px-5 py-3"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <input
                     type="checkbox"
-                    className="w-4 h-4"
+                    className="h-4 w-4"
                     checked={selectedTasks.includes(task.id)}
                     onChange={() => handleTaskSelection(task.id)}
                   />
                 </td>
                 <td
-                  className="py-3 px-2 truncate"
+                  className="truncate px-2 py-3"
                   onClick={() => handleTaskClick(task)}
                 >
                   <button
-                    className="hover:underline text-left"
+                    className="text-left hover:underline"
                     onClick={(e: React.MouseEvent) => {
                       e.preventDefault();
                       handleTaskClick(task);
@@ -148,9 +148,9 @@ export function Table({
                     {task.title}
                   </button>
                 </td>
-                <td className="py-2 px-2">
+                <td className="px-2 py-2">
                   <span
-                    className={`px-2 py-1 text-xs rounded-lg border  ${
+                    className={`rounded-lg border px-2 py-1 text-xs ${
                       task.tag === "Feature"
                         ? "border-green-700/50 text-green-300"
                         : "border-red-700/50 text-red-300"
@@ -159,7 +159,7 @@ export function Table({
                     {task.tag}
                   </span>
                 </td>
-                <td className="py-3 px-2 truncate">
+                <td className="truncate px-2 py-3">
                   <span
                     className="text-sm"
                     title={getSprintName(sprints, task.sprintId)}
@@ -167,7 +167,7 @@ export function Table({
                     {getSprintName(sprints, task.sprintId)}
                   </span>
                 </td>
-                <td className="py-3 px-2" onClick={(e) => e.stopPropagation()}>
+                <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                   <TaskStatusSelector
                     status={task.status || "En progreso"}
                     onStatusChange={(newStatus) =>
@@ -176,16 +176,16 @@ export function Table({
                     isLoading={isLoadingTasks}
                   />
                 </td>
-                <td className="py-3 px-2">{formatDate(task.startDate)}</td>
-                <td className="py-3 px-2">{formatDate(task.endDate)}</td>
+                <td className="px-2 py-3">{formatDate(task.startDate)}</td>
+                <td className="px-2 py-3">{formatDate(task.endDate)}</td>
                 <td
-                  className="py-3 px-2 truncate"
+                  className="truncate px-2 py-3"
                   title={task.creatorName || "—"}
                 >
                   {task.creatorName || "—"}
                 </td>
                 {showAssigneesColumn ? (
-                  <td className="py-3 px-2">
+                  <td className="px-2 py-3">
                     {task.assignees && task.assignees.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {task.assignees.map((assignee, i) => {
@@ -197,7 +197,7 @@ export function Table({
                                 backgroundColor: colors.backgroundColor,
                                 color: colors.color,
                               }}
-                              className="px-1.5 py-0.5 text-xs rounded-full border border-oc-outline-light/60 whitespace-nowrap font-bold"
+                              className="border-oc-outline-light/60 rounded-full border px-1.5 py-0.5 text-xs font-bold whitespace-nowrap"
                               title={assignee.name}
                             >
                               {assignee.name.slice(0, 1)}

@@ -73,25 +73,25 @@ export function CreateSprintModal({
         handleClose={handleClose}
         className="w-xl"
       >
-        <div className="flex-1 p-8 pb-6 overflow-hidden">
-          <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-hidden p-8 pb-6">
+          <div className="flex h-full flex-col">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nombre del Sprint"
-              className="text-lg text-white font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+              className="border-oc-outline-light/60 mb-4 border-b bg-transparent pb-3 text-lg font-bold text-white focus:outline-none"
               required
               title="Este campo es obligatorio"
             />
 
             <form
-              className="pt-3 text-sm flex flex-col h-full"
+              className="flex h-full flex-col pt-3 text-sm"
               noValidate={false}
             >
-              <div className="space-y-4 flex-1 overflow-y-auto transition-all duration-150">
+              <div className="flex-1 space-y-4 overflow-y-auto transition-all duration-150">
                 <div className="flex items-center">
-                  <div className="w-32 text-oc-brown/60">
+                  <div className="text-oc-brown/60 w-32">
                     <i className="fa fa-calendar mr-2 translate-y-1"></i>
                     Fecha inicio
                   </div>
@@ -99,13 +99,13 @@ export function CreateSprintModal({
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="px-2 py-1 text-white text-xs fill-white"
+                    className="fill-white px-2 py-1 text-xs text-white"
                     required
                   />
                 </div>
 
                 <div className="flex items-center">
-                  <div className="w-32 text-oc-brown/60">
+                  <div className="text-oc-brown/60 w-32">
                     <i className="fa fa-calendar mr-2 translate-y-1"></i>
                     Fecha fin
                   </div>
@@ -113,13 +113,13 @@ export function CreateSprintModal({
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="px-2 py-1 text-white text-xs fill-white"
+                    className="fill-white px-2 py-1 text-xs text-white"
                     required
                   />
                 </div>
 
                 {error && (
-                  <div className="text-red-500 text-sm bg-red-50 p-2 rounded-lg border border-red-100">
+                  <div className="rounded-lg border border-red-100 bg-red-50 p-2 text-sm text-red-500">
                     <i className="fa fa-warning mr-1"></i>
                     {error}
                   </div>
@@ -130,7 +130,7 @@ export function CreateSprintModal({
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="w-full text-sm py-2.5 bg-oc-neutral/50 border border-oc-outline-light/60 rounded-lg hover:bg-black transition-all flex justify-center items-center text-white"
+                  className="bg-oc-neutral/50 border-oc-outline-light/60 flex w-full items-center justify-center rounded-lg border py-2.5 text-sm text-white transition-all hover:bg-black"
                 >
                   <span>Crear Sprint</span>
                 </button>

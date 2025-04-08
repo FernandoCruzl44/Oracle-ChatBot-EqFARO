@@ -21,10 +21,10 @@ export function Select({
   return (
     <select
       {...props}
-      className={`px-2 py-2 my-[1px] text-xs rounded-lg outline min-w-32 border-r-5 border-transparent ${
+      className={`my-[1px] min-w-32 rounded-lg border-r-5 border-transparent px-2 py-2 text-xs outline ${
         styleByValue
           ? styleByValue.getClassName(value)
-          : "text-white outline-oc-outline-light/40 bg-oc-neutral/50"
+          : "outline-oc-outline-light/40 bg-oc-neutral/50 text-white"
       } ${className}`}
     >
       {options.map((option) => (

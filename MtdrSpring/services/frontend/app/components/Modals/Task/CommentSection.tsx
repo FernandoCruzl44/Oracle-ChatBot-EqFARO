@@ -30,7 +30,7 @@ export function CommentsSection({
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto p-6 pb-0 pt-0 w-full px-4"
+      className="w-full flex-1 overflow-y-auto p-6 px-4 pt-0 pb-0"
     >
       <div
         className={`relative space-y-3 ${
@@ -48,14 +48,14 @@ export function CommentsSection({
           />
         ))}
         <div
-          className={`absolute top-0 right-0 left-0 justify-center items-center text-center text-stone-300 pt-4 transition-opacity duration-200 pointer-events-none ${
+          className={`pointer-events-none absolute top-0 right-0 left-0 items-center justify-center pt-4 text-center text-stone-300 transition-opacity duration-200 ${
             comments.length === 0 && !isLoading ? "opacity-100" : "opacity-0"
           }`}
         >
           No hay comentarios
         </div>
         <div
-          className={`absolute top-5 right-0 left-0 flex justify-center items-center transition-opacity pointer-events-none duration-200 ${
+          className={`pointer-events-none absolute top-5 right-0 left-0 flex items-center justify-center transition-opacity duration-200 ${
             isLoading ? "opacity-100" : "opacity-0"
           }`}
         >

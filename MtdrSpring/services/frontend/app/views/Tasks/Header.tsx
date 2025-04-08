@@ -1,6 +1,4 @@
 // app/components/Tasks/TasksHeader.tsx
-import React from "react";
-
 interface HeaderProps {
   currentUser: any;
 }

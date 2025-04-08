@@ -39,20 +39,20 @@ export default function TaskStatusSelector({
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`${buttonClasses} text-white justify-between `}
+        className={`${buttonClasses} justify-between text-white`}
         disabled={isLoading}
       >
         <span className="truncate">{status}</span>
         <i
           className={`fa fa-chevron-down ml-2 text-xs transition-transform ${
-            isOpen ? "transform rotate-180" : ""
+            isOpen ? "rotate-180 transform" : ""
           }`}
         ></i>
       </button>
 
       {isOpen && (
-        <div className="absolute z-[100] mt-1 w-56 bg-oc-primary rounded-lg shadow-lg border border-oc-outline-light dark:border-stone-600">
-          <div className="py-1 px-1 space-y-1">
+        <div className="bg-oc-primary border-oc-outline-light absolute z-[100] mt-1 w-56 rounded-lg border shadow-lg dark:border-stone-600">
+          <div className="space-y-1 px-1 py-1">
             {statuses.map((statusOption) => (
               <button
                 key={statusOption}
@@ -60,7 +60,7 @@ export default function TaskStatusSelector({
                   onStatusChange(statusOption);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-4 py-2 rounded text-sm ${
+                className={`w-full rounded px-4 py-2 text-left text-sm ${
                   status === statusOption
                     ? "bg-stone-700 text-blue-400"
                     : "text-white hover:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-600"

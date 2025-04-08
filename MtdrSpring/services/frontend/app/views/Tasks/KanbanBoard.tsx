@@ -1,12 +1,10 @@
 // app/components/Tasks/KanbanBoard.tsx
 import React, { useState } from "react";
-import TasksSkeletonLoader from "~/components/Skeletons/TasksSkeletonLoader";
-import { formatDate, getSprintName, generateAvatarColor } from "~/lib/utils";
-import type { Task } from "~/types";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { KanbanDndProvider } from "./KanbanDnd";
 import KanbanSkeletonLoader from "~/components/Skeletons/KanbanSkeletonLoader";
+import type { Task } from "~/types";
 
 interface KanbanBoardProps {
   paginatedTasks: Task[];
@@ -42,35 +40,28 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const statuses = ["Backlog", "En progreso", "Completada", "Cancelada"];
 
-  // Local state for optimistic updates
   const [localTasks, setLocalTasks] = useState<Task[]>(paginatedTasks);
-  // Track tasks with pending status updates
   const [pendingUpdates, setPendingUpdates] = useState<Record<number, boolean>>(
     {}
   );
 
-  // Update local tasks when paginatedTasks changes
   React.useEffect(() => {
     setLocalTasks(paginatedTasks);
   }, [paginatedTasks]);
 
   const handleDragEnd = (taskId: number, newStatus: string) => {
-    // Find the task in local state
     const taskIndex = localTasks.findIndex((t) => t.id === taskId);
     if (taskIndex === -1) return;
 
     const task = localTasks[taskIndex];
-    if (task.status === newStatus) return; // No change needed
+    if (task.status === newStatus) return;
 
-    // Optimistically update local state
     const updatedTasks = [...localTasks];
     updatedTasks[taskIndex] = { ...task, status: newStatus };
     setLocalTasks(updatedTasks);
 
-    // Mark task as updating
     setPendingUpdates((prev) => ({ ...prev, [taskId]: true }));
 
-    // Then update server state
     handleStatusChange(taskId, newStatus, task)
       .then(() => {
         setPendingUpdates((prev) => {
@@ -80,7 +71,6 @@ export function KanbanBoard({
         });
       })
       .catch((error) => {
-        // If the server update fails, revert to the previous state
         console.error("Failed to update task status:", error);
         setLocalTasks(paginatedTasks);
         setPendingUpdates((prev) => {
@@ -91,21 +81,17 @@ export function KanbanBoard({
       });
   };
 
-  // Group tasks by status using localTasks instead of paginatedTasks
   const tasksByStatus = statuses.reduce<Record<string, Task[]>>(
     (acc, status) => {
       acc[status] = localTasks.filter(
         (task) =>
-          task.status === status ||
-          // If status is empty, default to "En progreso"
-          (!task.status && status === "En progreso")
+          task.status === status || (!task.status && status === "En progreso")
       );
       return acc;
     },
     {}
   );
 
-  // Render overlay for dragging
   const renderOverlay = (task: Task | null) => {
     if (!task) return null;
 
@@ -121,8 +107,6 @@ export function KanbanBoard({
       />
     );
   };
-
-  // We'll remove the select all header since we're moving it to each column
 
   if (isLoadingTasks) {
     return (

@@ -170,22 +170,22 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
       onClose={handleClose}
       handleClose={handleClose}
     >
-      <div className="flex-1 p-8 border-r border-oc-outline-light/90 overflow-hidden">
-        <div className="flex flex-col h-full">
+      <div className="border-oc-outline-light/90 flex-1 overflow-hidden border-r p-8">
+        <div className="flex h-full flex-col">
           <input
             type="text"
             value={editableTask.title}
             onChange={(e) => handleInputChange("title", e.target.value)}
-            className="text-lg text-white font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+            className="border-oc-outline-light/60 mb-4 border-b bg-transparent pb-3 text-lg font-bold text-white focus:outline-none"
           />
           <form
-            className="pt-3 text-sm flex flex-col"
+            className="flex flex-col pt-3 text-sm"
             onSubmit={(e) => {
               e.preventDefault();
               handleSave();
             }}
           >
-            <div className="flex gap-4 flex-1">
+            <div className="flex flex-1 gap-4">
               <TaskMetadata
                 editableTask={editableTask}
                 teamSprints={teamSprints}
@@ -196,7 +196,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
           </form>
           <div>
             <textarea
-              className="w-full border mt-4 bg-oc-neutral/30 rounded-lg p-3 h-[120px] max-h-[120px] text-sm text-oc-brown border-oc-outline-light/60 resize-none overflow-auto"
+              className="bg-oc-neutral/30 text-oc-brown border-oc-outline-light/60 mt-4 h-[120px] max-h-[120px] w-full resize-none overflow-auto rounded-lg border p-3 text-sm"
               placeholder="Descripción (Opcional)"
               value={editableTask.description || ""}
               onChange={(e) => handleInputChange("description", e.target.value)}
@@ -209,16 +209,16 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
             disabled={!isEditing}
           >
             <span>Guardar cambios</span>
-            <span className="ml-2 text-xs flex items-center opacity-40">
+            <span className="ml-2 flex items-center text-xs opacity-40">
               <i className="fa fa-keyboard mr-1" aria-hidden="true"></i>⌘ +
               Enter / Ctrl + Enter
             </span>
           </Button>
         </div>
       </div>
-      <div className="w-[350px] flex flex-col bg-oc-primary">
+      <div className="bg-oc-primary flex w-[350px] flex-col">
         <div className="p-8 pb-6.5">
-          <h3 className="text-lg font-bold border-b text-white border-oc-outline-light/60 pb-3">
+          <h3 className="border-oc-outline-light/60 border-b pb-3 text-lg font-bold text-white">
             Comentarios
           </h3>
         </div>

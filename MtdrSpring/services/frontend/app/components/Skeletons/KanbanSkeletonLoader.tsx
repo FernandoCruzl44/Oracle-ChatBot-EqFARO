@@ -14,52 +14,52 @@ export default function KanbanSkeletonLoader({
   const columnStatuses = statuses.slice(0, columns);
 
   return (
-    <div className="flex-1 flex overflow-x-auto animate-pulse">
+    <div className="flex flex-1 animate-pulse overflow-x-auto">
       {columnStatuses.map((status, columnIndex) => (
         <div
           key={columnIndex}
-          className="flex-1 min-w-64 flex flex-col h-full border-r border-oc-outline-light/60 last:border-r-0"
+          className="border-oc-outline-light/60 flex h-full min-w-64 flex-1 flex-col border-r last:border-r-0"
         >
           {/* Column Header */}
-          <div className="px-4 py-3 border-b border-oc-outline-light/60 flex justify-between items-center sticky top-0 bg-oc-primary z-10">
+          <div className="border-oc-outline-light/60 bg-oc-primary sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 rounded bg-stone-700"></div>
-              <div className="h-5 w-24 bg-stone-700 rounded"></div>
+              <div className="mr-2 h-4 w-4 rounded bg-stone-700"></div>
+              <div className="h-5 w-24 rounded bg-stone-700"></div>
             </div>
             <div className="h-5 w-8 rounded-full bg-stone-700"></div>
           </div>
 
           {/* Column Content */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          <div className="flex-1 space-y-2 overflow-y-auto p-2">
             {Array.from({ length: cardsPerColumn }).map((_, cardIndex) => (
               <div
                 key={cardIndex}
-                className="p-3 bg-stone-800 border border-oc-outline-light rounded-lg"
+                className="border-oc-outline-light rounded-lg border bg-stone-800 p-3"
               >
                 {/* Card Title */}
-                <div className="flex justify-between items-start mb-2">
-                  <div className="h-5 bg-stone-700 rounded w-full max-w-40"></div>
-                  <div className="w-4 h-4 ml-2 rounded bg-stone-700"></div>
+                <div className="mb-2 flex items-start justify-between">
+                  <div className="h-5 w-full max-w-40 rounded bg-stone-700"></div>
+                  <div className="ml-2 h-4 w-4 rounded bg-stone-700"></div>
                 </div>
 
                 {/* Card Tag */}
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2 flex items-center justify-between">
                   <div className="h-5 w-16 rounded-md bg-stone-700"></div>
                   <div className="h-4 w-20 rounded bg-stone-700"></div>
                 </div>
 
                 {/* Card Dates */}
-                <div className="flex justify-between mb-2">
-                  <div className="h-4 w-24 bg-stone-700 rounded"></div>
-                  <div className="h-4 w-24 bg-stone-700 rounded"></div>
+                <div className="mb-2 flex justify-between">
+                  <div className="h-4 w-24 rounded bg-stone-700"></div>
+                  <div className="h-4 w-24 rounded bg-stone-700"></div>
                 </div>
 
                 {/* Card Footer */}
-                <div className="flex justify-between items-center">
-                  <div className="h-4 w-20 bg-stone-700 rounded"></div>
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-20 rounded bg-stone-700"></div>
                   <div className="flex gap-1">
-                    <div className="w-6 h-6 rounded-full bg-stone-700"></div>
-                    <div className="w-6 h-6 rounded-full bg-stone-700"></div>
+                    <div className="h-6 w-6 rounded-full bg-stone-700"></div>
+                    <div className="h-6 w-6 rounded-full bg-stone-700"></div>
                   </div>
                 </div>
               </div>

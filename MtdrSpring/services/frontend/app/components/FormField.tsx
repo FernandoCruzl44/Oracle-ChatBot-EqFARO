@@ -14,7 +14,7 @@ export function FormField({
 }: FormFieldProps) {
   return (
     <div className={`flex items-center ${className}`}>
-      <div className="w-32 text-oc-brown/60">
+      <div className="text-oc-brown/60 w-32">
         {icon && <i className={`fa fa-${icon} mr-2 translate-y-0.5`}></i>}
         {label}
       </div>

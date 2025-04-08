@@ -23,7 +23,7 @@ export function TaskMetadata({
 }: TaskMetadataProps) {
   return (
     <>
-      <div className="space-y-4 flex-1">
+      <div className="flex-1 space-y-4">
         <Card className="h-full">
           <FormField label="Tag" icon="tag">
             <Select
@@ -75,7 +75,7 @@ export function TaskMetadata({
                 onChange={(e) =>
                   handleInputChange(
                     "sprintId",
-                    e.target.value === "" ? null : Number(e.target.value)
+                    e.target.value === "" ? null : Number(e.target.value),
                   )
                 }
                 options={[
@@ -114,7 +114,7 @@ export function TaskMetadata({
                         backgroundColor: colors.backgroundColor,
                         color: colors.color,
                       }}
-                      className="px-1.5 py-0.5 text-xs rounded-full border border-oc-outline-light/60 whitespace-nowrap font-bold"
+                      className="border-oc-outline-light/60 rounded-full border px-1.5 py-0.5 text-xs font-bold whitespace-nowrap"
                       title={assignee.name}
                     >
                       {assignee.name}
@@ -122,14 +122,14 @@ export function TaskMetadata({
                   );
                 })
               ) : (
-                <span className="text-xs text-white/60 pt-0.5">Ninguno</span>
+                <span className="pt-0.5 text-xs text-white/60">Ninguno</span>
               )}
             </div>
           </FormField>
         </Card>
       </div>
 
-      <div className="space-y-4 flex-1">
+      <div className="flex-1 space-y-4">
         <Card title="Fechas">
           <FormField label="Inicio" icon="calendar">
             <Input
@@ -159,7 +159,7 @@ export function TaskMetadata({
               onChange={(e) =>
                 handleInputChange(
                   "estimatedHours",
-                  e.target.value === "" ? null : Number(e.target.value)
+                  e.target.value === "" ? null : Number(e.target.value),
                 )
               }
               placeholder="0"
@@ -174,7 +174,7 @@ export function TaskMetadata({
               onChange={(e) =>
                 handleInputChange(
                   "actualHours",
-                  e.target.value === "" ? null : Number(e.target.value)
+                  e.target.value === "" ? null : Number(e.target.value),
                 )
               }
               placeholder="0"

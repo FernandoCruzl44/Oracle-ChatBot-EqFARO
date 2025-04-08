@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { Task, Sprint } from "~/types";
 import TaskModal from "~/components/Modals/Task/TaskModal";
 import CreateTaskModal from "~/components/Modals/Task/CreateTaskModal";
 import { SprintTransitionModal } from "~/components/Modals/Sprint/SprintTransitionModal";
@@ -11,6 +10,7 @@ import { Tabs } from "./Tabs";
 import { KanbanBoard } from "./KanbanBoard";
 import { Table } from "./Table";
 import { Pagination } from "./Pagination";
+import type { Task, Sprint } from "~/types";
 
 export default function TaskView() {
   const {

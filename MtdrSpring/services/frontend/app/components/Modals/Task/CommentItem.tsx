@@ -24,7 +24,7 @@ export function CommentItem({
 
   return (
     <div
-      className={`flex gap-4 group transition-opacity relative ${
+      className={`group relative flex gap-4 transition-opacity ${
         isOwnComment ? "flex-row-reverse" : ""
       }`}
     >
@@ -35,7 +35,7 @@ export function CommentItem({
       ></div>
 
       <div
-        className="w-7 h-7 flex items-center justify-center rounded-full top-0 absolute"
+        className="absolute top-0 flex h-7 w-7 items-center justify-center rounded-full"
         style={{
           backgroundColor: colors.backgroundColor,
           [isOwnComment ? "right" : "left"]: 0,
@@ -50,15 +50,15 @@ export function CommentItem({
       </div>
 
       <div
-        className={`flex-1 border border-oc-outline-light/60 bg-[#181615] rounded-xl p-2 px-3 relative max-w-[300px] ${
+        className={`border-oc-outline-light/60 relative max-w-[300px] flex-1 rounded-xl border bg-[#181615] p-2 px-3 ${
           isOwnComment ? "mr-5 rounded-tr-none" : "ml-5 rounded-tl-none"
         }`}
       >
         <div className="flex-1">
-          <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="mb-1 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span
-                className="px-1.5 py-0.5 pl-0.5 text-xs border-oc-outline-light/60 whitespace-nowrap font-bold"
+                className="border-oc-outline-light/60 px-1.5 py-0.5 pl-0.5 text-xs font-bold whitespace-nowrap"
                 title={comment.creatorName}
                 style={{
                   color: colors.backgroundColor,
@@ -68,12 +68,12 @@ export function CommentItem({
               </span>
             </div>
           </div>
-          <p className="text-sm pl-0.5 break-words max-w-[250px]">
+          <p className="max-w-[250px] pl-0.5 text-sm break-words">
             {comment.content}
           </p>
         </div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-[11px] text-oc-brown/50 whitespace-nowrap">
+        <div className="mt-1 flex items-center justify-between">
+          <span className="text-oc-brown/50 text-[11px] whitespace-nowrap">
             {new Date(comment.createdAt + "Z").toLocaleString("es-MX", {
               day: "numeric",
               month: "short",
@@ -86,7 +86,7 @@ export function CommentItem({
           {canDelete && (
             <button
               onClick={() => onDelete(comment.id)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-400 hover:text-stone-100"
+              className="text-stone-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-stone-100"
             >
               <i className="fa fa-trash text-sm"></i>
             </button>

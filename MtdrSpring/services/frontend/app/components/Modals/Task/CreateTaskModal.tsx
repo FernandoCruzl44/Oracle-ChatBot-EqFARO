@@ -169,26 +169,26 @@ export default function CreateTaskModal({
       onClose={handleClose}
       handleClose={handleClose}
     >
-      <div className="flex-1 p-8 overflow-hidden">
-        <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-hidden p-8">
+        <div className="flex h-full flex-col">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Título de la tarea"
-            className="text-lg text-white font-bold border-b border-oc-outline-light/60 pb-3 mb-4 bg-transparent focus:outline-none"
+            className="border-oc-outline-light/60 mb-4 border-b bg-transparent pb-3 text-lg font-bold text-white focus:outline-none"
             required
             title="Este campo es obligatorio"
           />
 
           <form
-            className="pt-3 text-sm flex flex-col"
+            className="flex flex-col pt-3 text-sm"
             onSubmit={handleSubmitTask}
           >
             {/* Layout with two columns like in TaskModal */}
-            <div className="flex flex-row gap-4 flex-1">
+            <div className="flex flex-1 flex-row gap-4">
               {/* Left column */}
-              <div className="space-y-4 flex-1 h-full">
+              <div className="h-full flex-1 space-y-4">
                 <Card>
                   <FormField label="Tag" icon="tag">
                     <Select
@@ -249,7 +249,7 @@ export default function CreateTaskModal({
                             className="max-w-32"
                           />
                         ) : (
-                          <span className="text-xs bg-yellow-50 border border-yellow-100 text-yellow-800 rounded-lg p-1">
+                          <span className="rounded-lg border border-yellow-100 bg-yellow-50 p-1 text-xs text-yellow-800">
                             <i className="fa fa-warning mr-1"></i>
                             No perteneces a ningún equipo
                           </span>
@@ -264,7 +264,7 @@ export default function CreateTaskModal({
                           setSprintId(
                             e.target.value === ""
                               ? null
-                              : Number(e.target.value)
+                              : Number(e.target.value),
                           )
                         }
                         options={[
@@ -305,7 +305,7 @@ export default function CreateTaskModal({
                       value={estimatedHours ?? ""}
                       onChange={(e) =>
                         setEstimatedHours(
-                          e.target.value === "" ? null : Number(e.target.value)
+                          e.target.value === "" ? null : Number(e.target.value),
                         )
                       }
                       placeholder="0"
@@ -316,21 +316,21 @@ export default function CreateTaskModal({
 
               {/* Right column */}
               <Card className="flex-1">
-                <div className="p-1.5 flex flex-col gap-3">
-                  <div className="w-32 text-oc-brown/60">
+                <div className="flex flex-col gap-3 p-1.5">
+                  <div className="text-oc-brown/60 w-32">
                     <i className="fa fa-user-plus mr-2 translate-y-1"></i>
                     Asignados
                   </div>
                   <div
                     ref={assigneesListRef}
-                    className="flex flex-col gap-3 flex-1 overflow-y-auto min-h-16 min-w-40 pt-1.5"
+                    className="flex min-h-16 min-w-40 flex-1 flex-col gap-3 overflow-y-auto pt-1.5"
                   >
                     {teamId === null ? (
-                      <p className="text-xs text-white/60 pt-0.5">
+                      <p className="pt-0.5 text-xs text-white/60">
                         Elige un equipo
                       </p>
                     ) : filteredUsers.length === 0 ? (
-                      <p className="text-xs text-white/60 pt-0.5">
+                      <p className="pt-0.5 text-xs text-white/60">
                         Elige un equipo
                       </p>
                     ) : (
@@ -344,14 +344,14 @@ export default function CreateTaskModal({
                             id={`user-${user.id}`}
                             checked={assigneeIds.includes(user.id)}
                             onChange={() => toggleAssignee(user.id)}
-                            className="mr-2 mt-0 pt-0"
+                            className="mt-0 mr-2 pt-0"
                           />
                           <label
                             htmlFor={`user-${user.id}`}
                             className="text-sm text-white"
                           >
                             {user.name}
-                            <span className="text-xs text-oc-brown/50 ml-2">
+                            <span className="text-oc-brown/50 ml-2 text-xs">
                               (
                               {user.role
                                 ? user.role.charAt(0).toUpperCase() +
@@ -373,7 +373,7 @@ export default function CreateTaskModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Descripción (Opcional)"
-                className="w-full border my-4 bg-oc-neutral/30 rounded-lg p-3 min-h-[120px] text-sm text-oc-brown border-oc-outline-light/60 resize-none overflow-auto"
+                className="bg-oc-neutral/30 text-oc-brown border-oc-outline-light/60 my-4 min-h-[120px] w-full resize-none overflow-auto rounded-lg border p-3 text-sm"
               ></textarea>
             </div>
 
@@ -383,7 +383,7 @@ export default function CreateTaskModal({
               disabled={!title || !teamId || assigneeIds.length === 0}
             >
               <span>Crear Tarea</span>
-              <span className="ml-2 text-xs flex items-center opacity-40">
+              <span className="ml-2 flex items-center text-xs opacity-40">
                 <i className="fa fa-keyboard mr-1" aria-hidden="true"></i>⌘ +
                 Enter / Ctrl + Enter
               </span>

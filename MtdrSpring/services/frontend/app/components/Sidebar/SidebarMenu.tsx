@@ -22,7 +22,7 @@ export default function SidebarMenu({ isExpanded = true }) {
           <Link
             key={item.path}
             to={item.path}
-            className={`py-2.5 px-3 mx-2 rounded-lg transition-colors select-none flex items-center max-h-[40px] min-w-[40px] ${
+            className={`mx-2 flex max-h-[40px] min-w-[40px] items-center rounded-lg px-3 py-2.5 transition-colors select-none ${
               location.pathname === item.path ||
               (item.path === "/" && location.pathname === "")
                 ? "bg-oc-amber/20 text-oc-amber"
@@ -34,7 +34,7 @@ export default function SidebarMenu({ isExpanded = true }) {
             <i className={`fa fa-${item.icon} w-6 flex-shrink-0`}></i>
             <span
               className={`ml-2 transition-all duration-200 ${
-                isExpanded ? "" : "w-0 opacity-0 overflow-hidden"
+                isExpanded ? "" : "w-0 overflow-hidden opacity-0"
               }`}
             >
               {item.label}

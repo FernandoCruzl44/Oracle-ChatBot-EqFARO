@@ -22,10 +22,9 @@ export function Pagination({
   isLoadingTasks,
   viewMode = "table",
 }: PaginationProps) {
-  // No pagination si es kanban y hay menos de 100 tareas
   if (viewMode === "kanban" && filteredTasks.length <= 100) {
     return (
-      <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">
+      <div className="flex h-12 flex-shrink-0 items-center justify-between px-4 py-2 text-sm text-white/50">
         <div>
           {selectedTasks.length} seleccionada
           {selectedTasks.length !== 1 ? "s" : ""}
@@ -39,7 +38,7 @@ export function Pagination({
   }
 
   return (
-    <div className="px-4 py-2 flex items-center justify-between text-white/50 text-sm h-12 flex-shrink-0">
+    <div className="flex h-12 flex-shrink-0 items-center justify-between px-4 py-2 text-sm text-white/50">
       <div>
         {selectedTasks.length} seleccionada
         {selectedTasks.length !== 1 ? "s" : ""}
@@ -51,7 +50,7 @@ export function Pagination({
         <span className="mr-4">{tasksPerPage} tareas por página</span>
         <div className="flex">
           <button
-            className="w-8 h-8 flex items-center justify-center border rounded-l border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-oc-outline-light flex h-8 w-8 items-center justify-center rounded-l border disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setCurrentPage(1)}
             disabled={
               currentPage === 1 || filteredTasks.length === 0 || isLoadingTasks
@@ -60,7 +59,7 @@ export function Pagination({
             <i className="fa fa-angle-double-left"></i>
           </button>
           <button
-            className="w-8 h-8 flex items-center justify-center border-t border-r border-b border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-oc-outline-light flex h-8 w-8 items-center justify-center border-t border-r border-b disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={
               currentPage === 1 || filteredTasks.length === 0 || isLoadingTasks
@@ -69,7 +68,7 @@ export function Pagination({
             <i className="fa fa-angle-left"></i>
           </button>
           <button
-            className="w-8 h-8 flex items-center justify-center border-t border-b border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-oc-outline-light flex h-8 w-8 items-center justify-center border-t border-b disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() =>
               setCurrentPage(Math.min(totalPages, currentPage + 1))
             }
@@ -82,7 +81,7 @@ export function Pagination({
             <i className="fa fa-angle-right"></i>
           </button>
           <button
-            className="w-8 h-8 flex items-center justify-center border rounded-r border-oc-outline-light disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-oc-outline-light flex h-8 w-8 items-center justify-center rounded-r border disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setCurrentPage(totalPages)}
             disabled={
               currentPage === totalPages ||

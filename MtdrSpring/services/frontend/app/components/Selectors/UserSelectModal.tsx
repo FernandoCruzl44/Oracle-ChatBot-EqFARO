@@ -89,11 +89,11 @@ export default function UserSelectModal({
   return (
     <div
       ref={modalRef}
-      className="fixed z-50 bg-oc-primary rounded-lg shadow-lg border border-oc-outline-light w-[250px]"
+      className="bg-oc-primary border-oc-outline-light fixed z-50 w-[250px] rounded-lg border shadow-lg"
       style={{ ...position, height: `${modalHeight + 8}px` }}
     >
       <div
-        className={`py-1 px-1 space-y-1 overflow-y-scroll`}
+        className={`space-y-1 overflow-y-scroll px-1 py-1`}
         style={{ maxHeight: `${modalHeight + 4}px` }}
       >
         {users.length === 0 && (
@@ -109,7 +109,7 @@ export default function UserSelectModal({
               onUserChange(user.id);
               setIsOpen(false);
             }}
-            className={`w-full text-left px-4 py-2 rounded text-sm ${
+            className={`w-full rounded px-4 py-2 text-left text-sm ${
               currentUser?.id === user.id
                 ? "bg-stone-700 text-blue-400"
                 : "text-white hover:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-600"
@@ -122,13 +122,13 @@ export default function UserSelectModal({
                     .backgroundColor,
                   color: generateAvatarColor(user.name).color,
                 }}
-                className="w-[20px] h-[20px] text-xs rounded-xl border border-oc-outline-light/60 flex items-center justify-center font-bold flex-shrink-0 mr-2"
+                className="border-oc-outline-light/60 mr-2 flex h-[20px] w-[20px] flex-shrink-0 items-center justify-center rounded-xl border text-xs font-bold"
               >
                 {user.name.slice(0, 1).toUpperCase()}
               </span>
               <div>
                 <div className="font-medium">{user.name}</div>
-                <div className="text-xs text-stone-400 truncate">
+                <div className="truncate text-xs text-stone-400">
                   {user.email}
                 </div>
               </div>

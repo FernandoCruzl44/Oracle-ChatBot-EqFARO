@@ -71,7 +71,7 @@ export function SprintSelector({
       fetchSprints(teamId);
     } else if (selectedSprint && selectedSprint.teamId) {
       console.log(
-        `Fetching sprints for sprint's team ${selectedSprint.teamId}`
+        `Fetching sprints for sprint's team ${selectedSprint.teamId}`,
       );
       fetchSprints(selectedSprint.teamId);
     }
@@ -90,7 +90,7 @@ export function SprintSelector({
       fetchSprints(teamId);
     } else if (selectedSprint && selectedSprint.teamId) {
       console.log(
-        `Fetching sprints for sprint's team ${selectedSprint.teamId}`
+        `Fetching sprints for sprint's team ${selectedSprint.teamId}`,
       );
       fetchSprints(selectedSprint.teamId);
     }
@@ -106,7 +106,7 @@ export function SprintSelector({
     <div className="relative z-20" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`${buttonClasses} bg-oc-primary hover:bg-black text-white`}
+        className={`${buttonClasses} bg-oc-primary text-white hover:bg-black`}
         disabled={isLoading}
       >
         <i className="fa fa-alarm-clock mr-2"></i>
@@ -114,32 +114,32 @@ export function SprintSelector({
           {isLoading
             ? "Cargando sprints..."
             : currentSprint
-            ? currentSprint.name +
-              (teamId === undefined &&
-              currentSprint.teamId &&
-              getTeamNameById(currentSprint.teamId)
-                ? ` (${getTeamNameById(currentSprint.teamId)})`
-                : "")
-            : teamSprints.length > 0
-            ? "Todos los sprints"
-            : "No hay sprints"}
+              ? currentSprint.name +
+                (teamId === undefined &&
+                currentSprint.teamId &&
+                getTeamNameById(currentSprint.teamId)
+                  ? ` (${getTeamNameById(currentSprint.teamId)})`
+                  : "")
+              : teamSprints.length > 0
+                ? "Todos los sprints"
+                : "No hay sprints"}
         </span>
         <i
           className={`fa fa-chevron-down ml-2 text-xs transition-transform ${
-            isOpen ? "transform rotate-180" : ""
+            isOpen ? "rotate-180 transform" : ""
           }`}
         ></i>
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-56 bg-oc-primary rounded-lg shadow-lg border border-oc-outline-light dark:border-stone-600">
-          <div className="py-1 px-1 space-y-1">
+        <div className="bg-oc-primary border-oc-outline-light absolute z-10 mt-1 w-56 rounded-lg border shadow-lg dark:border-stone-600">
+          <div className="space-y-1 px-1 py-1">
             <button
               onClick={() => {
                 onSelectSprint(null);
                 setIsOpen(false);
               }}
-              className={`w-full text-left px-4 py-2 rounded text-sm ${
+              className={`w-full rounded px-4 py-2 text-left text-sm ${
                 !selectedSprintId
                   ? "bg-stone-700 text-blue-400"
                   : "text-white hover:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-600"
@@ -162,7 +162,7 @@ export function SprintSelector({
                     onSelectSprint(sprint.id);
                     setIsOpen(false);
                   }}
-                  className={`block w-full text-left px-4 py-2 text-sm ${
+                  className={`block w-full px-4 py-2 text-left text-sm ${
                     selectedSprintId === sprint.id
                       ? "text-blue-400"
                       : "text-white dark:text-stone-400"
@@ -180,7 +180,7 @@ export function SprintSelector({
                 {isManager && (
                   <button
                     onClick={() => handleEditSprint(sprint)}
-                    className="opacity-0 group-hover:opacity-100 pr-2 text-stone-900 hover:text-stone-600 translate-y-1 dark:text-stone-400 dark:hover:text-stone-500"
+                    className="translate-y-1 pr-2 text-stone-900 opacity-0 group-hover:opacity-100 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-500"
                     title="Editar sprint"
                   >
                     <i className="fa fa-edit text-sm"></i>
@@ -189,13 +189,13 @@ export function SprintSelector({
               </div>
             ))}
             {isManager && (
-              <div className="border-t border-oc-outline-light/60 mt-1 pt-1 dark:border-stone-600">
+              <div className="border-oc-outline-light/60 mt-1 border-t pt-1 dark:border-stone-600">
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     onCreateSprint();
                   }}
-                  className="block w-full text-left px-4 py-2 text-sm rounded text-stone-700 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-600"
+                  className="block w-full rounded px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-600"
                 >
                   <i className="fa fa-plus mr-2"></i>
                   Nuevo sprint

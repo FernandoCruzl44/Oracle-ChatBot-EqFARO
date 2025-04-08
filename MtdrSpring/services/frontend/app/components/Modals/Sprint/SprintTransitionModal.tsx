@@ -9,7 +9,7 @@ interface SprintTransitionModalProps {
   onClose: () => void;
   onComplete: (
     action: "moveToBacklog" | "moveToNextSprint",
-    nextSprintId?: number
+    nextSprintId?: number,
   ) => void;
 }
 
@@ -31,7 +31,7 @@ export function SprintTransitionModal({
     const upcomingSprints = sprints.filter(
       (s) =>
         s.teamId === sprint.teamId &&
-        new Date(s.startDate) > new Date(sprint.endDate)
+        new Date(s.startDate) > new Date(sprint.endDate),
     );
     if (upcomingSprints.length > 0) {
       setNextSprintId(upcomingSprints[0].id);
@@ -48,7 +48,7 @@ export function SprintTransitionModal({
       selectedAction,
       selectedAction === "moveToNextSprint" && nextSprintId
         ? nextSprintId
-        : undefined
+        : undefined,
     );
     handleClose();
   };
@@ -56,30 +56,30 @@ export function SprintTransitionModal({
   const futureSprints = sprints.filter(
     (s) =>
       s.teamId === sprint.teamId &&
-      new Date(s.startDate) > new Date(sprint.endDate)
+      new Date(s.startDate) > new Date(sprint.endDate),
   );
 
   return (
     <Portal>
       <div
-        className={`fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-150 ${
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 transition-opacity duration-150 ${
           isVisible ? "opacity-100" : "opacity-0"
         }`}
         onClick={handleClose}
       >
         <div
-          className={`bg-white rounded-lg w-full max-w-md p-6 transition-transform duration-150 ${
+          className={`w-full max-w-md rounded-lg bg-white p-6 transition-transform duration-150 ${
             isVisible ? "translate-y-0" : "translate-y-3"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="mb-4 text-xl font-bold">
             Completar Sprint: {sprint.name}
           </h2>
 
-          <div className="space-y-4 mb-6">
+          <div className="mb-6 space-y-4">
             <div>
-              <p className="text-sm text-stone-600 mb-2">
+              <p className="mb-2 text-sm text-stone-600">
                 Hay tareas incompletas en este sprint. ¿Qué deseas hacer con
                 ellas?
               </p>
@@ -113,7 +113,7 @@ export function SprintTransitionModal({
                   <select
                     value={nextSprintId || ""}
                     onChange={(e) => setNextSprintId(Number(e.target.value))}
-                    className="w-full p-2 border rounded"
+                    className="w-full rounded border p-2"
                   >
                     {futureSprints.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -134,16 +134,16 @@ export function SprintTransitionModal({
           <div className="flex justify-end space-x-2">
             <button
               onClick={handleClose}
-              className="px-4 py-2 border rounded hover:bg-stone-50"
+              className="rounded border px-4 py-2 hover:bg-stone-50"
             >
               Cancelar
             </button>
             <button
               onClick={handleSubmit}
               disabled={selectedAction === "moveToNextSprint" && !nextSprintId}
-              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
+              className={`rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 ${
                 selectedAction === "moveToNextSprint" && !nextSprintId
-                  ? "opacity-50 cursor-not-allowed"
+                  ? "cursor-not-allowed opacity-50"
                   : ""
               }`}
             >

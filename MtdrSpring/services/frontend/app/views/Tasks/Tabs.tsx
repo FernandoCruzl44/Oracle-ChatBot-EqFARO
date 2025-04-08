@@ -1,6 +1,4 @@
 // app/components/Tasks/TasksTabs.tsx
-import React from "react";
-
 interface TabsProps {
   isManager: boolean;
   teams: any[];
@@ -19,15 +17,15 @@ export function Tabs({
   currentUser,
 }: TabsProps) {
   return (
-    <div className="flex px-4 py-2 border-b pb-0 border-oc-outline-light/60 overflow-x-auto hide-scrollbar flex-shrink-0">
+    <div className="border-oc-outline-light/60 hide-scrollbar flex flex-shrink-0 overflow-x-auto border-b px-4 py-2 pb-0">
       {isManager ? (
         <>
           <button
             className={`px-4 py-2 font-medium whitespace-nowrap ${
               activeTab === "all"
-                ? "text-stone-100 border-b-2 border-white"
+                ? "border-b-2 border-white text-stone-100"
                 : "text-stone-400 hover:text-stone-200"
-            } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+            } ${isLoadingTasks ? "cursor-not-allowed opacity-50" : ""}`}
             onClick={() => !isLoadingTasks && changeTab("all")}
             disabled={isLoadingTasks}
           >
@@ -38,9 +36,9 @@ export function Tabs({
               key={team.id}
               className={`px-4 py-2 font-medium whitespace-nowrap ${
                 activeTab === String(team.id)
-                  ? "text-stone-100 border-b-2 border-stone-200"
+                  ? "border-b-2 border-stone-200 text-stone-100"
                   : "text-stone-400 hover:text-stone-100"
-              } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+              } ${isLoadingTasks ? "cursor-not-allowed opacity-50" : ""}`}
               onClick={() => !isLoadingTasks && changeTab(String(team.id))}
               disabled={isLoadingTasks}
             >
@@ -53,9 +51,9 @@ export function Tabs({
           <button
             className={`px-4 py-2 font-medium ${
               activeTab === "all"
-                ? "text-stone-100 border-b-2 border-white"
+                ? "border-b-2 border-white text-stone-100"
                 : "text-stone-400 hover:text-stone-200"
-            } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+            } ${isLoadingTasks ? "cursor-not-allowed opacity-50" : ""}`}
             onClick={() => !isLoadingTasks && changeTab("all")}
             disabled={isLoadingTasks}
           >
@@ -65,9 +63,9 @@ export function Tabs({
             <button
               className={`px-4 py-2 font-medium ${
                 activeTab === "team"
-                  ? "text-stone-100 border-b-2 border-white"
+                  ? "border-b-2 border-white text-stone-100"
                   : "text-stone-400 hover:text-stone-200"
-              } ${isLoadingTasks ? "opacity-50 cursor-not-allowed" : ""}`}
+              } ${isLoadingTasks ? "cursor-not-allowed opacity-50" : ""}`}
               onClick={() => !isLoadingTasks && changeTab("team")}
               disabled={isLoadingTasks}
             >

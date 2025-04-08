@@ -25,13 +25,13 @@ export default function SidebarProfile({ isExpanded = true }) {
 
   if (isLoadingUsers) {
     return (
-      <div className="py-3 px-4 flex items-center">
-        <div className="w-[30px] h-[30px] flex items-center justify-center flex-shrink-0">
+      <div className="flex items-center px-4 py-3">
+        <div className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center">
           <i className="fa fa-spinner fa-spin text-stone-400"></i>
         </div>
         <div
           className={`ml-2 text-stone-400 transition-all duration-200 ${
-            isExpanded ? "" : "w-0 opacity-0 overflow-hidden"
+            isExpanded ? "" : "w-0 overflow-hidden opacity-0"
           }`}
         >
           Cargando...
@@ -41,9 +41,9 @@ export default function SidebarProfile({ isExpanded = true }) {
   }
 
   return (
-    <div className="py-4 px-3" ref={profileRef}>
+    <div className="px-3 py-4" ref={profileRef}>
       <button
-        className="flex items-center text-start w-full h-[30px] "
+        className="flex h-[30px] w-full items-center text-start"
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
@@ -55,7 +55,7 @@ export default function SidebarProfile({ isExpanded = true }) {
             backgroundColor: colors.backgroundColor,
             color: colors.color,
           }}
-          className="w-[30px] h-[30px] text-xs rounded-xl border border-oc-outline-light/60 flex items-center justify-center font-bold flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-oc-amber/50"
+          className="border-oc-outline-light/60 hover:ring-oc-amber/50 flex h-[30px] w-[30px] flex-shrink-0 cursor-pointer items-center justify-center rounded-xl border text-xs font-bold hover:ring-2"
           title={currentUser?.name}
           onClick={() => setIsOpen(!isOpen)}
         >
@@ -63,27 +63,27 @@ export default function SidebarProfile({ isExpanded = true }) {
         </span>
 
         <div
-          className={`ml-2 flex-1 transition-all duration-200 flex items-center ${
-            isExpanded ? "" : "w-0 opacity-0 overflow-hidden"
+          className={`ml-2 flex flex-1 items-center transition-all duration-200 ${
+            isExpanded ? "" : "w-0 overflow-hidden opacity-0"
           }`}
         >
           {isExpanded && (
             <>
               <div className="flex-grow">
-                <div className="font-medium text-sm truncate">
+                <div className="truncate text-sm font-medium">
                   {currentUser?.name || "Selecciona usuario"}
                 </div>
                 {currentUser && (
-                  <div className="text-xs text-stone-400 truncate">
+                  <div className="truncate text-xs text-stone-400">
                     {currentUser.email}
                   </div>
                 )}
               </div>
 
-              <span className="ml-1 text-white flex-shrink-0">
+              <span className="ml-1 flex-shrink-0 text-white">
                 <i
                   className={`fa fa-chevron-down text-xs transition-transform ${
-                    isOpen ? "transform rotate-180" : ""
+                    isOpen ? "rotate-180 transform" : ""
                   }`}
                 ></i>
               </span>

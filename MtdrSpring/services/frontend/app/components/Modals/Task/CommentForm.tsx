@@ -15,22 +15,22 @@ export function CommentForm({
   commentInputRef,
 }: CommentFormProps) {
   return (
-    <div className="p-4 pb-8 mt-auto">
+    <div className="mt-auto p-4 pb-8">
       <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
-        <div className="flex-1 relative">
+        <div className="relative flex-1">
           <input
             ref={commentInputRef}
             type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Escribe tu comentario"
-            className="w-full border border-oc-outline-light/60 bg-oc-neutral/50 hover:bg-black transition-colors text-white placeholder:text-white/40 rounded-lg p-3 py-2.5 text-sm h-[42px]"
+            className="border-oc-outline-light/60 bg-oc-neutral/50 h-[42px] w-full rounded-lg border p-3 py-2.5 text-sm text-white transition-colors placeholder:text-white/40 hover:bg-black"
             disabled={isSubmittingComment}
           />
         </div>
         <button
           type="submit"
-          className={`text-white rounded-lg flex items-center justify-center h-[42px] w-[42px] border border-oc-outline-light/60 transition-colors ${
+          className={`border-oc-outline-light/60 flex h-[42px] w-[42px] items-center justify-center rounded-lg border text-white transition-colors ${
             newComment.trim()
               ? "bg-stone-50/5 hover:bg-stone-50/20"
               : "bg-oc-neutral/90"

@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-import type { Task } from "~/types";
-import { TaskCard } from "./TaskCard";
+import { useState } from "react";
 import { DraggableTask, DroppableColumn } from "./KanbanDnd";
+import type { Task } from "~/types";
 
 interface KanbanColumnProps {
   status: string;
@@ -19,13 +18,11 @@ interface KanbanColumnProps {
 export function KanbanColumn({
   status,
   tasks,
-  onDragEnd,
   handleTaskClick,
   handleTaskSelection,
   selectedTasks,
   showAssigneesColumn,
   sprints,
-  handleSelectAll,
   pendingUpdates = {},
 }: KanbanColumnProps) {
   const [folded, setFolded] = useState(false);
@@ -47,10 +44,6 @@ export function KanbanColumn({
 
   const toggleFold = () => {
     setFolded((prev) => !prev);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
   };
 
   const allTasksInColumnSelected =
@@ -91,7 +84,11 @@ export function KanbanColumn({
             onClick={toggleFold}
             className="text-xs rounded p-1 focus:outline-none"
           >
-            {folded ? "→" : "←"}
+            {folded ? (
+              <span className="fa fa-expand rotate-45" />
+            ) : (
+              <span className="fa fa-compress rotate-45" />
+            )}
           </button>
         </div>
         {!folded && (

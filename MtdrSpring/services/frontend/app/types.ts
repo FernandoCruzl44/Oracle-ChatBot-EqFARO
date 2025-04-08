@@ -28,16 +28,10 @@ export interface Task {
   sprintId?: number | null;
   estimatedHours?: number | null;
   actualHours?: number | null;
-
-  // Creator information
   creatorId?: number;
   creatorName?: string;
-
-  // Team information
   teamId?: number;
   teamName?: string;
-
-  // Assignees as User objects
   assignees?: User[];
 }
 
