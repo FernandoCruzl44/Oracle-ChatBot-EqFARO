@@ -1,4 +1,4 @@
-import { useState } from "react";
+import useTaskStore from "~/store";
 import { DraggableTask, DroppableColumn } from "./KanbanDnd";
 import type { Task } from "~/types";
 
@@ -25,7 +25,10 @@ export function KanbanColumn({
   sprints,
   pendingUpdates = {},
 }: KanbanColumnProps) {
-  const [folded, setFolded] = useState(false);
+  const foldedColumns = useTaskStore((state) => state.foldedColumns);
+  const toggleColumnFolded = useTaskStore((state) => state.toggleColumnFolded);
+
+  const isFolded = typeof foldedColumns[status] === "boolean" ? foldedColumns[status] : false;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -40,10 +43,6 @@ export function KanbanColumn({
       default:
         return "bg-stone-900";
     }
-  };
-
-  const toggleFold = () => {
-    setFolded((prev) => !prev);
   };
 
   const allTasksInColumnSelected =
@@ -67,31 +66,35 @@ export function KanbanColumn({
     }
   };
 
+  const handleToggleFold = () => {
+    toggleColumnFolded(status);
+  };
+
   return (
     <div
-      className={`flex-col border-r border-oc-outline-light/60 last:border-r-0 transition-discrete duration-100 overflow-clip ${
-        folded ? "w-12" : "flex flex-1 min-w-64 h-full"
+      className={`flex-col border-r border-oc-outline-light/60 last:border-r-0 transition-discrete duration-100 ease-out overflow-clip ${
+        isFolded ? "w-12" : "flex flex-1 min-w-64 h-full"
       }`}
     >
       <div
         className={`px-4 py-3 font-medium border-b border-oc-outline-light/60 flex justify-between items-center sticky top-0 z-10 ${
-          folded ? "flex-col items-center" : "flex-row"
+          isFolded ? "flex-col items-center" : "flex-row"
         }`}
       >
         <div className="flex items-center">
-          {!folded && <span className="mr-2">{status}</span>}
+          {!isFolded && <span className="mr-2">{status}</span>}
           <button
-            onClick={toggleFold}
-            className="text-xs rounded p-1 focus:outline-none"
+            onClick={handleToggleFold}
+            className="text-xs rounded p-1 focus:outline-none hover:bg-oc-amber/20 hover:text-oc-amber transition-colors group"
           >
-            {folded ? (
-              <span className="fa fa-expand rotate-45" />
+            {isFolded ? (
+              <span className="fa fa-expand rotate-45 transition-transform group-active:scale-80" />
             ) : (
-              <span className="fa fa-compress rotate-45" />
+              <span className="fa fa-compress rotate-45 transition-transform group-active:scale-80" />
             )}
           </button>
         </div>
-        {!folded && (
+        {!isFolded && (
           <div className="flex items-center gap-3">
             <span
               className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${getStatusColor(
@@ -110,7 +113,7 @@ export function KanbanColumn({
           </div>
         )}
       </div>
-      {folded && (
+      {isFolded && (
         <div className="flex justify-center w-full h-full">
           <div className="mt-3 text-base w-6 h-6 flex items-center justify-center rounded-full">
             {tasks.length}
@@ -119,8 +122,8 @@ export function KanbanColumn({
       )}
       <DroppableColumn
         status={status}
-        className={`flex-1 overflow-y-auto  p-2 space-y-2 transition-opacity duration-100 ${
-          folded ? "opacity-0 pointer-events-none" : "opacity-100"
+        className={`flex-1 overflow-y-auto p-2 space-y-2 transition-opacity duration-100 ${
+          isFolded ? "opacity-0 pointer-events-none" : "opacity-100"
         }`}
       >
         {tasks.map((task) => (
