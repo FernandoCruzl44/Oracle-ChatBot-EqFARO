@@ -1,3 +1,5 @@
+// src/main/java/com/springboot/MyTodoList/config/CorsConfig.java
+// (No changes needed, keep as is)
 package com.springboot.MyTodoList.config;
 
 import org.slf4j.Logger;
@@ -9,12 +11,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import java.util.List;
 
-/*
-    This class configures CORS, and specifies which methods are allowed
-    along with which origins and headers
-    @author: peter.song@oracle.com
- */
-
 @Configuration
 public class CorsConfig {
     Logger logger = LoggerFactory.getLogger(CorsConfig.class);
@@ -22,13 +18,16 @@ public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
+        // Ensure these origins match your frontend and any other allowed clients
         config.setAllowedOrigins(List.of("http://localhost:3000", "https://objectstorage.us-phoenix-1.oraclecloud.com",
                 "https://petstore.swagger.io"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
         config.addAllowedHeader("*");
         config.addExposedHeader("location");
+        // Keep Authorization exposed for the frontend to read the token if needed
+        config.addExposedHeader("Authorization");
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        source.registerCorsConfiguration("/**", config); // Apply CORS to all paths
         return new CorsFilter(source);
     }
 }

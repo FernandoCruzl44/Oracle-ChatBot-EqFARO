@@ -2,6 +2,7 @@
 import type { StateCreator } from "zustand";
 import type { StoreState, TaskStore } from "~/store/types";
 import type { Team } from "~/types";
+import { api } from "~/lib/api";
 
 export interface TeamSlice extends StoreState {
   teams: Team[];
@@ -12,7 +13,7 @@ export interface TeamSlice extends StoreState {
 
 export const createTeamSlice: StateCreator<TaskStore, [], [], TeamSlice> = (
   set,
-  get
+  get,
 ) => ({
   teams: [],
   isLoadingTeams: false,
@@ -27,11 +28,7 @@ export const createTeamSlice: StateCreator<TaskStore, [], [], TeamSlice> = (
     set({ isLoadingTeams: true });
 
     try {
-      const response = await fetch("/api/teams/");
-      if (!response.ok) {
-        throw new Error("Error al obtener equipos");
-      }
-      const data = await response.json();
+      const data = await api.get("/teams/");
       set({ teams: data, isLoadingTeams: false });
     } catch (error) {
       console.error("Error fetching teams:", error);

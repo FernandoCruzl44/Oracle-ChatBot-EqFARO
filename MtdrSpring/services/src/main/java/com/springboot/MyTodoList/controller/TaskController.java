@@ -454,11 +454,11 @@ public class TaskController {
         });
     }
 
-    // DELETE /api/tasks/{taskId} (No changes needed)
-    @DeleteMapping("/{taskId}")
+    // DELETE /api/tasks - Updated for multiple task deletion
+    @DeleteMapping
     @Transactional
-    public ResponseEntity<?> deleteTask(
-            @PathVariable Long taskId,
+    public ResponseEntity<?> deleteMultipleTasks(
+            @RequestBody List<Long> taskIds,
             HttpServletRequest request) {
         Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
@@ -466,19 +466,71 @@ public class TaskController {
                     Map.of("message", "Unauthorized"));
         }
 
-        return jdbi.inTransaction(handle -> {
-            TaskRepository taskRepo = handle.attach(TaskRepository.class);
-            Optional<Task> taskOpt = taskRepo.findById(taskId);
+        if (taskIds == null || taskIds.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "No task IDs provided"));
+        }
 
-            if (!taskOpt.isPresent()) {
-                return ResponseEntity.notFound().build();
+        return jdbi.inTransaction(handle -> {
+            User currentUser = handle
+                    .attach(UserRepository.class)
+                    .findById(currentUserId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            boolean isManager = "manager".equals(currentUser.getRole());
+
+            List<Long> accessibleTaskIds = taskIds;
+
+            // If not a manager, filter tasks to only those the user has permission to
+            // delete
+            if (!isManager) {
+                accessibleTaskIds = new ArrayList<>();
+                TaskRepository taskRepo = handle.attach(TaskRepository.class);
+
+                for (Long taskId : taskIds) {
+                    Optional<Task> taskOpt = taskRepo.findById(taskId);
+                    if (taskOpt.isPresent()) {
+                        Task task = taskOpt.get();
+                        boolean isCreator = task.getCreatorId().equals(currentUserId);
+                        boolean isTeamMember = currentUser.getTeamId() != null &&
+                                task.getTeamId() != null &&
+                                currentUser.getTeamId().equals(task.getTeamId());
+
+                        // Example: Allow deletion if creator or team member (adjust as needed)
+                        if (isCreator || isTeamMember) {
+                            accessibleTaskIds.add(taskId);
+                        }
+                    }
+                }
             }
 
-            // Add authorization check if needed (e.g., only manager or creator can delete)
+            if (accessibleTaskIds.isEmpty()) {
+                // Return forbidden if the user tried to delete tasks they don't have access to
+                if (!taskIds.isEmpty()) {
+                    return ResponseEntity.status(403).body(
+                            Map.of("message",
+                                    "You do not have permission to delete one or more of the selected tasks"));
+                } else {
+                    // This case shouldn't happen if initial list wasn't empty, but handle
+                    // defensively
+                    return ResponseEntity.badRequest().body(Map.of("message", "No tasks available for deletion"));
+                }
+            }
 
-            taskRepo.delete(taskId); // Deletes task and cascades assignee deletions via DB constraint
+            handle
+                    .attach(TaskRepository.class)
+                    .deleteMultiple(accessibleTaskIds);
 
-            return ResponseEntity.ok(Map.of("message", "Task deleted"));
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Tasks deleted");
+            response.put("count", accessibleTaskIds.size());
+            // Optionally report which tasks couldn't be deleted if the original list was
+            // filtered
+            if (accessibleTaskIds.size() < taskIds.size()) {
+                response.put("warning", "Some tasks could not be deleted due to permissions.");
+            }
+
+            return ResponseEntity.ok(response);
         });
     }
 
@@ -612,86 +664,6 @@ public class TaskController {
                 return ResponseEntity.status(500).body(
                         Map.of("message", "Error retrieving updated task"));
             }
-        });
-    }
-
-    // DELETE /api/tasks (No changes needed)
-    @DeleteMapping
-    @Transactional
-    public ResponseEntity<?> deleteMultipleTasks(
-            @RequestBody List<Long> taskIds,
-            HttpServletRequest request) {
-        Long currentUserId = identityUtil.getCurrentUserId(request);
-        if (currentUserId == null) {
-            return ResponseEntity.status(401).body(
-                    Map.of("message", "Unauthorized"));
-        }
-
-        if (taskIds == null || taskIds.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "No task IDs provided"));
-        }
-
-        return jdbi.inTransaction(handle -> {
-            User currentUser = handle
-                    .attach(UserRepository.class)
-                    .findById(currentUserId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            boolean isManager = "manager".equals(currentUser.getRole());
-
-            List<Long> accessibleTaskIds = taskIds;
-
-            // If not a manager, filter tasks to only those the user has permission to
-            // delete
-            if (!isManager) {
-                accessibleTaskIds = new ArrayList<>();
-                TaskRepository taskRepo = handle.attach(TaskRepository.class);
-
-                for (Long taskId : taskIds) {
-                    Optional<Task> taskOpt = taskRepo.findById(taskId);
-                    if (taskOpt.isPresent()) {
-                        Task task = taskOpt.get();
-                        boolean isCreator = task.getCreatorId().equals(currentUserId);
-                        boolean isTeamMember = currentUser.getTeamId() != null &&
-                                task.getTeamId() != null &&
-                                currentUser.getTeamId().equals(task.getTeamId());
-
-                        // Example: Allow deletion if creator or team member (adjust as needed)
-                        if (isCreator || isTeamMember) {
-                            accessibleTaskIds.add(taskId);
-                        }
-                    }
-                }
-            }
-
-            if (accessibleTaskIds.isEmpty()) {
-                // Return forbidden if the user tried to delete tasks they don't have access to
-                if (!taskIds.isEmpty()) {
-                    return ResponseEntity.status(403).body(
-                            Map.of("message",
-                                    "You do not have permission to delete one or more of the selected tasks"));
-                } else {
-                    // This case shouldn't happen if initial list wasn't empty, but handle
-                    // defensively
-                    return ResponseEntity.badRequest().body(Map.of("message", "No tasks available for deletion"));
-                }
-            }
-
-            handle
-                    .attach(TaskRepository.class)
-                    .deleteMultiple(accessibleTaskIds);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Tasks deleted");
-            response.put("count", accessibleTaskIds.size());
-            // Optionally report which tasks couldn't be deleted if the original list was
-            // filtered
-            if (accessibleTaskIds.size() < taskIds.size()) {
-                response.put("warning", "Some tasks could not be deleted due to permissions.");
-            }
-
-            return ResponseEntity.ok(response);
         });
     }
 

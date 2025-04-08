@@ -36,6 +36,7 @@ export default function TaskView() {
     getSprintsByTeam,
   } = useTaskStore();
 
+  const enableLogs = false;
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -47,7 +48,7 @@ export default function TaskView() {
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);
   const [transitioningSprint, setTransitioningSprint] = useState<Sprint | null>(
-    null
+    null,
   );
   const [initialSprintSelectionDone, setInitialSprintSelectionDone] =
     useState<boolean>(false);
@@ -67,11 +68,11 @@ export default function TaskView() {
   const startIndex = (currentPage - 1) * tasksPerPage;
   const paginatedTasks = filteredTasks.slice(
     startIndex,
-    startIndex + tasksPerPage
+    startIndex + tasksPerPage,
   );
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredTasks.length / tasksPerPage)
+    Math.ceil(filteredTasks.length / tasksPerPage),
   );
 
   const isManager = currentUser?.role === "manager";
@@ -90,21 +91,22 @@ export default function TaskView() {
         const endDate = new Date(sprint.endDate);
         endDate.setHours(23, 59, 59, 999);
         const daysRemaining = Math.ceil(
-          (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
         );
         return daysRemaining <= 3;
       });
 
       if (sprintToTransition && !isSprintTransitionModalOpen) {
-        console.log(
-          "Triggering transition modal for sprint:",
-          sprintToTransition.name
-        );
+        enableLogs &&
+          console.log(
+            "Triggering transition modal for sprint:",
+            sprintToTransition.name,
+          );
         setTransitioningSprint(sprintToTransition);
         setIsSprintTransitionModalOpen(true);
       }
     }
-  }, [sprints, isManager]);
+  }, [sprints, isManager, enableLogs]);
 
   useEffect(() => {
     if (!isInitialized) {
@@ -141,26 +143,29 @@ export default function TaskView() {
 
   useEffect(() => {
     if (!isLoadingSprints && !initialSprintSelectionDone) {
-      console.log(
-        `Sprint selection for tab: ${activeTab}, isManager: ${isManager}, sprints count: ${sprints.length}`
-      );
+      enableLogs &&
+        console.log(
+          `Sprint selection for tab: ${activeTab}, isManager: ${isManager}, sprints count: ${sprints.length}`,
+        );
 
       if (isManager && activeTab === "all") {
-        console.log("Manager on ALL tab - clearing sprint selection");
+        enableLogs &&
+          console.log("Manager on ALL tab - clearing sprint selection");
         selectSprint(null);
       } else if (sprints.length > 0) {
         const today = new Date();
         const sortedSprints = [...sprints].sort(
           (a, b) =>
-            new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+            new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
         );
 
-        console.log(
-          "Available sprints for selection:",
-          sortedSprints.map(
-            (s) => `${s.id}: ${s.name} (${s.startDate} to ${s.endDate})`
-          )
-        );
+        enableLogs &&
+          console.log(
+            "Available sprints for selection:",
+            sortedSprints.map(
+              (s) => `${s.id}: ${s.name} (${s.startDate} to ${s.endDate})`,
+            ),
+          );
 
         const activeSprint = sortedSprints.find((sprint) => {
           const startDate = new Date(sprint.startDate);
@@ -170,29 +175,31 @@ export default function TaskView() {
         });
 
         if (activeSprint) {
-          console.log(
-            "Active sprint found:",
-            activeSprint.name,
-            "(ID:",
-            activeSprint.id,
-            ")"
-          );
+          enableLogs &&
+            console.log(
+              "Active sprint found:",
+              activeSprint.name,
+              "(ID:",
+              activeSprint.id,
+              ")",
+            );
           selectSprint(activeSprint.id);
         } else if (sortedSprints.length > 0) {
-          console.log(
-            "No active sprint found, selecting most recent:",
-            sortedSprints[0].name,
-            "(ID:",
-            sortedSprints[0].id,
-            ")"
-          );
+          enableLogs &&
+            console.log(
+              "No active sprint found, selecting most recent:",
+              sortedSprints[0].name,
+              "(ID:",
+              sortedSprints[0].id,
+              ")",
+            );
           selectSprint(sortedSprints[0].id);
         } else {
-          console.log("No sprints available to select.");
+          enableLogs && console.log("No sprints available to select.");
           selectSprint(null);
         }
       } else {
-        console.log("No sprints available to select.");
+        enableLogs && console.log("No sprints available to select.");
         selectSprint(null);
       }
 
@@ -205,13 +212,14 @@ export default function TaskView() {
     initialSprintSelectionDone,
     isManager,
     activeTab,
+    enableLogs,
   ]);
 
   const handleTaskSelection = (taskId: number) => {
     setSelectedTasks((prev) =>
       prev.includes(taskId)
         ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId]
+        : [...prev, taskId],
     );
   };
 
@@ -219,7 +227,7 @@ export default function TaskView() {
     setSelectedTasks((prev) =>
       prev.length === paginatedTasks.length
         ? []
-        : paginatedTasks.map((task) => task.id)
+        : paginatedTasks.map((task) => task.id),
     );
   };
 
@@ -257,7 +265,7 @@ export default function TaskView() {
   const handleStatusChange = async (
     taskId: number,
     newStatus: string,
-    taskData: Partial<Task>
+    taskData: Partial<Task>,
   ): Promise<void> => {
     try {
       await updateTaskStatus(taskId, newStatus, taskData);
@@ -280,7 +288,7 @@ export default function TaskView() {
 
   const handleCompleteSprint = async (
     action: "moveToBacklog" | "moveToNextSprint",
-    nextSprintId?: number
+    nextSprintId?: number,
   ) => {
     if (!transitioningSprint) return;
     try {
@@ -288,7 +296,7 @@ export default function TaskView() {
         transitioningSprint.id,
         action,
         nextSprintId,
-        activeTab
+        activeTab,
       );
     } catch (error) {
       console.error("Error completing sprint:", error);
@@ -314,19 +322,18 @@ export default function TaskView() {
 
   const selectorTeamId = getSelectorTeamId();
   const showSprintSelector = true;
-  const showAssigneesColumn =
-    (isManager && activeTab !== "all") || (!isManager && activeTab === "team");
+  const showAssigneesColumn = isManager || activeTab === "team";
 
   return (
     <div
-      className="p-6 bg-[#181614] h-full pb-0"
+      className="h-full bg-[#181614] p-6 pb-0"
       style={{
         backgroundImage:
           "url(https://static.oracle.com/cdn/apex/20.2.0.00.20/themes/theme_42/1.6/images/rw/textures/texture-13.png)",
         backgroundRepeat: "repeat",
       }}
     >
-      <div className="h-full overflow-hidden flex flex-col">
+      <div className="flex h-full flex-col overflow-hidden">
         <Header currentUser={currentUser} />
 
         <Toolbar
@@ -350,7 +357,7 @@ export default function TaskView() {
           teams={teams}
         />
 
-        <div className="bg-oc-primary border border-oc-outline-light rounded-lg flex-1 text-sm flex flex-col overflow-hidden">
+        <div className="bg-oc-primary border-oc-outline-light flex flex-1 flex-col overflow-hidden rounded-lg border text-sm">
           <Tabs
             isManager={isManager}
             teams={teams}

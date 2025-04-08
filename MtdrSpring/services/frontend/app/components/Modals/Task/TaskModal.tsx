@@ -40,10 +40,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     ? getSprintsByTeam(editableTask.teamId)
     : [];
 
-  const currentUser = getCurrentUser();
-
   useEffect(() => {
-    console.log("TaskModal received task:", task);
     setTimeout(() => {
       setIsVisible(true);
     }, 0);

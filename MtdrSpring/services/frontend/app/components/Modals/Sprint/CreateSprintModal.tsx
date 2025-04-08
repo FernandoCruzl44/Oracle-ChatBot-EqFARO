@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import Portal from "../../Portal";
 import useTaskStore from "~/store";
 import { Modal } from "~/components/Modal";
+import { FormField } from "../../FormField";
+import { Select } from "../../Select";
 
 interface CreateSprintModalProps {
-  teamId: number;
+  teamId: number | null;
   onClose: () => void;
   onSave: () => void;
 }
@@ -16,13 +18,15 @@ export function CreateSprintModal({
   onSave,
 }: CreateSprintModalProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(teamId);
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
-  const { createSprint } = useTaskStore();
+  const { createSprint, teams } = useTaskStore();
 
   useEffect(() => {
+    console.log("CreateSprintModal mounted", teamId);
     setIsVisible(true);
     // Set default dates (2 weeks sprint)
     const today = new Date();
@@ -31,7 +35,7 @@ export function CreateSprintModal({
 
     setStartDate(today.toISOString().split("T")[0]);
     setEndDate(twoWeeksLater.toISOString().split("T")[0]);
-  }, []);
+  }, [teamId]);
 
   const handleClose = () => {
     setIsVisible(false);
@@ -39,7 +43,9 @@ export function CreateSprintModal({
   };
 
   const handleSubmit = async () => {
-    if (!name || !startDate || !endDate) {
+    const currentTeamId =
+      teamId != null && !isNaN(teamId) ? teamId : selectedTeamId;
+    if (!currentTeamId || !name || !startDate || !endDate) {
       setError("Todos los campos son obligatorios");
       return;
     }
@@ -51,7 +57,7 @@ export function CreateSprintModal({
 
     try {
       await createSprint({
-        teamId,
+        teamId: currentTeamId,
         name,
         startDate,
         endDate,
@@ -85,10 +91,25 @@ export function CreateSprintModal({
               title="Este campo es obligatorio"
             />
 
-            <form
-              className="flex h-full flex-col pt-3 text-sm"
-              noValidate={false}
-            >
+            {(teamId === null || isNaN(teamId)) &&
+              teams &&
+              teams.length > 0 && (
+                <FormField label="Equipo" icon="users" className="mb-3 text-sm">
+                  <Select
+                    value={selectedTeamId ?? ""}
+                    onChange={(e) => setSelectedTeamId(Number(e.target.value))}
+                    options={[
+                      { value: "", label: "Selecciona un equipo" },
+                      ...teams.map((team: { id: number; name: string }) => ({
+                        value: team.id,
+                        label: team.name,
+                      })),
+                    ]}
+                  />
+                </FormField>
+              )}
+
+            <form className="flex h-full flex-col text-sm" noValidate={false}>
               <div className="flex-1 space-y-4 overflow-y-auto transition-all duration-150">
                 <div className="flex items-center">
                   <div className="text-oc-brown/60 w-32">

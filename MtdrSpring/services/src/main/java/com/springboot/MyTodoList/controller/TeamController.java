@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import com.springboot.MyTodoList.model.Team;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.TeamRepository;
-import com.springboot.MyTodoList.repository.UserRepository;
+import com.springboot.MyTodoList.IdentityUtil; // Import IdentityUtil
 
-import javax.servlet.http.Cookie;
+// Removed unused Cookie import
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +21,12 @@ import java.util.Optional;
 public class TeamController {
 
     private final Jdbi jdbi;
+    private final IdentityUtil identityUtil; // Inject IdentityUtil
 
-    public TeamController(Jdbi jdbi) {
+    // Update constructor to accept IdentityUtil
+    public TeamController(Jdbi jdbi, IdentityUtil identityUtil) {
         this.jdbi = jdbi;
+        this.identityUtil = identityUtil;
     }
 
     @GetMapping
@@ -32,10 +35,20 @@ public class TeamController {
             @RequestParam(defaultValue = "100") int limit,
             HttpServletRequest request) {
 
-        Long currentUserId = getCurrentUserId(request);
+        // --- FIX: Use IdentityUtil ---
+        Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            // This check should ideally not be hit if WebSecurityConfig requires
+            // authentication
+            // But keep it as a safeguard or for clarity
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized - No user context"));
         }
+
+        // Optional: Add manager check if needed for this specific endpoint,
+        // although WebSecurityConfig's .authenticated() might be sufficient
+        // if (!identityUtil.isManager(request)) {
+        // return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+        // }
 
         return jdbi.inTransaction(handle -> {
             List<Team> teams = handle.attach(TeamRepository.class).findAll(limit, skip);
@@ -52,9 +65,15 @@ public class TeamController {
 
     @GetMapping("/{teamId}")
     public ResponseEntity<?> getTeam(@PathVariable Long teamId, HttpServletRequest request) {
-        Long currentUserId = getCurrentUserId(request);
+        // --- FIX: Use IdentityUtil ---
+        Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized - No user context"));
+        }
+
+        // Authorization check: Allow managers or members of the specific team
+        if (!identityUtil.isManager(request) && !identityUtil.canAccessTeam(request, teamId)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }
 
         return jdbi.inTransaction(handle -> {
@@ -74,58 +93,53 @@ public class TeamController {
 
     @PostMapping
     public ResponseEntity<?> createTeam(
-            @RequestBody Map<String, String> request,
+            @RequestBody Map<String, String> requestBody, // Renamed from request to avoid confusion
             HttpServletRequest httpRequest) {
 
-        if (!isManager(httpRequest)) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+        // --- FIX: Use IdentityUtil ---
+        if (!identityUtil.isManager(httpRequest)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only managers can create teams"));
+        }
+
+        // Basic validation
+        String name = requestBody.get("name");
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Team name is required"));
         }
 
         try {
             return jdbi.inTransaction(handle -> {
                 Team team = new Team();
-                team.setName(request.get("name"));
-                team.setDescription(request.get("description"));
+                team.setName(name);
+                team.setDescription(requestBody.get("description")); // Description is optional
 
                 Long teamId = handle.attach(TeamRepository.class).insert(team);
                 team.setId(teamId);
 
-                return ResponseEntity.status(HttpStatus.CREATED).body(team);
+                // Fetch the created team to include members (likely none initially)
+                Optional<Team> createdTeamOpt = handle.attach(TeamRepository.class).findById(teamId);
+                if (createdTeamOpt.isPresent()) {
+                    Team createdTeam = createdTeamOpt.get();
+                    createdTeam.setMembers(List.of()); // Initialize members list
+                    return ResponseEntity.status(HttpStatus.CREATED).body(createdTeam);
+                } else {
+                    // Should not happen, but handle defensively
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of("error", "Failed to retrieve created team"));
+                }
             });
         } catch (Exception e) {
+            // Log the exception
+            // logger.error("Error creating team", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error creating team: " + e.getMessage()));
         }
     }
 
-    // TODO: Implemenar updateTeam y deleteTeam
+    // TODO: Implement updateTeam and deleteTeam using IdentityUtil for
+    // authorization
 
-    // Helper methods for identity management
-    private Long getCurrentUserId(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("user_id".equals(cookie.getName())) {
-                    try {
-                        return Long.parseLong(cookie.getValue());
-                    } catch (NumberFormatException e) {
-                        return null;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private boolean isManager(HttpServletRequest request) {
-        Long userId = getCurrentUserId(request);
-        if (userId == null) {
-            return false;
-        }
-
-        return jdbi.withExtension(UserRepository.class, repository -> {
-            Optional<User> user = repository.findById(userId);
-            return user.map(u -> "manager".equals(u.getRole())).orElse(false);
-        });
-    }
+    // --- REMOVE the cookie-based helper methods ---
+    // private Long getCurrentUserId(HttpServletRequest request) { ... }
+    // private boolean isManager(HttpServletRequest request) { ... }
 }

@@ -107,6 +107,7 @@ export function Toolbar({
 
           {showSprintSelector && (
             <SprintSelector
+              isManager={isManager}
               user={currentUser}
               teamId={selectorTeamId}
               selectedSprintId={selectedSprintId}

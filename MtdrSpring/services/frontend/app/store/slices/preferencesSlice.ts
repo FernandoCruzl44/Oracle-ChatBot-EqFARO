@@ -54,7 +54,7 @@ export const createPreferencesSlice: StateCreator<PreferencesSlice> = (
   set,
   get,
 ) => {
-  const initialViewMode = cookieHandler.get("viewMode", "table") as
+  const initialViewMode = cookieHandler.get("viewMode", "kanban") as
     | "table"
     | "kanban";
 

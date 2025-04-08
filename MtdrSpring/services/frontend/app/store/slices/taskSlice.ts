@@ -2,6 +2,7 @@
 import type { StateCreator } from "zustand";
 import type { TaskStore, StoreState } from "~/store/types";
 import type { Task } from "~/types";
+import { api } from "~/lib/api";
 
 export interface TaskSlice extends StoreState {
   tasks: Task[];
@@ -21,7 +22,7 @@ export interface TaskSlice extends StoreState {
   updateTaskStatus: (
     taskId: number,
     status: string,
-    taskData: Partial<Task>
+    taskData: Partial<Task>,
   ) => Promise<void>;
   selectTask: (taskId: number | null) => void;
 }
@@ -130,7 +131,7 @@ const mapBackendToTask = (backendTask: Record<string, any>): Task => {
 
 export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   set,
-  get
+  get,
 ) => ({
   tasks: [],
   isLoadingTasks: false,
@@ -143,24 +144,12 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   initializeData: async () => {
-    // ... (initializeData remains the same as previous version) ...
     if (get().isInitialized || get().isLoadingTasks) return;
 
     set({ error: null, isLoadingTasks: true });
 
     try {
-      const userResponse = await fetch("/api/identity/current");
-
-      if (!userResponse.ok) {
-        if (userResponse.status === 404) {
-          throw new Error(
-            "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas."
-          );
-        }
-        throw new Error("Error al obtener usuario actual");
-      }
-
-      const userData = await userResponse.json();
+      const userData = await api.get("/identity/current");
 
       if (userData.message === "No identity set") {
         set({
@@ -171,32 +160,19 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         return;
       }
 
-      let tasksUrl = "/api/tasks/?view_mode=";
-      tasksUrl += userData.role === "manager" ? "all" : "assigned";
+      let viewMode = userData.role === "manager" ? "all" : "assigned";
 
-      const fetchTasks = fetch(tasksUrl).then((res) =>
-        res.ok ? res.json() : []
-      );
-
+      const fetchTasks = api.get(`/tasks/?view_mode=${viewMode}`);
       const fetchTeams =
-        userData.role === "manager"
-          ? fetch("/api/teams/").then((res) => (res.ok ? res.json() : []))
-          : Promise.resolve([]);
-
-      const fetchUsers = fetch("/api/users/").then((res) =>
-        res.ok ? res.json() : []
-      );
-
-      // Fetch sprints during initialization as well
-      const fetchSprints = fetch("/api/sprints").then((res) =>
-        res.ok ? res.json() : []
-      );
+        userData.role === "manager" ? api.get("/teams/") : Promise.resolve([]);
+      const fetchUsers = api.get("/users/");
+      const fetchSprints = api.get("/sprints");
 
       const [tasksData, teams, users, sprints] = await Promise.all([
         fetchTasks,
         fetchTeams,
         fetchUsers,
-        fetchSprints, // Fetch sprints
+        fetchSprints,
       ]);
 
       // Map backend tasks to frontend tasks
@@ -207,7 +183,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         tasks,
         teams,
         users,
-        sprints, // Set sprints in the store
+        sprints,
         isLoadingTasks: false,
         isInitialized: true,
       });
@@ -222,14 +198,13 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   fetchTasks: async (viewMode, teamId) => {
-    // ... (fetchTasks remains the same as previous version) ...
     const { currentUser, isLoadingTasks } = get();
 
     if (!currentUser || isLoadingTasks) return;
 
     set({ isLoadingTasks: true, error: null });
 
-    let url = "/api/tasks/?";
+    let url = "/tasks/?";
 
     if (currentUser.role === "manager") {
       if (viewMode === "all") {
@@ -247,11 +222,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
     }
 
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Error al cargar las tareas");
-      }
-      const data = await response.json();
+      const data = await api.get(url);
       // Map backend response to frontend Task structure
       const tasks = data.map(mapBackendToTask);
       set({ tasks: tasks, isLoadingTasks: false });
@@ -274,20 +245,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
     });
 
     try {
-      const response = await fetch("/api/tasks/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(backendTaskData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || errorData.detail || "Error al crear la tarea"
-        );
-      }
-
-      const createdBackendTask = await response.json();
+      const createdBackendTask = await api.post("/tasks/", backendTaskData);
       // Map response back to frontend Task structure
       const newTask = mapBackendToTask(createdBackendTask);
 
@@ -316,22 +274,10 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
     const backendTaskData = mapTaskToBackend(taskData);
 
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(backendTaskData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            errorData.detail ||
-            "Error al actualizar la tarea"
-        );
-      }
-
-      const updatedBackendTask = await response.json();
+      const updatedBackendTask = await api.put(
+        `/tasks/${taskId}`,
+        backendTaskData,
+      );
       // Map response back to frontend Task structure
       const updatedTask = mapBackendToTask(updatedBackendTask);
 
@@ -339,7 +285,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         tasks: state.tasks.map((task) =>
           task.id === taskId
             ? { ...task, ...updatedTask } // Overwrite existing task with FULL updated task from response
-            : task
+            : task,
         ),
       }));
 
@@ -357,18 +303,8 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   deleteTask: async (taskId) => {
-    // ... (deleteTask remains the same) ...
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || errorData.detail || "Error al eliminar la tarea"
-        );
-      }
+      await api.delete(`/tasks/${taskId}`);
 
       set((state: { tasks: Task[] }) => ({
         tasks: state.tasks.filter((task: Task) => task.id !== taskId),
@@ -384,22 +320,9 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   deleteTasks: async (taskIds) => {
-    // ... (deleteTasks remains the same) ...
     try {
-      const response = await fetch("/api/tasks/", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(taskIds),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            errorData.detail ||
-            "Error al eliminar las tareas"
-        );
-      }
+      // Use the deleteMultiple method which sends the IDs in the request body
+      await api.deleteMultiple("/tasks", taskIds);
 
       set((state: { tasks: Task[] }) => ({
         tasks: state.tasks.filter((task: Task) => !taskIds.includes(task.id)),
@@ -427,35 +350,13 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         payload.endDate = new Date().toISOString().slice(0, 10);
       }
 
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            errorData.detail ||
-            "Error al actualizar el estado de la tarea"
-        );
-      }
-
-      // Get the full updated task from the response
-      const updatedBackendTask = await response.json();
+      const updatedBackendTask = await api.put(`/tasks/${taskId}`, payload);
       console.log("Updated Backend Task:", updatedBackendTask);
       const updatedTask = mapBackendToTask(updatedBackendTask);
 
-      // set((state) => ({
-      //   tasks: state.tasks.map(
-      //     (task) => (task.id === taskId ? { ...task, ...updatedTask } : task) // Use FULL response data
-      //   ),
-      // }));
-
       set((state) => ({
         tasks: state.tasks.map((task) =>
-          task.id === taskId ? { ...task, ...updatedTask } : task
+          task.id === taskId ? { ...task, ...updatedTask } : task,
         ),
       }));
     } catch (error) {

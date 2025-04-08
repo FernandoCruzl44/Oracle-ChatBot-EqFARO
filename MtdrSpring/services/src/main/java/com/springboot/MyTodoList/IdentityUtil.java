@@ -1,12 +1,13 @@
 package com.springboot.MyTodoList;
 
 import org.jdbi.v3.core.Jdbi;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
@@ -20,51 +21,40 @@ public class IdentityUtil {
     }
 
     public Long getCurrentUserId(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("user_id".equals(cookie.getName())) {
-                    try {
-                        return Long.parseLong(cookie.getValue());
-                    } catch (NumberFormatException e) {
-                        return null;
-                    }
-                }
-            }
+        User currentUser = getCurrentUserFromSecurity();
+        return currentUser != null ? currentUser.getId() : null;
+    }
+
+    public Optional<User> getCurrentUser(HttpServletRequest request) {
+        User currentUser = getCurrentUserFromSecurity();
+        return Optional.ofNullable(currentUser);
+    }
+
+    private User getCurrentUserFromSecurity() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof User) {
+            return (User) authentication.getPrincipal();
         }
         return null;
     }
 
-    public Optional<User> getCurrentUser(HttpServletRequest request) {
-        Long userId = getCurrentUserId(request);
-        if (userId == null) {
-            return Optional.empty();
-        }
-
-        return jdbi.withExtension(UserRepository.class,
-                repository -> repository.findById(userId));
-    }
-
     public boolean isManager(HttpServletRequest request) {
-        return getCurrentUser(request)
-                .map(user -> "manager".equals(user.getRole()))
-                .orElse(false);
+        User currentUser = getCurrentUserFromSecurity();
+        return currentUser != null && "manager".equals(currentUser.getRole());
     }
 
     public boolean canAccessTeam(HttpServletRequest request, Long teamId) {
-        Optional<User> userOpt = getCurrentUser(request);
-        if (!userOpt.isPresent()) {
+        User currentUser = getCurrentUserFromSecurity();
+        if (currentUser == null) {
             return false;
         }
 
-        User user = userOpt.get();
-
-        // Managers pueden acceder a cualquier equipo
-        if ("manager".equals(user.getRole())) {
+        // Managers can access any team
+        if ("manager".equals(currentUser.getRole())) {
             return true;
         }
 
-        // Users solo pueden acceder a su equipo
-        return user.getTeamId() != null && user.getTeamId().equals(teamId);
+        // Users can only access their team
+        return currentUser.getTeamId() != null && currentUser.getTeamId().equals(teamId);
     }
 }

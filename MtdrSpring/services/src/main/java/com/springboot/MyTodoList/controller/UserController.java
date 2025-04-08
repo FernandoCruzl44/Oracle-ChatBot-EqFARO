@@ -7,8 +7,9 @@ import org.springframework.web.bind.annotation.*;
 
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
+import com.springboot.MyTodoList.IdentityUtil; // Import IdentityUtil
 
-import javax.servlet.http.Cookie;
+// Removed unused Cookie import
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
@@ -20,9 +21,25 @@ import java.util.Optional;
 public class UserController {
 
     private final Jdbi jdbi;
+    private final IdentityUtil identityUtil; // Inject IdentityUtil
 
-    public UserController(Jdbi jdbi) {
+    // Update constructor to accept IdentityUtil
+    public UserController(Jdbi jdbi, IdentityUtil identityUtil) {
         this.jdbi = jdbi;
+        this.identityUtil = identityUtil;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        // --- FIX: Use IdentityUtil to get the user from Security Context ---
+        Optional<User> userOpt = identityUtil.getCurrentUser(request);
+
+        if (userOpt.isPresent()) {
+            return ResponseEntity.ok(userOpt.get());
+        } else {
+            // If IdentityUtil returns empty, it means the JWT filter didn't authenticate
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized - No valid authentication context"));
+        }
     }
 
     @GetMapping
@@ -31,12 +48,22 @@ public class UserController {
             @RequestParam(defaultValue = "100") int limit,
             HttpServletRequest request) {
 
+        // --- FIX: Use IdentityUtil for authorization check if needed ---
+        // Example: Check if user is authenticated before allowing access to all users
+        if (!identityUtil.getCurrentUser(request).isPresent()) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+        }
+        // Optional: Add manager check if only managers should see all users
+        // if (!identityUtil.isManager(request)) {
+        // return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+        // }
+
         try {
             List<User> users = jdbi.withExtension(UserRepository.class,
                     repository -> repository.findAll(limit, skip));
             return ResponseEntity.ok(users);
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(); // Keep logging for debugging
 
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error retrieving users");
@@ -47,10 +74,15 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<?> getUser(@PathVariable Long userId, HttpServletRequest request) {
-        Long currentUserId = getCurrentUserId(request);
-        if (currentUserId == null) {
+        // --- FIX: Use IdentityUtil for authorization check ---
+        if (!identityUtil.getCurrentUser(request).isPresent()) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
         }
+        // Optional: Add manager/self check if needed
+        // Long currentUserId = identityUtil.getCurrentUserId(request);
+        // if (!identityUtil.isManager(request) && !userId.equals(currentUserId)) {
+        // return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+        // }
 
         return jdbi.withExtension(UserRepository.class, repository -> {
             Optional<User> user = repository.findById(userId);
@@ -61,50 +93,35 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody User user, HttpServletRequest request) {
-        if (!isManager(request)) {
+        // --- FIX: Use IdentityUtil for authorization check ---
+        if (!identityUtil.isManager(request)) {
             return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
         }
 
+        // No change needed in the try block itself if signup handles password encoding
         try {
+            // Assuming AuthenticationService.signup handles password encoding
+            // If not, you need to encode the password here before inserting
+            // user.setPassword(passwordEncoder.encode(user.getPassword()));
+
             Long newId = jdbi.withExtension(UserRepository.class,
                     repository -> repository.insert(user));
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("id", newId);
-            response.put("message", "User created successfully");
+            // Fetch the created user to return (optional, but good practice)
+            Optional<User> createdUser = jdbi.withExtension(UserRepository.class,
+                    repo -> repo.findById(newId));
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser.orElse(null)); // Return created user or
+                                                                                             // null/error
+
         } catch (Exception e) {
+            e.printStackTrace(); // Keep logging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error creating user: " + e.getMessage()));
         }
     }
 
-    private Long getCurrentUserId(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("user_id".equals(cookie.getName())) {
-                    try {
-                        return Long.parseLong(cookie.getValue());
-                    } catch (NumberFormatException e) {
-                        return null;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private boolean isManager(HttpServletRequest request) {
-        Long userId = getCurrentUserId(request);
-        if (userId == null) {
-            return false;
-        }
-
-        return jdbi.withExtension(UserRepository.class, repository -> {
-            Optional<User> user = repository.findById(userId);
-            return user.map(u -> "manager".equals(u.getRole())).orElse(false);
-        });
-    }
+    // --- REMOVE the cookie-based helper methods ---
+    // private Long getCurrentUserId(HttpServletRequest request) { ... }
+    // private boolean isManager(HttpServletRequest request) { ... }
 }
