@@ -64,7 +64,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } catch (Exception exception) {
-            // Add detailed logging
             logger.error(exception.getClass().getName());
             logger.error(exception.getMessage());
 

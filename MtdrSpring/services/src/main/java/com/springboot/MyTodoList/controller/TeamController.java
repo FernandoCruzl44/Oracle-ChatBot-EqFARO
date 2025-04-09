@@ -8,9 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import com.springboot.MyTodoList.model.Team;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.TeamRepository;
-import com.springboot.MyTodoList.IdentityUtil; // Import IdentityUtil
+import com.springboot.MyTodoList.IdentityUtil;
 
-// Removed unused Cookie import
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -138,8 +137,4 @@ public class TeamController {
 
     // TODO: Implement updateTeam and deleteTeam using IdentityUtil for
     // authorization
-
-    // --- REMOVE the cookie-based helper methods ---
-    // private Long getCurrentUserId(HttpServletRequest request) { ... }
-    // private boolean isManager(HttpServletRequest request) { ... }
 }

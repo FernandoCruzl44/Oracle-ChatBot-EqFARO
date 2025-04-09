@@ -7,9 +7,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
-import com.springboot.MyTodoList.IdentityUtil; // Import IdentityUtil
+import com.springboot.MyTodoList.IdentityUtil;
 
-// Removed unused Cookie import
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +20,7 @@ import java.util.Optional;
 public class UserController {
 
     private final Jdbi jdbi;
-    private final IdentityUtil identityUtil; // Inject IdentityUtil
+    private final IdentityUtil identityUtil;
 
     // Update constructor to accept IdentityUtil
     public UserController(Jdbi jdbi, IdentityUtil identityUtil) {

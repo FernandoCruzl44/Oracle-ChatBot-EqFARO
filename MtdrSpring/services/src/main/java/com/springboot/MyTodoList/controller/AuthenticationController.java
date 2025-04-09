@@ -29,7 +29,6 @@ public class AuthenticationController {
         try {
             User registeredUser = authenticationService.signup(user);
 
-            // Remove password from response
             registeredUser.setPassword(null);
 
             return ResponseEntity.ok(registeredUser);
@@ -50,7 +49,6 @@ public class AuthenticationController {
         try {
             User authenticatedUser = authenticationService.authenticate(email, password);
 
-            // Explicitly cast User to UserDetails to fix the error
             UserDetails userDetails = authenticatedUser;
             String jwtToken = jwtService.generateToken(userDetails);
 
@@ -58,7 +56,6 @@ public class AuthenticationController {
             response.put("token", jwtToken);
             response.put("expiresIn", jwtService.getExpirationTime());
 
-            // Include user info in response
             Map<String, Object> user = new HashMap<>();
             user.put("id", authenticatedUser.getId());
             user.put("name", authenticatedUser.getName());

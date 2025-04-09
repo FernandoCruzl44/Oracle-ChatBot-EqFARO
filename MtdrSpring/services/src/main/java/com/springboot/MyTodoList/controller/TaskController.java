@@ -24,7 +24,6 @@ public class TaskController {
         this.identityUtil = identityUtil;
     }
 
-    // GET /api/tasks (No changes needed here for sprint_id)
     @GetMapping
     public ResponseEntity<?> getTasks(
             @RequestParam(required = false) String view_mode,
@@ -122,7 +121,6 @@ public class TaskController {
         });
     }
 
-    // GET /api/tasks/{taskId} (No changes needed here for sprint_id)
     @GetMapping("/{taskId}")
     public ResponseEntity<?> getTask(
             @PathVariable Long taskId,
@@ -179,7 +177,6 @@ public class TaskController {
         });
     }
 
-    // POST /api/tasks - Updated to handle estimated_hours and actual_hours
     @PostMapping
     @Transactional
     public ResponseEntity<?> createTask(
@@ -191,7 +188,6 @@ public class TaskController {
                     Map.of("message", "Unauthorized"));
         }
 
-        // Basic validation
         if (!request.containsKey("title") || request.get("title") == null
                 || request.get("title").toString().trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Title is required"));
@@ -202,7 +198,6 @@ public class TaskController {
         }
 
         return jdbi.inTransaction(handle -> {
-            // Create the task object
             Task task = new Task();
             task.setTitle((String) request.get("title"));
             task.setDescription((String) request.get("description"));
@@ -212,7 +207,6 @@ public class TaskController {
             task.setEndDate((String) request.get("endDate"));
             task.setCreatorId(currentUserId);
 
-            // Handle estimated_hours
             if (request.containsKey("estimated_hours") && request.get("estimated_hours") != null) {
                 try {
                     task.setEstimatedHours(Double.valueOf(request.get("estimated_hours").toString()));
@@ -223,7 +217,6 @@ public class TaskController {
                 task.setEstimatedHours(null);
             }
 
-            // Handle actual_hours
             if (request.containsKey("actual_hours") && request.get("actual_hours") != null) {
                 try {
                     task.setActualHours(Double.valueOf(request.get("actual_hours").toString()));
@@ -234,7 +227,6 @@ public class TaskController {
                 task.setActualHours(null);
             }
 
-            // Handle team_id
             if (request.containsKey("team_id") && request.get("team_id") != null) {
                 try {
                     task.setTeamId(Long.valueOf(request.get("team_id").toString()));
@@ -242,11 +234,9 @@ public class TaskController {
                     return ResponseEntity.badRequest().body(Map.of("message", "Invalid team_id format"));
                 }
             } else {
-                // If creating task without team (e.g., personal task), set teamId to null
                 task.setTeamId(null);
             }
 
-            // *** Handle sprint_id ***
             if (request.containsKey("sprint_id") && request.get("sprint_id") != null) {
                 try {
                     task.setSprintId(Long.valueOf(request.get("sprint_id").toString()));
@@ -254,14 +244,12 @@ public class TaskController {
                     return ResponseEntity.badRequest().body(Map.of("message", "Invalid sprint_id format"));
                 }
             } else {
-                task.setSprintId(null); // Explicitly set to null if not provided or null
+                task.setSprintId(null);
             }
 
-            // Insert the task (repository now handles sprint_id)
             TaskRepository taskRepo = handle.attach(TaskRepository.class);
             Long taskId = taskRepo.insert(task);
 
-            // Add assignees if provided
             if (request.containsKey("assignee_ids") &&
                     request.get("assignee_ids") != null) {
                 @SuppressWarnings("unchecked")
@@ -273,18 +261,15 @@ public class TaskController {
                         Long userId = Long.valueOf(rawId.toString());
                         taskRepo.addAssignee(taskId, userId);
                     } catch (NumberFormatException e) {
-                        // Log or handle invalid assignee ID format
                         System.err.println("Invalid assignee ID format: " + rawId);
                     }
                 }
             }
 
-            // Fetch the complete task with assignees and creator name
             Optional<Task> createdTaskOpt = taskRepo.findById(taskId);
             if (createdTaskOpt.isPresent()) {
                 Task fullTask = createdTaskOpt.get();
                 fullTask.setAssignees(taskRepo.findAssigneesByTaskId(taskId));
-                // Fetch creator name if needed (already done by findById query)
                 return ResponseEntity.ok(fullTask);
             } else {
                 return ResponseEntity.status(500).body(
@@ -293,7 +278,6 @@ public class TaskController {
         });
     }
 
-    // PUT /api/tasks/{taskId} - Updated to handle estimated_hours and actual_hours
     @PutMapping("/{taskId}")
     @Transactional
     public ResponseEntity<?> updateTask(
@@ -316,14 +300,13 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            // Authorization check
             User currentUser = handle
                     .attach(UserRepository.class)
                     .findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             boolean isManager = "manager".equals(currentUser.getRole());
-            boolean isCreator = task.getCreatorId().equals(currentUserId); // Check if user is the creator
+            boolean isCreator = task.getCreatorId().equals(currentUserId);
             boolean isTeamMember = currentUser.getTeamId() != null &&
                     task.getTeamId() != null &&
                     currentUser.getTeamId().equals(task.getTeamId());
@@ -331,14 +314,11 @@ public class TaskController {
                     .stream()
                     .anyMatch(user -> user.getId().equals(currentUserId));
 
-            // Allow update if manager, creator, assigned, or team member (adjust logic as
-            // needed)
             if (!isManager && !isCreator && !isTeamMember && !isAssigned) {
                 return ResponseEntity.status(403).body(
                         Map.of("message", "Forbidden: You cannot update this task"));
             }
 
-            // Update fields based on request content
             if (request.containsKey("title")) {
                 task.setTitle((String) request.get("title"));
             }
@@ -354,7 +334,6 @@ public class TaskController {
             if (request.containsKey("startDate")) {
                 task.setStartDate((String) request.get("startDate"));
             }
-            // Handle endDate potentially being null or empty string
             if (request.containsKey("endDate")) {
                 Object endDateObj = request.get("endDate");
                 task.setEndDate(endDateObj == null || endDateObj.toString().isEmpty() ? null : endDateObj.toString());
@@ -372,7 +351,6 @@ public class TaskController {
                 }
             }
 
-            // Handle estimated_hours update
             if (request.containsKey("estimated_hours")) {
                 Object estimatedHoursObj = request.get("estimated_hours");
                 if (estimatedHoursObj == null) {
@@ -386,7 +364,6 @@ public class TaskController {
                 }
             }
 
-            // Handle actual_hours update
             if (request.containsKey("actual_hours")) {
                 Object actualHoursObj = request.get("actual_hours");
                 if (actualHoursObj == null) {
@@ -400,7 +377,6 @@ public class TaskController {
                 }
             }
 
-            // *** Handle sprint_id update ***
             if (request.containsKey("sprint_id")) {
                 Object sprintIdObj = request.get("sprint_id");
                 if (sprintIdObj == null) {
@@ -413,15 +389,10 @@ public class TaskController {
                     }
                 }
             }
-            // Note: If sprint_id is NOT in the request, the existing value remains
-            // unchanged.
-
-            // Update the task in the database (repository now handles sprint_id)
             taskRepo.update(task);
 
-            // Handle assignee updates if the key is present
             if (request.containsKey("assignee_ids")) {
-                taskRepo.deleteAllAssignees(taskId); // Clear existing assignees first
+                taskRepo.deleteAllAssignees(taskId);
 
                 @SuppressWarnings("unchecked")
                 List<Object> rawIds = (List<Object>) request.get("assignee_ids");
@@ -438,23 +409,19 @@ public class TaskController {
                 }
             }
 
-            // Fetch the updated task to return in the response
             Optional<Task> updatedTaskOpt = taskRepo.findById(taskId);
             if (updatedTaskOpt.isPresent()) {
                 Task updatedTask = updatedTaskOpt.get();
                 updatedTask.setAssignees(
                         taskRepo.findAssigneesByTaskId(taskId));
-                // Creator name is already fetched by findById
                 return ResponseEntity.ok(updatedTask);
             } else {
-                // Should not happen if update was successful, but handle defensively
                 return ResponseEntity.status(500).body(
                         Map.of("message", "Error retrieving updated task"));
             }
         });
     }
 
-    // DELETE /api/tasks - Updated for multiple task deletion
     @DeleteMapping
     @Transactional
     public ResponseEntity<?> deleteMultipleTasks(
@@ -481,7 +448,6 @@ public class TaskController {
 
             List<Long> accessibleTaskIds = taskIds;
 
-            // If not a manager, filter tasks to only those the user has permission to
             // delete
             if (!isManager) {
                 accessibleTaskIds = new ArrayList<>();
@@ -496,7 +462,6 @@ public class TaskController {
                                 task.getTeamId() != null &&
                                 currentUser.getTeamId().equals(task.getTeamId());
 
-                        // Example: Allow deletion if creator or team member (adjust as needed)
                         if (isCreator || isTeamMember) {
                             accessibleTaskIds.add(taskId);
                         }
@@ -505,14 +470,11 @@ public class TaskController {
             }
 
             if (accessibleTaskIds.isEmpty()) {
-                // Return forbidden if the user tried to delete tasks they don't have access to
                 if (!taskIds.isEmpty()) {
                     return ResponseEntity.status(403).body(
                             Map.of("message",
                                     "You do not have permission to delete one or more of the selected tasks"));
                 } else {
-                    // This case shouldn't happen if initial list wasn't empty, but handle
-                    // defensively
                     return ResponseEntity.badRequest().body(Map.of("message", "No tasks available for deletion"));
                 }
             }
@@ -524,8 +486,6 @@ public class TaskController {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Tasks deleted");
             response.put("count", accessibleTaskIds.size());
-            // Optionally report which tasks couldn't be deleted if the original list was
-            // filtered
             if (accessibleTaskIds.size() < taskIds.size()) {
                 response.put("warning", "Some tasks could not be deleted due to permissions.");
             }
@@ -534,7 +494,6 @@ public class TaskController {
         });
     }
 
-    // PUT /api/tasks/{taskId}/status (No changes needed)
     @PutMapping("/{taskId}/status")
     @Transactional
     public ResponseEntity<?> updateTaskStatus(
@@ -563,7 +522,6 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            // Authorization check (similar to updateTask)
             User currentUser = handle
                     .attach(UserRepository.class)
                     .findById(currentUserId)
@@ -598,7 +556,6 @@ public class TaskController {
         });
     }
 
-    // PUT /api/tasks/{taskId}/assign (No changes needed)
     @PutMapping("/{taskId}/assign")
     @Transactional
     public ResponseEntity<?> assignTask(
@@ -627,7 +584,6 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            // Authorization check (similar to updateTask)
             User currentUser = handle
                     .attach(UserRepository.class)
                     .findById(currentUserId)
@@ -638,7 +594,7 @@ public class TaskController {
                     task.getTeamId() != null &&
                     currentUser.getTeamId().equals(task.getTeamId());
 
-            if (!isManager && !isTeamMember) { // Allow managers or team members to assign
+            if (!isManager && !isTeamMember) {
                 return ResponseEntity.status(403).body(
                         Map.of("message", "Forbidden: Only managers or team members can assign tasks"));
             }
