@@ -3,9 +3,10 @@ interface TabsProps {
   isManager: boolean;
   teams: any[];
   activeTab: string;
-  changeTab: (tab: string) => void;
   isLoadingTasks: boolean;
   currentUser: any;
+  changeTab: (tab: string) => void;
+  reloadTasks: () => void;
 }
 
 export function Tabs({
@@ -15,6 +16,7 @@ export function Tabs({
   changeTab,
   isLoadingTasks,
   currentUser,
+  reloadTasks,
 }: TabsProps) {
   return (
     <div className="border-oc-outline-light/60 hide-scrollbar flex flex-shrink-0 overflow-x-auto border-b px-4 py-2 pb-0">
@@ -74,6 +76,9 @@ export function Tabs({
           )}
         </>
       )}
+      <button onClick={reloadTasks} className="bg-whites ml-auto text-white">
+        <i className="fa fa-refresh hover:bg-oc-amber/20 hover:text-oc-amber mb-1 rounded-md p-1 transition-colors"></i>
+      </button>
     </div>
   );
 }

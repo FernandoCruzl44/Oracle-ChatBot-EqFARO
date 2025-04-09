@@ -365,6 +365,9 @@ export default function TaskView() {
             changeTab={changeTab}
             isLoadingTasks={isLoadingTasks}
             currentUser={currentUser}
+            reloadTasks={() => {
+              fetchTasks(activeTab);
+            }}
           />
 
           {viewMode === "table" ? (
