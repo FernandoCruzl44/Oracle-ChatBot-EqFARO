@@ -225,27 +225,28 @@ public class BotController extends TelegramLongPollingBot {
 
 	@Override
 	public void onUpdateReceived(Update update) {
-		long chatId = 0;
+		final long chatId;
 		String text = null;
 		String callbackData = null;
 		boolean isCallback = update.hasCallbackQuery();
 		boolean isMessage = update.hasMessage() && update.getMessage().hasText();
 
-		try {
-			if (isCallback) {
-				chatId = update.getCallbackQuery().getMessage().getChatId();
-				callbackData = update.getCallbackQuery().getData();
-				logger.debug("Handling callback query from Tel_ID {}: {}", chatId, callbackData);
-			} else if (isMessage) {
-				chatId = update.getMessage().getChatId();
-				text = update.getMessage().getText();
-				logger.debug("Handling message from Tel_ID {}: {}", chatId, text);
-			} else {
-				return;
-			}
+		// Prepare to handle and log.
+		// If this raises, we are cooked anyway
+		if (isCallback) {
+			chatId = update.getCallbackQuery().getMessage().getChatId();
+			callbackData = update.getCallbackQuery().getData();
+			logger.debug("Handling callback query from Tel_ID {}: {}", chatId, callbackData);
+		} else if (isMessage) {
+			chatId = update.getMessage().getChatId();
+			text = update.getMessage().getText();
+			logger.debug("Handling message from Tel_ID {}: {}", chatId, text);
+		} else {
+			return; // Maybe an error? What would lead to this?
+		}
 
-			final long finalChatId = chatId;
-			UserState state = userStates.computeIfAbsent(chatId, k -> findUserOrNewState(finalChatId));
+		try {
+			UserState state = userStates.computeIfAbsent(chatId, k -> findUserOrNewState(chatId));
 
 			if (state == null) {
 				logger.error("UserState became null after computeIfAbsent for chat ID: {}", chatId);
@@ -278,15 +279,14 @@ public class BotController extends TelegramLongPollingBot {
 			logger.error("Unhandled exception during onUpdateReceived for chat {}: {}",
 					chatId, e.getMessage(), e);
 
-			if (chatId != 0) {
-				sendMessage(chatId,
-						"Ocurrió un error inesperado procesando tu solicitud. " +
-								"Por favor, intenta de nuevo más tarde o usa /cancel.");
+			// chatId is always set
+			sendMessage(chatId,
+				    "Ocurrió un error inesperado procesando tu solicitud. " +
+				    "Por favor, intenta de nuevo más tarde o usa /cancel.");
 
-				UserState errorState = userStates.get(chatId);
-				if (errorState != null) {
-					errorState.softReset();
-				}
+			UserState errorState = userStates.get(chatId);
+			if (errorState != null) {
+				errorState.softReset();
 			}
 		}
 	}
