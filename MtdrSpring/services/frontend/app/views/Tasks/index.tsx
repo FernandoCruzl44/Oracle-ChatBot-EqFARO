@@ -53,7 +53,7 @@ export default function TaskView() {
   const [initialSprintSelectionDone, setInitialSprintSelectionDone] =
     useState<boolean>(false);
 
-  const tasksPerPage = 20;
+  const tasksPerPage = 100;
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title

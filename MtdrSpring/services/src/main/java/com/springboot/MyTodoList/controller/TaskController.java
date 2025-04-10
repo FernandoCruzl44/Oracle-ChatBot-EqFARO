@@ -32,7 +32,7 @@ public class TaskController {
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) Long created_by,
             @RequestParam(defaultValue = "0") int skip,
-            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(defaultValue = "300") int limit,
             HttpServletRequest request) {
         Long currentUserId = identityUtil.getCurrentUserId(request);
         if (currentUserId == null) {
