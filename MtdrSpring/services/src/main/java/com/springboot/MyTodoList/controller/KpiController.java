@@ -2,6 +2,7 @@ package com.springboot.MyTodoList.controller;
 
 import com.springboot.MyTodoList.model.Kpi;
 import com.springboot.MyTodoList.repository.KpiRepository;
+import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,35 +18,35 @@ public class KpiController {
     private final KpiRepository kpiRepository;
 
     @Autowired
-    public KpiController(KpiRepository kpiRepository) {
-        this.kpiRepository = kpiRepository;
+    public KpiController(Jdbi jdbi) {
+        this.kpiRepository = jdbi.onDemand(KpiRepository.class);
     }
 
     @GetMapping("/completed-tasks")
     public ResponseEntity<List<Kpi>> getCompletedTasksByMember(
             @RequestParam(name = "teamId", required = false) Long teamId) {
-        
+
         List<Kpi> kpis;
         if (teamId != null) {
             kpis = kpiRepository.getCompletedTasksByMemberAndTeam(teamId);
         } else {
             kpis = kpiRepository.getCompletedTasksByMember();
         }
-        
+
         return ResponseEntity.ok(kpis);
     }
 
     @GetMapping("/actual-hours")
     public ResponseEntity<List<Kpi>> getTotalActualHoursByMember(
             @RequestParam(name = "teamId", required = false) Long teamId) {
-        
+
         List<Kpi> kpis;
         if (teamId != null) {
             kpis = kpiRepository.getTotalActualHoursByMemberAndTeam(teamId);
         } else {
             kpis = kpiRepository.getTotalActualHoursByMember();
         }
-        
+
         return ResponseEntity.ok(kpis);
     }
 
@@ -53,7 +54,7 @@ public class KpiController {
     public ResponseEntity<List<Kpi>> getCompletionRateByMember(
             @RequestParam(name = "teamId", required = false) Long teamId,
             @RequestParam(name = "sprintId", required = false) Long sprintId) {
-        
+
         List<Kpi> kpis;
         if (sprintId != null) {
             kpis = kpiRepository.getCompletionRateByMemberAndSprint(sprintId);
@@ -62,16 +63,16 @@ public class KpiController {
         } else {
             kpis = kpiRepository.getCompletionRateByMember();
         }
-        
+
         return ResponseEntity.ok(kpis);
     }
 
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, List<Kpi>>> getDashboardData(
             @RequestParam(name = "teamId", required = false) Long teamId) {
-        
+
         Map<String, List<Kpi>> dashboard = new HashMap<>();
-        
+
         if (teamId != null) {
             dashboard.put("completedTasks", kpiRepository.getCompletedTasksByMemberAndTeam(teamId));
             dashboard.put("actualHours", kpiRepository.getTotalActualHoursByMemberAndTeam(teamId));
@@ -81,7 +82,7 @@ public class KpiController {
             dashboard.put("actualHours", kpiRepository.getTotalActualHoursByMember());
             dashboard.put("completionRate", kpiRepository.getCompletionRateByMember());
         }
-        
+
         return ResponseEntity.ok(dashboard);
     }
 }

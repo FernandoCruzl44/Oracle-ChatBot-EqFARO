@@ -32,6 +32,8 @@ public class DatabaseConfig {
                                 new com.springboot.MyTodoList.repository.CommentRepository.CommentMapper());
                 jdbi.registerRowMapper(com.springboot.MyTodoList.model.Sprint.class,
                                 new com.springboot.MyTodoList.repository.SprintRepository.SprintMapper());
+                jdbi.registerRowMapper(com.springboot.MyTodoList.model.Kpi.class,
+                                new com.springboot.MyTodoList.repository.KpiRepository.KpiMapper());
 
                 logger.info("Jdbi initialized with all repository mappers");
                 return jdbi;
