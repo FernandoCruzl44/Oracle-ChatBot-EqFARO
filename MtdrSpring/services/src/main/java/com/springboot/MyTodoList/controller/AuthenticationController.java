@@ -3,6 +3,8 @@ package com.springboot.MyTodoList.controller;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.service.AuthenticationService;
 import com.springboot.MyTodoList.service.JwtService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +18,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthenticationController {
+    private static final Logger logger = LoggerFactory.getLogger(AuthenticationController.class);
+
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
 
@@ -28,9 +32,7 @@ public class AuthenticationController {
     public ResponseEntity<?> register(@RequestBody User user) {
         try {
             User registeredUser = authenticationService.signup(user);
-
             registeredUser.setPassword(null);
-
             return ResponseEntity.ok(registeredUser);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
@@ -47,26 +49,27 @@ public class AuthenticationController {
         }
 
         try {
+            logger.debug("Attempting authentication for email: {}", email);
+
+            // Authentication attempt
             User authenticatedUser = authenticationService.authenticate(email, password);
 
-            UserDetails userDetails = authenticatedUser;
-            String jwtToken = jwtService.generateToken(userDetails);
+            // Generate JWT token
+            String jwtToken = jwtService.generateToken(authenticatedUser);
 
+            // Create response with token and user info
             Map<String, Object> response = new HashMap<>();
             response.put("token", jwtToken);
             response.put("expiresIn", jwtService.getExpirationTime());
 
-            Map<String, Object> user = new HashMap<>();
-            user.put("id", authenticatedUser.getId());
-            user.put("name", authenticatedUser.getName());
-            user.put("email", authenticatedUser.getEmail());
-            user.put("role", authenticatedUser.getRole());
-            user.put("teamId", authenticatedUser.getTeamId());
-            user.put("teamName", authenticatedUser.getTeamName());
-            response.put("user", user);
+            // Remove sensitive info from user before returning
+            authenticatedUser.setPassword(null);
+            response.put("user", authenticatedUser);
 
+            logger.debug("Authentication successful for user: {}", authenticatedUser.getId());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Authentication failed: {}", e.getMessage());
             return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: " + e.getMessage()));
         }
     }

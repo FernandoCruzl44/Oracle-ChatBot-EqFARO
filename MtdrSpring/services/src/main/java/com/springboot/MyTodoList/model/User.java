@@ -90,7 +90,7 @@ public class User implements UserDetails {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email != null ? email.toLowerCase() : null;
     }
 
     public String getPassword() {

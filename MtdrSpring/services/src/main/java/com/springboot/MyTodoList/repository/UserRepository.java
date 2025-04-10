@@ -58,10 +58,10 @@ public interface UserRepository {
 
         @SqlQuery("SELECT u.*, t.name as team_name FROM users u " +
                         "LEFT JOIN teams t ON u.team_id = t.id " +
-                        "WHERE u.email = :email")
+                        "WHERE LOWER(u.email) = LOWER(:email)")
         Optional<User> findByEmail(@Bind("email") String email);
 
-        @SqlQuery("SELECT COUNT(*) > 0 FROM users WHERE email = :email")
+        @SqlQuery("SELECT COUNT(*) > 0 FROM users WHERE LOWER(email) = LOWER(:email)")
         boolean existsByEmail(@Bind("email") String email);
 
         class UserMapper implements RowMapper<User> {
