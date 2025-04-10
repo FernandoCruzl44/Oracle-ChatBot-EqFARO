@@ -61,7 +61,7 @@ public interface UserRepository {
                         "WHERE LOWER(u.email) = LOWER(:email)")
         Optional<User> findByEmail(@Bind("email") String email);
 
-        @SqlQuery("SELECT COUNT(*) > 0 FROM users WHERE LOWER(email) = LOWER(:email)")
+        @SqlQuery("SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM users WHERE LOWER(email) = LOWER(:email)")
         boolean existsByEmail(@Bind("email") String email);
 
         class UserMapper implements RowMapper<User> {
