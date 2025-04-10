@@ -54,3 +54,6 @@ frontend/yarn-error.log*
 .no_env
 
 MtdrSpring/services/wallet/
+
+# IDE
+.vscode/
