@@ -23,3 +23,6 @@ target/
 wallet/
 
 kubeconfig/
+
+# IDE
+.vscode/
