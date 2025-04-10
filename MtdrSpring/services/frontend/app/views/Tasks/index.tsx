@@ -53,7 +53,7 @@ export default function TaskView() {
   const [initialSprintSelectionDone, setInitialSprintSelectionDone] =
     useState<boolean>(false);
 
-  const tasksPerPage = 100;
+  const tasksPerPage = 30;
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title
@@ -387,7 +387,6 @@ export default function TaskView() {
             />
           ) : (
             <KanbanBoard
-              paginatedTasks={paginatedTasks}
               isLoadingTasks={isLoadingTasks}
               error={error}
               searchTerm={searchTerm}
@@ -398,7 +397,7 @@ export default function TaskView() {
               handleStatusChange={handleStatusChange}
               showAssigneesColumn={showAssigneesColumn}
               sprints={sprints}
-              tasksPerPage={tasksPerPage}
+              tasks={filteredTasks}
             />
           )}
         </div>

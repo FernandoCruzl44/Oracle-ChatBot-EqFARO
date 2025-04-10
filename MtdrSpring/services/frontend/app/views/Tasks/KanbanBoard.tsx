@@ -1,4 +1,3 @@
-// app/components/Tasks/KanbanBoard.tsx
 import React, { useState } from "react";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
@@ -7,7 +6,7 @@ import KanbanSkeletonLoader from "~/components/Skeletons/KanbanSkeletonLoader";
 import type { Task } from "~/types";
 
 interface KanbanBoardProps {
-  paginatedTasks: Task[];
+  tasks: Task[];
   isLoadingTasks: boolean;
   error: string | null;
   searchTerm: string;
@@ -18,15 +17,14 @@ interface KanbanBoardProps {
   handleStatusChange: (
     taskId: number,
     newStatus: string,
-    taskData: Partial<Task>
+    taskData: Partial<Task>,
   ) => Promise<void>;
   showAssigneesColumn: boolean;
   sprints: any[];
-  tasksPerPage: number;
 }
 
 export function KanbanBoard({
-  paginatedTasks,
+  tasks,
   isLoadingTasks,
   error,
   searchTerm,
@@ -40,14 +38,14 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const statuses = ["Backlog", "En progreso", "Completada", "Cancelada"];
 
-  const [localTasks, setLocalTasks] = useState<Task[]>(paginatedTasks);
+  const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
   const [pendingUpdates, setPendingUpdates] = useState<Record<number, boolean>>(
-    {}
+    {},
   );
 
   React.useEffect(() => {
-    setLocalTasks(paginatedTasks);
-  }, [paginatedTasks]);
+    setLocalTasks(tasks);
+  }, [tasks]);
 
   const handleDragEnd = (taskId: number, newStatus: string) => {
     const taskIndex = localTasks.findIndex((t) => t.id === taskId);
@@ -72,7 +70,7 @@ export function KanbanBoard({
       })
       .catch((error) => {
         console.error("Failed to update task status:", error);
-        setLocalTasks(paginatedTasks);
+        setLocalTasks(tasks);
         setPendingUpdates((prev) => {
           const newState = { ...prev };
           delete newState[taskId];
@@ -85,11 +83,11 @@ export function KanbanBoard({
     (acc, status) => {
       acc[status] = localTasks.filter(
         (task) =>
-          task.status === status || (!task.status && status === "En progreso")
+          task.status === status || (!task.status && status === "En progreso"),
       );
       return acc;
     },
-    {}
+    {},
   );
 
   const renderOverlay = (task: Task | null) => {
@@ -110,8 +108,8 @@ export function KanbanBoard({
 
   if (isLoadingTasks) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full h-full">
+      <div className="flex flex-1 items-center justify-center">
+        <div className="h-full w-full">
           <KanbanSkeletonLoader columns={4} cardsPerColumn={5} />
         </div>
       </div>
@@ -120,7 +118,7 @@ export function KanbanBoard({
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center text-red-500">
+      <div className="flex flex-1 items-center justify-center text-red-500">
         <div className="flex items-center">
           <i className="fa fa-exclamation-circle mr-2"></i>
           {error}
@@ -129,9 +127,9 @@ export function KanbanBoard({
     );
   }
 
-  if (paginatedTasks.length === 0) {
+  if (tasks.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-stone-500">
+      <div className="flex flex-1 items-center justify-center text-stone-500">
         <div className="flex items-center">
           <i className="fa fa-info-circle mr-2"></i>
           {searchTerm
@@ -143,12 +141,12 @@ export function KanbanBoard({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden">
       <KanbanDndProvider
         onDragEnd={handleDragEnd}
         renderOverlay={renderOverlay}
       >
-        <div className="flex-1 flex overflow-x-auto">
+        <div className="flex flex-1 overflow-x-auto">
           {statuses.map((status) => (
             <KanbanColumn
               key={status}
