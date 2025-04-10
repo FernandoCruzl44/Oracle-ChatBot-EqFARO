@@ -2,6 +2,7 @@
 import type { StateCreator } from "zustand";
 import type { StoreState, TaskStore } from "~/store/types";
 import type { Comment } from "~/types";
+import { api } from "~/lib/api";
 
 export interface CommentSlice extends StoreState {
   comments: Record<number, Comment[]>;
@@ -34,11 +35,7 @@ export const createCommentSlice: StateCreator<
   fetchComments: async (taskId) => {
     set({ loading: true });
     try {
-      const response = await fetch(`/api/comments/task/${taskId}`);
-      if (!response.ok) {
-        throw new Error("Error al cargar los comentarios");
-      }
-      const data = await response.json();
+      const data = await api.get(`/comments/task/${taskId}`);
 
       set((state) => ({
         comments: {
@@ -61,17 +58,7 @@ export const createCommentSlice: StateCreator<
 
   addComment: async (taskId, content) => {
     try {
-      const response = await fetch(`/api/comments/task/${taskId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al añadir el comentario");
-      }
-
-      const comment = await response.json();
+      const comment = await api.post(`/comments/task/${taskId}`, { content });
 
       set((state) => ({
         comments: {
@@ -93,20 +80,14 @@ export const createCommentSlice: StateCreator<
 
   deleteComment: async (commentId, taskId) => {
     try {
-      const response = await fetch(`/api/comments/${commentId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al eliminar el comentario");
-      }
+      await api.delete(`/comments/${commentId}`);
 
       set((state) => ({
         comments: {
           ...state.comments,
           [taskId]:
             state.comments[taskId]?.filter(
-              (comment) => comment.id !== commentId
+              (comment) => comment.id !== commentId,
             ) || [],
         },
       }));

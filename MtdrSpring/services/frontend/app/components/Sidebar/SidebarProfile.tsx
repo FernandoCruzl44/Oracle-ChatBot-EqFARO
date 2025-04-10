@@ -1,8 +1,7 @@
-// app/components/SidebarProfile.tsx
+// app/components/Sidebar/SidebarProfile.tsx
 import { useState, useEffect, useRef } from "react";
 import { generateAvatarColor } from "~/lib/utils";
 import useTaskStore from "~/store";
-import UserSelectModal from "~/components/Selectors/UserSelectModal";
 
 export default function SidebarProfile({ isExpanded = true }) {
   const users = useTaskStore((state) => state.users);
@@ -10,13 +9,27 @@ export default function SidebarProfile({ isExpanded = true }) {
   const isLoadingUsers = useTaskStore((state) => state.isLoadingUsers);
   const fetchUsers = useTaskStore((state) => state.fetchUsers);
   const fetchCurrentUser = useTaskStore((state) => state.fetchCurrentUser);
-  const handleChangeUser = useTaskStore((state) => state.handleChangeUser);
+  const logout = useTaskStore((state) => state.logout);
   const [isOpen, setIsOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchUsers();
     fetchCurrentUser();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [fetchUsers, fetchCurrentUser]);
 
   const colors = currentUser
@@ -57,7 +70,6 @@ export default function SidebarProfile({ isExpanded = true }) {
           }}
           className="border-oc-outline-light/60 hover:ring-oc-amber/50 flex h-[30px] w-[30px] flex-shrink-0 cursor-pointer items-center justify-center rounded-xl border text-xs font-bold hover:ring-2"
           title={currentUser?.name}
-          onClick={() => setIsOpen(!isOpen)}
         >
           {currentUser?.name?.slice(0, 1).toUpperCase() || "?"}
         </span>
@@ -92,14 +104,17 @@ export default function SidebarProfile({ isExpanded = true }) {
         </div>
       </button>
 
-      <UserSelectModal
-        users={users}
-        currentUser={currentUser}
-        onUserChange={handleChangeUser}
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        anchorRef={profileRef}
-      />
+      {isOpen && (
+        <div className="border-oc-outline-light bg-oc-primary absolute bottom-15 left-1.5 z-50 mt-1 w-[210px] rounded-lg border shadow-lg">
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-2 rounded-lg p-3 text-left text-sm text-white hover:bg-stone-700"
+          >
+            <i className="fa fa-sign-out"></i>
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

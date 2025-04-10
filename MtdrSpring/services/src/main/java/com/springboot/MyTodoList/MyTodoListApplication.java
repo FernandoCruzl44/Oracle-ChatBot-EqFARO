@@ -28,11 +28,14 @@ public class MyTodoListApplication implements CommandLineRunner {
 	public static void main(String[] args) {
 		dotenv = Dotenv.configure().load();
 
-		logger.debug("Loading env:");
+		logger.debug("Loading environment variables:");
 		dotenv.entries().forEach(entry -> {
-			System.setProperty(entry.getKey(), entry.getValue());
-			logger.debug("{}={}", entry.getKey(),
-					entry.getKey().contains("TOKEN") ? "********" : entry.getValue());
+			String key = entry.getKey();
+			String value = entry.getValue();
+			System.setProperty(key, value);
+			String maskedValue = key.toLowerCase().contains("token") || key.toLowerCase().contains("password")
+					|| key.toLowerCase().contains("secret") ? "********" : value;
+			logger.debug("{}={}", key, maskedValue);
 		});
 
 		SpringApplication.run(MyTodoListApplication.class, args);

@@ -2,6 +2,7 @@
 import type { StateCreator } from "zustand";
 import type { StoreState, TaskStore } from "~/store/types";
 import type { Sprint, Task } from "~/types";
+import { api } from "~/lib/api";
 
 export interface SprintSlice extends StoreState {
   // State
@@ -26,7 +27,7 @@ export interface SprintSlice extends StoreState {
   createSprint: (sprintData: Partial<Sprint>) => Promise<Sprint>;
   updateSprint: (
     sprintId: number,
-    sprintData: Partial<Sprint>
+    sprintData: Partial<Sprint>,
   ) => Promise<void>;
   deleteSprint: (sprintId: number) => Promise<void>;
 
@@ -34,12 +35,12 @@ export interface SprintSlice extends StoreState {
   assignTasksToSprint: (
     sprintId: number,
     taskIds: number[],
-    viewMode?: string
+    viewMode?: string,
   ) => Promise<void>;
   removeTaskFromSprint: (
     sprintId: number,
     taskId: number,
-    viewMode?: string
+    viewMode?: string,
   ) => Promise<void>;
 
   // Sprint Transition
@@ -47,7 +48,7 @@ export interface SprintSlice extends StoreState {
     sprintId: number,
     action: "moveToBacklog" | "moveToNextSprint",
     nextSprintId?: number,
-    viewMode?: string
+    viewMode?: string,
   ) => Promise<void>;
 
   // UI State
@@ -56,7 +57,7 @@ export interface SprintSlice extends StoreState {
 
 export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   set,
-  get
+  get,
 ) => ({
   // Initial state
   sprints: [],
@@ -88,14 +89,8 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   fetchSprints: async (teamId) => {
     set({ isLoadingSprints: true, error: null });
     try {
-      const url = teamId ? `/api/sprints?teamId=${teamId}` : "/api/sprints";
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("Error fetching sprints");
-      }
-
-      const data = await response.json();
+      const url = teamId ? `/sprints?teamId=${teamId}` : "/sprints";
+      const data = await api.get(url);
       set({ sprints: data, isLoadingSprints: false });
     } catch (error) {
       console.error("Error fetching sprints:", error);
@@ -110,13 +105,7 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   fetchSprintDetails: async (sprintId) => {
     set({ isLoadingSprints: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}`);
-
-      if (!response.ok) {
-        throw new Error("Error fetching sprint details");
-      }
-
-      const sprint = await response.json();
+      const sprint = await api.get(`/sprints/${sprintId}`);
       set((state) => ({
         sprints: state.sprints.map((s) => (s.id === sprintId ? sprint : s)),
         isLoadingSprints: false,
@@ -136,13 +125,7 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   fetchSprintTasks: async (sprintId) => {
     set({ isLoadingSprintTasks: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}/tasks`);
-
-      if (!response.ok) {
-        throw new Error("Error fetching sprint tasks");
-      }
-
-      const tasks = await response.json();
+      const tasks = await api.get(`/sprints/${sprintId}/tasks`);
       set((state) => ({
         sprintTasks: {
           ...state.sprintTasks,
@@ -165,13 +148,7 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   fetchIncompleteSprintTasks: async (sprintId) => {
     set({ isLoadingSprintTasks: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}/incomplete-tasks`);
-
-      if (!response.ok) {
-        throw new Error("Error fetching incomplete tasks");
-      }
-
-      const tasks = await response.json();
+      const tasks = await api.get(`/sprints/${sprintId}/incomplete-tasks`);
       set((state) => ({
         incompleteTasks: {
           ...state.incompleteTasks,
@@ -194,18 +171,7 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   createSprint: async (sprintData) => {
     set({ isLoadingSprints: true, error: null });
     try {
-      const response = await fetch("/api/sprints", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sprintData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error creating sprint");
-      }
-
-      const newSprint = await response.json();
+      const newSprint = await api.post("/sprints", sprintData);
       set((state) => ({
         sprints: [...state.sprints, newSprint],
         isLoadingSprints: false,
@@ -225,21 +191,10 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   updateSprint: async (sprintId, sprintData) => {
     set({ isLoadingSprints: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sprintData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error updating sprint");
-      }
-
-      const updatedSprint = await response.json();
+      const updatedSprint = await api.put(`/sprints/${sprintId}`, sprintData);
       set((state) => ({
         sprints: state.sprints.map((sprint) =>
-          sprint.id === sprintId ? updatedSprint : sprint
+          sprint.id === sprintId ? updatedSprint : sprint,
         ),
         isLoadingSprints: false,
       }));
@@ -256,26 +211,18 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   deleteSprint: async (sprintId) => {
     set({ isLoadingSprints: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error deleting sprint");
-      }
-
+      await api.delete(`/sprints/${sprintId}`);
       set((state) => ({
         sprints: state.sprints.filter((sprint) => sprint.id !== sprintId),
         sprintTasks: Object.fromEntries(
           Object.entries(state.sprintTasks).filter(
-            ([id]) => Number(id) !== sprintId
-          )
+            ([id]) => Number(id) !== sprintId,
+          ),
         ),
         incompleteTasks: Object.fromEntries(
           Object.entries(state.incompleteTasks).filter(
-            ([id]) => Number(id) !== sprintId
-          )
+            ([id]) => Number(id) !== sprintId,
+          ),
         ),
         isLoadingSprints: false,
       }));
@@ -293,16 +240,7 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   assignTasksToSprint: async (sprintId, taskIds, viewMode = "all") => {
     set({ isLoadingSprintTasks: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}/tasks`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskIds }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error assigning tasks to sprint");
-      }
+      await api.put(`/sprints/${sprintId}/tasks`, { taskIds });
 
       // Refresh sprint tasks after assignment
       await get().fetchSprintTasks(sprintId);
@@ -327,27 +265,20 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
   removeTaskFromSprint: async (sprintId, taskId, viewMode = "all") => {
     set({ isLoadingSprintTasks: true, error: null });
     try {
-      const response = await fetch(`/api/sprints/${sprintId}/tasks/${taskId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error removing task from sprint");
-      }
+      await api.delete(`/sprints/${sprintId}/tasks/${taskId}`);
 
       // Update the sprint tasks list
       set((state) => ({
         sprintTasks: {
           ...state.sprintTasks,
           [sprintId]: (state.sprintTasks[sprintId] || []).filter(
-            (task) => task.id !== taskId
+            (task) => task.id !== taskId,
           ),
         },
         incompleteTasks: {
           ...state.incompleteTasks,
           [sprintId]: (state.incompleteTasks[sprintId] || []).filter(
-            (task) => task.id !== taskId
+            (task) => task.id !== taskId,
           ),
         },
         isLoadingSprintTasks: false,
@@ -377,21 +308,12 @@ export const createSprintSlice: StateCreator<TaskStore, [], [], SprintSlice> = (
         payload.nextSprintId = nextSprintId;
       }
 
-      const response = await fetch(`/api/sprints/${sprintId}/end`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error completing sprint");
-      }
+      await api.put(`/sprints/${sprintId}/end`, payload);
 
       // Update sprint status locally
       set((state) => ({
         sprints: state.sprints.map((sprint) =>
-          sprint.id === sprintId ? { ...sprint, status: "COMPLETED" } : sprint
+          sprint.id === sprintId ? { ...sprint, status: "COMPLETED" } : sprint,
         ),
         isLoadingSprints: false,
       }));

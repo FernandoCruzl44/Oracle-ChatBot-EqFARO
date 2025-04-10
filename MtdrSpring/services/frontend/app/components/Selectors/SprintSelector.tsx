@@ -9,6 +9,7 @@ interface SprintSelectorProps {
   selectedSprintId: number | null;
   onSelectSprint: (sprintId: number | null) => void;
   onCreateSprint: () => void;
+  isManager: boolean;
   isLoading: boolean;
   teams?: any[];
 }
@@ -19,6 +20,7 @@ export function SprintSelector({
   selectedSprintId,
   onSelectSprint,
   onCreateSprint,
+  isManager,
   isLoading,
   teams = [],
 }: SprintSelectorProps) {
@@ -27,7 +29,6 @@ export function SprintSelector({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedSprint, setSelectedSprint] = useState<Sprint | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isManager = user?.role === "manager";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

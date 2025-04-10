@@ -1,4 +1,4 @@
-// app/root.tsx
+// app/root.tsx (updated with AuthGuard)
 import {
   isRouteErrorResponse,
   Links,
@@ -9,6 +9,7 @@ import {
 } from "react-router";
 import { CookiesProvider } from "react-cookie";
 import { CookieInitializer } from "./components/CookieInitializer";
+import { AuthGuard } from "./components/AuthGuard";
 import type { Route } from "./+types/root";
 import "./app.css";
 import "./font-apex.css";
@@ -26,19 +27,22 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+// This Layout component defines the main HTML structure
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Faro Chat Bot</title>
-
+        {/* Consider adding title here if it's static, or use Meta export */}
+        {/* <title>Faro Chat Bot</title> */}
         <Meta />
         <Links />
       </head>
-      <body>
+      {/* Move the body classes here from the App component */}
+      <body className="bg-oc-bg text-oc-text">
         <div id="portal-root"></div>
+        {/* The content from App (and nested routes) will render here */}
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -47,23 +51,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// This App component renders the content INSIDE the Layout's body
 export default function App() {
+  // --- REMOVE <html>, <head>, <body> tags ---
+  // --- REMOVE Meta and Links, they are in Layout ---
+  // --- REMOVE ScrollRestoration and Scripts, they are in Layout ---
   return (
-    <html lang="en">
-      <head>
-        <Meta />
-        <Links />
-      </head>
-      <body className="bg-oc-bg text-oc-text">
-        <CookiesProvider>
-          <CookieInitializer />
-          <Outlet />
-          <ScrollRestoration />
-          <Scripts />
-        </CookiesProvider>
-      </body>
-    </html>
+    <CookiesProvider>
+      <CookieInitializer />
+      <AuthGuard>
+        <Outlet /> {/* Child routes render here */}
+      </AuthGuard>
+    </CookiesProvider>
   );
+  // --- END REMOVALS ---
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

@@ -15,7 +15,7 @@ REGISTRY="mx-queretaro-1.ocir.io"
 NAMESPACE="axco8elk7e3y"
 RUN_NAME="faro"
 IMAGE_NAME="oraclechatbot"
-TAG=$(date +%s)
+TAG=$(date +%s-auth-wip)
 
 # Full path including MTDR_KEY
 FULL_IMAGE_PATH="$REGISTRY/$NAMESPACE/$RUN_NAME/$IMAGE_NAME:$TAG"

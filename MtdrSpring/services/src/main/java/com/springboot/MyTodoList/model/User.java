@@ -1,8 +1,16 @@
 package com.springboot.MyTodoList.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-public class User {
+import java.util.Collection;
+import java.util.List;
+import java.util.ArrayList;
+
+public class User implements UserDetails {
     private Long id;
     private String name;
     private String email;
@@ -15,6 +23,51 @@ public class User {
     private String teamRole;
     private Long teamId;
     private String teamName;
+
+    // UserDetails implementation methods
+
+    @Override
+    @JsonIgnore
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        if (role != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+        }
+        return authorities;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getUsername() {
+        // Using email as the username for authentication
+        return email;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isEnabled() {
+        return true;
+    }
+
+    // Existing getters and setters
 
     public Long getId() {
         return id;

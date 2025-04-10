@@ -47,14 +47,22 @@ public interface UserRepository {
         @SqlUpdate("DELETE FROM users WHERE id = :id")
         int delete(@Bind("id") Long id);
 
-	@SqlUpdate("UPDATE users set telegramId = null WHERE telegramId = :chatId")
-	int forgetChatId(@Bind("chatId") long chatId);
+        @SqlUpdate("UPDATE users set telegramId = null WHERE telegramId = :chatId")
+        int forgetChatId(@Bind("chatId") long chatId);
 
-	@SqlQuery("SELECT * FROM users WHERE users.telegramId = :chatId")
-	Optional<User> findByChatId(@Bind("chatId") long chatId);
+        @SqlQuery("SELECT * FROM users WHERE users.telegramId = :chatId")
+        Optional<User> findByChatId(@Bind("chatId") long chatId);
 
-	@SqlUpdate("UPDATE users SET telegramId = :chatId WHERE id = :id")
-	int setChatIdForUser(@Bind("id") long id, @Bind("chatId") long chatId);
+        @SqlUpdate("UPDATE users SET telegramId = :chatId WHERE id = :id")
+        int setChatIdForUser(@Bind("id") long id, @Bind("chatId") long chatId);
+
+        @SqlQuery("SELECT u.*, t.name as team_name FROM users u " +
+                        "LEFT JOIN teams t ON u.team_id = t.id " +
+                        "WHERE u.email = :email")
+        Optional<User> findByEmail(@Bind("email") String email);
+
+        @SqlQuery("SELECT COUNT(*) > 0 FROM users WHERE email = :email")
+        boolean existsByEmail(@Bind("email") String email);
 
         class UserMapper implements RowMapper<User> {
 

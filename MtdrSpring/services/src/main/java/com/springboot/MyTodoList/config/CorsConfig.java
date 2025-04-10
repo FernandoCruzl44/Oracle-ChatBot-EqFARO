@@ -1,3 +1,4 @@
+// src/main/java/com/springboot/MyTodoList/config/CorsConfig.java
 package com.springboot.MyTodoList.config;
 
 import org.slf4j.Logger;
@@ -8,12 +9,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import java.util.List;
-
-/*
-    This class configures CORS, and specifies which methods are allowed
-    along with which origins and headers
-    @author: peter.song@oracle.com
- */
 
 @Configuration
 public class CorsConfig {
@@ -27,6 +22,7 @@ public class CorsConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
         config.addAllowedHeader("*");
         config.addExposedHeader("location");
+        config.addExposedHeader("Authorization");
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
