@@ -11,6 +11,7 @@ import { KanbanBoard } from "./KanbanBoard";
 import { Table } from "./Table";
 import { Pagination } from "./Pagination";
 import type { Task, Sprint } from "~/types";
+import { AtomizeModal } from "~/components/Modals/Atomize/AtomizeModal";
 
 export default function TaskView() {
   const {
@@ -47,6 +48,8 @@ export default function TaskView() {
   const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);
+  const [isAtomizeModalOpen, setIsAtomizeModalOpen] = useState(false);
+  const [tasksToAtomize, setTasksToAtomize] = useState<Task[]>([]);
   const [transitioningSprint, setTransitioningSprint] = useState<Sprint | null>(
     null,
   );
@@ -248,18 +251,26 @@ export default function TaskView() {
   };
 
   const handleSaveNewTask = () => {
-    setIsCreateModalOpen(false);
+    closeModal();
   };
 
   const handleDeleteTasks = () => {
     if (selectedTasks.length === 0) return;
-    deleteTasks(selectedTasks)
-      .then(() => {
-        setSelectedTasks([]);
-      })
-      .catch((error) => {
-        console.error("Error deleting tasks:", error);
-      });
+
+    console.log("Deleting tasks:", selectedTasks);
+    deleteTasks(selectedTasks);
+    setSelectedTasks([]);
+  };
+
+  const handleAtomizeTasks = () => {
+    if (selectedTasks.length === 0) return;
+
+    // Get the full task objects for the selected task IDs
+    const tasksToProcess = tasks.filter((task) =>
+      selectedTasks.includes(task.id),
+    );
+    setTasksToAtomize(tasksToProcess);
+    setIsAtomizeModalOpen(true);
   };
 
   const handleStatusChange = async (
@@ -280,10 +291,11 @@ export default function TaskView() {
   };
 
   const changeTab = (tab: string) => {
-    setActiveTab(tab);
-    setSearchTerm("");
-    setSelectedTasks([]);
-    setCurrentPage(1);
+    if (tab !== activeTab) {
+      setActiveTab(tab);
+      setCurrentPage(1);
+      setSelectedTasks([]);
+    }
   };
 
   const handleCompleteSprint = async (
@@ -291,33 +303,39 @@ export default function TaskView() {
     nextSprintId?: number,
   ) => {
     if (!transitioningSprint) return;
+
     try {
       await completeSprint(
         transitioningSprint.id,
         action,
-        nextSprintId,
-        activeTab,
+        action === "moveToNextSprint" ? nextSprintId : undefined,
       );
-    } catch (error) {
-      console.error("Error completing sprint:", error);
-    } finally {
       setIsSprintTransitionModalOpen(false);
       setTransitioningSprint(null);
+    } catch (error) {
+      console.error("Error completing sprint:", error);
     }
   };
 
   const handleCloseTransitionModal = () => {
     setIsSprintTransitionModalOpen(false);
+    setTransitioningSprint(null);
+  };
+
+  const handleCloseAtomizeModal = () => {
+    setIsAtomizeModalOpen(false);
+    setTasksToAtomize([]);
   };
 
   const getSelectorTeamId = (): number | undefined => {
     if (activeTab === "all") {
       return undefined;
-    } else if (activeTab === "team") {
-      return isManager ? undefined : currentUser?.teamId;
-    } else {
+    } else if (activeTab === "team" && currentUser?.teamId) {
+      return currentUser.teamId;
+    } else if (!isNaN(Number(activeTab))) {
       return Number(activeTab);
     }
+    return undefined;
   };
 
   const selectorTeamId = getSelectorTeamId();
@@ -351,6 +369,7 @@ export default function TaskView() {
           isLoadingSprints={isLoadingSprints}
           selectedTasks={selectedTasks}
           handleDeleteTasks={handleDeleteTasks}
+          handleAtomizeTasks={handleAtomizeTasks}
           isLoadingTasks={isLoadingTasks}
           viewMode={viewMode}
           setViewMode={setViewMode}
@@ -437,6 +456,13 @@ export default function TaskView() {
           onClose={handleCloseTransitionModal}
           onComplete={handleCompleteSprint}
         />
+      )}
+      {isAtomizeModalOpen && (
+        <AtomizeModal
+          onClose={handleCloseAtomizeModal}
+          isVisible={isAtomizeModalOpen}
+          initialTasks={tasksToAtomize}
+        ></AtomizeModal>
       )}
     </div>
   );

@@ -30,7 +30,7 @@ export function Modal({
         <div className="bg-oc-primary border-oc-outline-light relative flex w-full overflow-hidden rounded-lg border">
           <button
             onClick={handleClose}
-            className="border-oc-outline-light hover:bg-oc-neutral absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded border text-stone-500 hover:text-stone-700"
+            className="border-oc-outline-light hover:bg-oc-neutral absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded border text-stone-500 hover:text-stone-700"
           >
             <i className="fa fa-times text-xl"></i>
           </button>

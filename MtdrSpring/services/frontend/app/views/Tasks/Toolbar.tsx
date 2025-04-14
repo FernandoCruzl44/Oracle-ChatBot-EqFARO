@@ -20,6 +20,7 @@ interface ToolbarProps {
   setViewMode: (mode: "table" | "kanban") => void;
   selectedTasks: number[];
   handleDeleteTasks: () => void;
+  handleAtomizeTasks?: () => void;
   isLoadingTasks: boolean;
   teams?: any[];
 }
@@ -41,6 +42,7 @@ export function Toolbar({
   setViewMode,
   selectedTasks,
   handleDeleteTasks,
+  handleAtomizeTasks,
   isLoadingTasks,
   teams = [],
 }: ToolbarProps) {
@@ -121,13 +123,24 @@ export function Toolbar({
           )}
 
           {selectedTasks.length > 0 && (
-            <button
-              onClick={handleDeleteTasks}
-              className="flex items-center rounded-lg border border-red-400 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-900/50"
-            >
-              <i className="fa fa-trash mr-2"></i>
-              <span>Eliminar ({selectedTasks.length})</span>
-            </button>
+            <div className="flex gap-2">
+              {handleAtomizeTasks && (
+                <button
+                  onClick={handleAtomizeTasks}
+                  className="flex items-center rounded-lg border border-sky-400 px-4 py-2 text-sm text-sky-400 transition-colors hover:bg-sky-900/50"
+                >
+                  <i className="fa fa-sparkles mr-2"></i>
+                  <span>Atomize ({selectedTasks.length})</span>
+                </button>
+              )}
+              <button
+                onClick={handleDeleteTasks}
+                className="flex items-center rounded-lg border border-red-400 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-900/50"
+              >
+                <i className="fa fa-trash mr-2"></i>
+                <span>Eliminar ({selectedTasks.length})</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

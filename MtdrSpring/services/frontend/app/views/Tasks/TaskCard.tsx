@@ -12,6 +12,7 @@ interface TaskCardProps {
   sprints: any[];
   isDragging?: boolean;
   isUpdating?: boolean;
+  hideSelect?: boolean;
 }
 
 export function TaskCard({
@@ -23,6 +24,7 @@ export function TaskCard({
   sprints,
   isDragging = false,
   isUpdating = false,
+  hideSelect = false,
 }: TaskCardProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,13 +50,15 @@ export function TaskCard({
         >
           {task.title}
         </h3>
-        <input
-          type="checkbox"
-          className="ml-2 h-4 w-4 flex-shrink-0"
-          checked={isSelected}
-          onChange={() => {}}
-          onClick={handleCheckboxClick}
-        />
+        {!hideSelect && (
+          <input
+            type="checkbox"
+            className="ml-2 h-4 w-4 flex-shrink-0"
+            checked={isSelected}
+            onChange={() => {}}
+            onClick={handleCheckboxClick}
+          />
+        )}
       </div>
 
       <div className="mb-2 flex items-center justify-between">
