@@ -74,10 +74,19 @@ const mapTaskToBackend = (taskData: Partial<Task>): Record<string, any> => {
     delete backendData.assignees;
   }
 
+  // Already has assignee_ids, no need to map
+  if (
+    !backendData.hasOwnProperty("assignee_ids") &&
+    backendData.hasOwnProperty("assignees")
+  ) {
+    backendData.assignee_ids = backendData.assignees?.map((a: any) => a.id);
+  }
+
   // Remove fields backend doesn't expect/need
   delete backendData.creatorName;
   delete backendData.teamName;
   delete backendData.id; // Don't send id on create, usually not needed on update body either
+  delete backendData.assignees; // Ensure assignees is removed since we're using assignee_ids
 
   return backendData;
 };

@@ -1,6 +1,6 @@
 // app/components/TaskModal/index.tsx
 import { useState, useEffect, useRef } from "react";
-import type { Task } from "~/types";
+import type { Task, User } from "~/types";
 import useTaskStore from "~/store/index";
 import { generateAvatarColor } from "~/lib/utils";
 import { Modal } from "../../Modal";
@@ -25,6 +25,8 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     isLoadingComments,
     sprints,
     getSprintsByTeam,
+    users,
+    fetchUsers,
   } = useTaskStore();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -40,13 +42,23 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
     ? getSprintsByTeam(editableTask.teamId)
     : [];
 
+  // Filter users based on the task's team
+  const filteredUsers = editableTask.teamId
+    ? users.filter((user: User) => user.teamId === editableTask.teamId)
+    : [];
+
   useEffect(() => {
     setTimeout(() => {
       setIsVisible(true);
     }, 0);
 
     fetchComments(task.id);
-  }, [task, fetchComments]);
+
+    // Fetch users if not already loaded
+    if (users.length === 0) {
+      fetchUsers();
+    }
+  }, [task, fetchComments, fetchUsers, users.length]);
 
   const handleClose = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -73,7 +85,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
   }, [editableTask]);
 
   const handleInputChange = (field: keyof Task, value: any) => {
-    if (value !== editableTask[field]) {
+    if (JSON.stringify(value) !== JSON.stringify(editableTask[field])) {
       setIsEditing(true);
       setEditableTask((prev) => ({
         ...prev,
@@ -119,6 +131,7 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
         sprint_id: editableTask.sprintId,
         estimated_hours: estimatedHours,
         actual_hours: actualHours,
+        assignee_ids: editableTask.assignees?.map((a) => a.id),
       };
 
       await updateTask(task.id, taskForApi);
@@ -186,6 +199,8 @@ export default function TaskModal({ task, onClose }: TaskModalProps) {
               <TaskMetadata
                 editableTask={editableTask}
                 teamSprints={teamSprints}
+                users={users}
+                filteredUsers={filteredUsers}
                 handleInputChange={handleInputChange}
                 generateAvatarColor={generateAvatarColor}
               />

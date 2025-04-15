@@ -19,9 +19,9 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
   {
     original: {
       id: 1,
-      title: "Implement user authentication system",
+      title: "Implementar sistema de autenticación de usuarios",
       tag: "Feature",
-      status: "In Progress",
+      status: "En Progreso",
       startDate: "2025-04-11",
       endDate: "2025-04-20",
       creatorName: "John Doe",
@@ -30,7 +30,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
     generated: [
       {
         id: 11,
-        title: "Setup user registration endpoints",
+        title: "Configurar endpoints de registro de usuarios",
         tag: "Feature",
         status: "To Do",
         startDate: "2025-04-11",
@@ -40,7 +40,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
       },
       {
         id: 12,
-        title: "Implement login functionality",
+        title: "Implementar funcionalidad de inicio de sesión",
         tag: "Feature",
         status: "To Do",
         startDate: "2025-04-16",
@@ -50,7 +50,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
       },
       {
         id: 13,
-        title: "Add password reset flow",
+        title: "Añadir flujo de restablecimiento de contraseña",
         tag: "Feature",
         status: "To Do",
         startDate: "2025-04-18",
@@ -63,7 +63,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
   {
     original: {
       id: 2,
-      title: "Design and implement database schema",
+      title: "Diseñar e implementar esquema de base de datos",
       tag: "Feature",
       status: "To Do",
       startDate: "2025-04-15",
@@ -74,7 +74,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
     generated: [
       {
         id: 21,
-        title: "Design entity relationship diagram",
+        title: "Diseñar diagrama de relación de entidades",
         tag: "Feature",
         status: "To Do",
         startDate: "2025-04-15",
@@ -84,7 +84,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
       },
       {
         id: 22,
-        title: "Create SQL migration scripts",
+        title: "Crear scripts de migración SQL",
         tag: "Feature",
         status: "To Do",
         startDate: "2025-04-18",
@@ -94,7 +94,7 @@ const SAMPLE_GENERATED_TASKS: { original: Task; generated: Task[] }[] = [
       },
       {
         id: 23,
-        title: "Implement ORM models",
+        title: "Implementar modelos ORM",
         tag: "Feature",
         status: "To Do",
         startDate: "2025-04-21",
@@ -110,29 +110,49 @@ function QueueView({
   tasks,
   removeTask,
   startAtomize,
+  animationState,
 }: {
   tasks: Task[];
   removeTask: (id: number) => void;
   startAtomize: () => void;
+  animationState: "entering" | "visible" | "exiting";
 }) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-oc-outline-light border-b p-4">
-        <h3 className="text-lg font-medium text-white">Task Queue</h3>
+    <div
+      className={`flex h-full flex-col transition-all duration-300 ${
+        animationState === "entering"
+          ? "translate-x-10 opacity-0"
+          : animationState === "exiting"
+            ? "-translate-x-10 opacity-0"
+            : "translate-x-0 opacity-100"
+      }`}
+    >
+      {/* <div className="border-oc-outline-light border-b p-4">
+        <h3 className="text-lg font-medium text-white">Cola de Tareas</h3>
         <p className="text-oc-text-gray text-sm">
-          These tasks will be broken down into smaller, more manageable tasks.
+          Estas tareas se dividirán en tareas más pequeñas y manejables.
+        </p>
+      </div> */}
+
+      <div className="border-oc-outline-light border-b p-4">
+        <p className="text-oc-text-gray text-center text-sm">
+          Estas tareas se dividirán en tareas más pequeñas y manejables.
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         {tasks.length === 0 ? (
           <div className="text-oc-text-gray flex h-full items-center justify-center">
-            No tasks selected for atomization
+            {/* No se han seleccionado tareas para atomizar */}
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl space-y-4">
-            {tasks.map((task) => (
-              <div key={task.id} className="group relative">
+          <div className="mx-auto max-w-lg space-y-4">
+            {tasks.map((task, index) => (
+              <div
+                key={task.id}
+                className="group animate-fadeIn relative"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
                 <TaskCard
                   task={task}
                   onClick={() => {}}
@@ -160,16 +180,28 @@ function QueueView({
           disabled={tasks.length === 0}
           className="bg-oc-accent-primary hover:bg-oc-accent-primary-dark rounded px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
         >
-          Start Atomization
+          Iniciar Atomización
         </Button>
       </div>
     </div>
   );
 }
 
-function LoadingView() {
+function LoadingView({
+  animationState,
+}: {
+  animationState: "entering" | "visible" | "exiting";
+}) {
   return (
-    <div className="flex h-full flex-col items-center justify-center p-8">
+    <div
+      className={`flex h-full flex-col items-center justify-center p-8 transition-all duration-300 ${
+        animationState === "entering"
+          ? "scale-95 opacity-0"
+          : animationState === "exiting"
+            ? "scale-105 opacity-0"
+            : "scale-100 opacity-100"
+      }`}
+    >
       <div className="mb-4 animate-spin">
         <svg
           className="text-oc-accent-primary h-16 w-16"
@@ -192,11 +224,11 @@ function LoadingView() {
           ></path>
         </svg>
       </div>
-      <h3 className="mb-2 text-xl font-medium text-white">Atomizing Tasks</h3>
-      <p className="text-oc-text-gray max-w-md text-center">
-        Our AI is analyzing your tasks and breaking them down into smaller, more
-        manageable subtasks. This may take a few moments...
-      </p>
+      <h3 className="mb-2 text-xl font-medium text-white">Atomizando Tareas</h3>
+      {/* <p className="text-oc-text-gray max-w-md text-center">
+        Nuestra IA está analizando tus tareas y dividiéndolas en subtareas más
+        pequeñas y manejables. Esto puede tomar unos momentos...
+      </p> */}
     </div>
   );
 }
@@ -205,10 +237,16 @@ function TaskAtomizationGroup({
   item,
   onReatomize,
   onAccept,
+  animationState,
+  direction,
+  isInitialRender,
 }: {
   item: AtomizationItem;
   onReatomize: () => void;
   onAccept: () => void;
+  animationState: "entering" | "visible" | "exiting";
+  direction: "left" | "right";
+  isInitialRender: boolean;
 }) {
   const originalTaskRef = useRef<HTMLDivElement>(null);
   const generatedTaskRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -287,14 +325,44 @@ function TaskAtomizationGroup({
     );
   }, [item.generated]);
 
+  // Fix the animation direction logic
+  const getTranslateClass = () => {
+    if (animationState === "visible") {
+      return "translate-x-0 opacity-100";
+    }
+
+    // When entering:
+    if (animationState === "entering") {
+      // If it's the initial render, just fade in without translation
+      if (isInitialRender) {
+        return "opacity-0";
+      }
+
+      // If direction is right, enter from right
+      // If direction is left, enter from left
+      return direction === "right"
+        ? "translate-x-full opacity-0"
+        : "-translate-x-full opacity-0";
+    }
+
+    // When exiting:
+    // If direction is right, exit to left
+    // If direction is left, exit to right
+    return direction === "right"
+      ? "-translate-x-full opacity-0"
+      : "translate-x-full opacity-0";
+  };
+
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-oc-outline-light border-b p-4">
-        <h3 className="text-lg font-medium text-white">Task Breakdown</h3>
+    <div
+      className={`flex h-full flex-col transition-all duration-250 ${getTranslateClass()}`}
+    >
+      {/* <div className="border-oc-outline-light border-b p-4">
+        <h3 className="text-lg font-medium text-white">Desglose de Tareas</h3>
         <p className="text-oc-text-gray text-sm">
-          The original task has been broken down into smaller subtasks.
+          La tarea original se ha dividido en subtareas más pequeñas.
         </p>
-      </div>
+      </div> */}
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="relative mx-auto flex h-full max-w-4xl flex-col items-center md:flex-row md:items-start md:justify-center md:gap-10">
@@ -308,13 +376,14 @@ function TaskAtomizationGroup({
                 key={index}
                 d={path}
                 fill="none"
-                stroke="white" // Use your accent color here
+                stroke="white"
                 strokeWidth="1.5"
                 strokeDasharray="5,5"
                 markerEnd="url(#arrowhead)"
+                className="animate-dash"
               />
             ))}
-            {/* <defs>
+            <defs>
               <marker
                 id="arrowhead"
                 markerWidth="10"
@@ -325,14 +394,14 @@ function TaskAtomizationGroup({
               >
                 <polygon points="5 1, 9 3.5, 5 6" fill="white" />
               </marker>
-            </defs> */}
+            </defs>
           </svg>
 
           <div className="mb-16 flex h-full w-full flex-col items-center justify-center md:mb-0">
             <h3 className="text-oc-text-gray-dark mb-4 text-center text-sm font-medium">
-              Original Task
+              Tarea Original
             </h3>
-            <div className="w-[350px]" ref={originalTaskRef}>
+            <div className="animate-fadeIn w-[350px]" ref={originalTaskRef}>
               <TaskCard
                 task={item.original}
                 onClick={() => {}}
@@ -347,13 +416,17 @@ function TaskAtomizationGroup({
 
           <div className="flex h-full w-full flex-col items-center justify-center">
             <h3 className="text-oc-text-gray-dark mb-4 text-center text-sm font-medium">
-              Generated Sub-Tasks
+              Sub-Tareas Generadas
             </h3>
             <div className="flex flex-col gap-6">
               {item.generated.map((genTask, index) => (
-                <div key={genTask.id}>
+                <div
+                  key={genTask.id}
+                  className="animate-slideInRight"
+                  style={{ animationDelay: `${200 + index * 150}ms` }}
+                >
                   <div
-                    className="w-[350px]"
+                    className="w-[450px]"
                     ref={(el) => {
                       generatedTaskRefs.current[index] = el;
                     }}
@@ -380,13 +453,13 @@ function TaskAtomizationGroup({
           onClick={onReatomize}
           className="bg-oc-neutral text-oc-text-gray hover:bg-oc-neutral-light rounded px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
         >
-          Re-Atomize
+          Re-Atomizar
         </Button>
         <Button
           onClick={onAccept}
           className="bg-oc-accent-primary hover:bg-oc-accent-primary-dark rounded px-4 py-2 text-sm font-medium whitespace-nowrap text-white transition-colors"
         >
-          Accept
+          Aceptar
         </Button>
       </div>
     </div>
@@ -398,11 +471,13 @@ function SummaryView({
   onAccept,
   onCancel,
   onBack,
+  animationState,
 }: {
   atomizationData: AtomizationItem[];
   onAccept: () => void;
   onCancel: () => void;
   onBack: () => void;
+  animationState: "entering" | "visible" | "exiting";
 }) {
   const totalOriginalTasks = atomizationData.length;
   const totalGeneratedTasks = atomizationData.reduce(
@@ -411,13 +486,23 @@ function SummaryView({
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className={`flex h-full flex-col transition-all duration-300 ${
+        animationState === "entering"
+          ? "translate-y-20 opacity-0"
+          : animationState === "exiting"
+            ? "-translate-y-20 opacity-0"
+            : "translate-y-0 opacity-100"
+      }`}
+    >
       <div className="border-oc-outline-light border-b p-4">
-        <h3 className="text-lg font-medium text-white">Summary</h3>
+        <h3 className="text-lg font-medium text-white">Resumen</h3>
         <p className="text-oc-text-gray text-sm">
-          {totalOriginalTasks} original task
-          {totalOriginalTasks !== 1 ? "s" : ""} will be replaced with{" "}
-          {totalGeneratedTasks} smaller subtask
+          {totalOriginalTasks} tarea{totalOriginalTasks !== 1 ? "s" : ""}{" "}
+          original
+          {totalOriginalTasks !== 1 ? "es" : " será"} reemplazada
+          {totalOriginalTasks !== 1 ? "s" : ""} con {totalGeneratedTasks}{" "}
+          subtarea
           {totalGeneratedTasks !== 1 ? "s" : ""}.
         </p>
       </div>
@@ -426,34 +511,17 @@ function SummaryView({
         <div className="mx-auto flex max-w-5xl flex-col justify-center gap-8 md:flex-row">
           <div className="w-[350px]">
             <h3 className="text-oc-text-gray-dark mb-4 text-center text-sm font-medium">
-              Original Tasks ({totalOriginalTasks})
+              Tareas Originales ({totalOriginalTasks})
             </h3>
             <div className="space-y-4">
-              {atomizationData.map((item) => (
-                <TaskCard
+              {atomizationData.map((item, index) => (
+                <div
                   key={item.original.id}
-                  task={item.original}
-                  onClick={() => {}}
-                  onSelect={() => {}}
-                  isSelected={false}
-                  showAssignees={true}
-                  sprints={[]}
-                  hideSelect={true}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="w-[350px]">
-            <h3 className="text-oc-text-gray-dark mb-4 text-center text-sm font-medium">
-              Generated Tasks ({totalGeneratedTasks})
-            </h3>
-            <div className="space-y-4">
-              {atomizationData.flatMap((item) =>
-                item.generated.map((genTask) => (
+                  className="animate-fadeIn"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
                   <TaskCard
-                    key={genTask.id}
-                    task={genTask}
+                    task={item.original}
                     onClick={() => {}}
                     onSelect={() => {}}
                     isSelected={false}
@@ -461,6 +529,35 @@ function SummaryView({
                     sprints={[]}
                     hideSelect={true}
                   />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="w-[350px]">
+            <h3 className="text-oc-text-gray-dark mb-4 text-center text-sm font-medium">
+              Tareas Generadas ({totalGeneratedTasks})
+            </h3>
+            <div className="space-y-4">
+              {atomizationData.flatMap((item, itemIndex) =>
+                item.generated.map((genTask, taskIndex) => (
+                  <div
+                    key={genTask.id}
+                    className="animate-fadeIn"
+                    style={{
+                      animationDelay: `${200 + (itemIndex * 3 + taskIndex) * 50}ms`,
+                    }}
+                  >
+                    <TaskCard
+                      task={genTask}
+                      onClick={() => {}}
+                      onSelect={() => {}}
+                      isSelected={false}
+                      showAssignees={true}
+                      sprints={[]}
+                      hideSelect={true}
+                    />
+                  </div>
                 )),
               )}
             </div>
@@ -472,23 +569,17 @@ function SummaryView({
         <div className="flex w-full gap-4 px-10">
           <Button
             onClick={onBack}
-            className="bg-oc-neutral text-oc-text-gray hover:bg-oc-neutral-light max-w-[150px] rounded px-4 py-2 text-sm font-medium transition-colors"
+            className="bg-oc-neutral text-oc-text-gray hover:bg-oc-neutral-light w-full rounded px-4 py-2 text-sm font-medium transition-colors"
           >
             <i className="fa fa-arrow-left mr-2"></i>
-            Back
+            Atrás
           </Button>
 
           <Button
-            onClick={onCancel}
-            className="bg-oc-neutral text-oc-text-gray hover:bg-oc-neutral-light max-w-[150px] rounded px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
-          >
-            Cancel
-          </Button>
-          <Button
             onClick={onAccept}
-            className="bg-oc-accent-primary hover:bg-oc-accent-primary-dark w-full rounded px-4 py-2 text-sm font-medium whitespace-nowrap text-white transition-colors"
+            className="bg-oc-accent-primary hover:bg-oc-accent-primary-dark w-full animate-pulse rounded px-4 py-2 text-sm font-medium whitespace-nowrap text-white transition-colors"
           >
-            Accept Changes
+            Confirmar Cambios
           </Button>
         </div>
       </div>
@@ -504,28 +595,90 @@ export function AtomizeModal({
   const [step, setStep] = useState<
     "queue" | "loading" | "carousel" | "summary"
   >("queue");
+  const [isInternalVisible, setIsInternalVisible] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [atomizationData, setAtomizationData] = useState<AtomizationItem[]>([]);
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+  const [direction, setDirection] = useState<"left" | "right">("right");
+  const [animationState, setAnimationState] = useState<
+    "entering" | "visible" | "exiting"
+  >("visible");
+  const [visibleStep, setVisibleStep] = useState<typeof step>("queue");
+  const [isInitialCarouselRender, setIsInitialCarouselRender] = useState(true);
 
   useEffect(() => {
-    if (isVisible && initialTasks.length > 0) {
-      setTasks(initialTasks);
+    if (isVisible) {
+      setTimeout(() => {
+        setIsInternalVisible(true);
+        if (initialTasks.length > 0) {
+          setTasks(initialTasks);
+        }
+        setStep("queue");
+        setVisibleStep("queue");
+        setAtomizationData([]);
+        setCurrentCarouselIndex(0);
+        setAnimationState("visible");
+        setIsInitialCarouselRender(true);
+      }, 0);
+    } else {
+      setIsInternalVisible(false);
     }
   }, [isVisible, initialTasks]);
+
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsInternalVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 150);
+  };
+
+  const transitionToStep = (newStep: typeof step) => {
+    setAnimationState("exiting");
+
+    setTimeout(() => {
+      setVisibleStep(newStep);
+      setStep(newStep);
+      setAnimationState("entering");
+
+      setTimeout(() => {
+        setAnimationState("visible");
+      }, 50);
+    }, 300);
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
-      } else if (step === "carousel") {
+        handleClose();
+      } else if (step === "carousel" && animationState === "visible") {
         if (
           event.key === "ArrowRight" &&
           currentCarouselIndex < atomizationData.length - 1
         ) {
-          setCurrentCarouselIndex((prev) => prev + 1);
+          setDirection("right");
+          setAnimationState("exiting");
+
+          setTimeout(() => {
+            setCurrentCarouselIndex((prev) => prev + 1);
+            setAnimationState("entering");
+
+            setTimeout(() => {
+              setAnimationState("visible");
+            }, 50);
+          }, 300);
         } else if (event.key === "ArrowLeft" && currentCarouselIndex > 0) {
-          setCurrentCarouselIndex((prev) => prev - 1);
+          setDirection("left");
+          setAnimationState("exiting");
+
+          setTimeout(() => {
+            setCurrentCarouselIndex((prev) => prev - 1);
+            setAnimationState("entering");
+
+            setTimeout(() => {
+              setAnimationState("visible");
+            }, 50);
+          }, 300);
         }
       }
     };
@@ -534,19 +687,28 @@ export function AtomizeModal({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [step, onClose, currentCarouselIndex, atomizationData.length]);
+  }, [
+    step,
+    handleClose,
+    currentCarouselIndex,
+    atomizationData.length,
+    animationState,
+  ]);
 
   const removeTask = (id: number) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+    console.log("Removing task", id);
+    const newTasks = tasks.filter((task) => task.id !== id);
+    setTasks(newTasks);
+    if (newTasks.length === 0) {
+      handleClose();
+    }
   };
 
   const startAtomize = () => {
-    setStep("loading");
+    transitionToStep("loading");
 
-    // Simulate fetching from LLM
     setTimeout(() => {
       const generatedData = tasks.map((task) => {
-        // Find matching sample or create a default one
         const sampleMatch = SAMPLE_GENERATED_TASKS.find(
           (sample) =>
             sample.original.title
@@ -567,15 +729,14 @@ export function AtomizeModal({
           };
         }
 
-        // Create default generated tasks if no sample match
         return {
           original: task,
           generated: [
             {
               id: task.id * 100 + 1,
-              title: `${task.title} - Planning phase`,
+              title: `${task.title} - Fase de planificación`,
               tag: task.tag,
-              status: "To Do",
+              status: "Por Hacer",
               startDate: task.startDate,
               endDate: task.endDate,
               creatorName: task.creatorName,
@@ -583,9 +744,9 @@ export function AtomizeModal({
             },
             {
               id: task.id * 100 + 2,
-              title: `${task.title} - Implementation phase`,
+              title: `${task.title} - Fase de implementación`,
               tag: task.tag,
-              status: "To Do",
+              status: "Por Hacer",
               startDate: task.startDate,
               endDate: task.endDate,
               creatorName: task.creatorName,
@@ -593,9 +754,9 @@ export function AtomizeModal({
             },
             {
               id: task.id * 100 + 3,
-              title: `${task.title} - Testing phase`,
+              title: `${task.title} - Fase de pruebas`,
               tag: task.tag,
-              status: "To Do",
+              status: "Por Hacer",
               startDate: task.startDate,
               endDate: task.endDate,
               creatorName: task.creatorName,
@@ -607,78 +768,113 @@ export function AtomizeModal({
 
       setAtomizationData(generatedData);
       setCurrentCarouselIndex(0);
-      setStep("carousel");
-    }, 500);
+      setIsInitialCarouselRender(true);
+      transitionToStep("carousel");
+    }, 1500);
   };
 
   const handleReatomize = () => {
-    setStep("loading");
+    transitionToStep("loading");
 
-    // Simulate re-fetching from LLM with slight delay
     setTimeout(() => {
-      setStep("carousel");
+      transitionToStep("carousel");
     }, 1500);
   };
 
   const handleNextItem = () => {
     if (currentCarouselIndex < atomizationData.length - 1) {
-      setCurrentCarouselIndex((prev) => prev + 1);
+      setDirection("right");
+      setIsInitialCarouselRender(false);
+      setAnimationState("exiting");
+
+      setTimeout(() => {
+        setCurrentCarouselIndex((prev) => prev + 1);
+        setAnimationState("entering");
+
+        setTimeout(() => {
+          setAnimationState("visible");
+        }, 50);
+      }, 150);
     } else {
-      setStep("summary");
+      transitionToStep("summary");
     }
   };
 
   const handlePrevItem = () => {
     if (currentCarouselIndex > 0) {
-      setCurrentCarouselIndex((prev) => prev - 1);
+      setDirection("left");
+      setIsInitialCarouselRender(false);
+      setAnimationState("exiting");
+
+      setTimeout(() => {
+        setCurrentCarouselIndex((prev) => prev - 1);
+        setAnimationState("entering");
+
+        setTimeout(() => {
+          setAnimationState("visible");
+        }, 50);
+      }, 150);
     }
   };
 
   const handleBackToCarousel = () => {
-    setStep("carousel");
+    setDirection("left");
+    transitionToStep("carousel");
     setCurrentCarouselIndex(atomizationData.length - 1);
   };
 
   const handleAcceptChanges = () => {
-    // This would normally save the changes via API
+    setAnimationState("exiting");
     console.log("Accepting changes:", atomizationData);
-    onClose();
+    setTimeout(() => {
+      handleClose();
+    }, 300);
   };
 
   const renderStepContent = () => {
-    switch (step) {
+    switch (visibleStep) {
       case "queue":
         return (
           <QueueView
             tasks={tasks}
             removeTask={removeTask}
             startAtomize={startAtomize}
+            animationState={animationState}
           />
         );
       case "loading":
-        return <LoadingView />;
+        return <LoadingView animationState={animationState} />;
       case "carousel":
         return atomizationData.length > 0 ? (
           <div className="flex h-full flex-col">
             <TaskAtomizationGroup
+              key={currentCarouselIndex}
               item={atomizationData[currentCarouselIndex]}
               onReatomize={handleReatomize}
               onAccept={handleNextItem}
+              animationState={animationState}
+              direction={direction}
+              isInitialRender={isInitialCarouselRender}
             />
             <div className="border-oc-outline-light flex items-center justify-center border-t p-4">
               <div className="flex items-center">
                 <Button
                   onClick={handlePrevItem}
-                  disabled={currentCarouselIndex === 0}
+                  disabled={
+                    currentCarouselIndex === 0 || animationState !== "visible"
+                  }
                   className="bg-oc-neutral text-oc-text-gray hover:bg-oc-neutral-light mr-2 flex h-8 w-8 items-center justify-center rounded disabled:opacity-50"
                 >
                   <i className="fa fa-chevron-left"></i>
                 </Button>
                 <span className="text-oc-text-gray mx-2 w-32 text-center">
-                  {currentCarouselIndex + 1} / {atomizationData.length}
+                  <span className="animate-fadeIn">
+                    {currentCarouselIndex + 1} / {atomizationData.length}
+                  </span>
                 </span>
                 <Button
                   onClick={handleNextItem}
+                  disabled={animationState !== "visible"}
                   className="bg-oc-neutral text-oc-text-gray hover:bg-oc-neutral-light ml-2 flex h-8 w-8 items-center justify-center rounded"
                 >
                   <i className="fa fa-chevron-right"></i>
@@ -692,8 +888,9 @@ export function AtomizeModal({
           <SummaryView
             atomizationData={atomizationData}
             onAccept={handleAcceptChanges}
-            onCancel={onClose}
+            onCancel={handleClose}
             onBack={handleBackToCarousel}
+            animationState={animationState}
           />
         );
       default:
@@ -704,29 +901,29 @@ export function AtomizeModal({
   const getModalTitle = () => {
     switch (step) {
       case "queue":
-        return "Select Tasks to Atomize";
+        return "Seleccionar Tareas para Atomizar";
       case "loading":
-        return "Atomizing Tasks";
+        return "Atomizando Tareas";
       case "carousel":
-        return "Review Generated Subtasks";
+        return "Revisar Subtareas Generadas";
       case "summary":
-        return "Task Atomization Summary";
+        return "Resumen de Atomización de Tareas";
       default:
-        return "Atomize Tasks";
+        return "Atomizar Tareas";
     }
   };
 
   return (
     <Modal
-      className="bg-oc-dark-gray-accent h-[80vh] w-[70vw]"
-      isVisible={isVisible}
-      onClose={onClose}
-      handleClose={onClose}
+      className="bg-oc-dark-gray-accent h-[800px] w-[900px]"
+      isVisible={isInternalVisible}
+      onClose={handleClose}
+      handleClose={handleClose}
     >
       <div className="flex h-full w-full flex-col overflow-hidden">
         <div className="border-oc-outline-light/60 bg-oc-dark-gray-accent sticky top-0 border-b p-4">
-          <h2 className="text-xl font-semibold text-white">
-            {getModalTitle()}
+          <h2 className="text-xl font-semibold text-white transition-all duration-300">
+            Atomizar Tareas
           </h2>
         </div>
 
@@ -735,3 +932,37 @@ export function AtomizeModal({
     </Modal>
   );
 }
+
+// Add these animations to your global CSS or a style tag in your app
+// tailwind.config.js should include these custom animations
+// These can be added to your existing Tailwind config
+/*
+module.exports = {
+  // ...other config
+  theme: {
+    extend: {
+      animation: {
+        'fadeIn': 'fadeIn 0.5s ease-out forwards',
+        'slideInRight': 'slideInRight 0.5s ease-out forwards',
+        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'dash': 'dash 1.5s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideInRight: {
+          '0%': { transform: 'translateX(100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        dash: {
+          '0%': { strokeDashoffset: '100' },
+          '50%': { strokeDashoffset: '50' },
+          '100%': { strokeDashoffset: '100' },
+        },
+      },
+    },
+  },
+}
+*/

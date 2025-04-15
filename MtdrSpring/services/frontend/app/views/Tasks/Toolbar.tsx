@@ -20,6 +20,7 @@ interface ToolbarProps {
   setViewMode: (mode: "table" | "kanban") => void;
   selectedTasks: number[];
   handleDeleteTasks: () => void;
+  handleDeselectAll: () => void;
   handleAtomizeTasks?: () => void;
   isLoadingTasks: boolean;
   teams?: any[];
@@ -42,11 +43,13 @@ export function Toolbar({
   setViewMode,
   selectedTasks,
   handleDeleteTasks,
+  handleDeselectAll,
   handleAtomizeTasks,
   isLoadingTasks,
   teams = [],
 }: ToolbarProps) {
   const currentUser = useTaskStore((state) => state.currentUser);
+
   return (
     <div className="flex items-center justify-between py-4">
       <div className="flex flex-row items-center gap-2">
@@ -122,26 +125,40 @@ export function Toolbar({
             />
           )}
 
-          {selectedTasks.length > 0 && (
-            <div className="flex gap-2">
-              {handleAtomizeTasks && (
-                <button
-                  onClick={handleAtomizeTasks}
-                  className="flex items-center rounded-lg border border-sky-400 px-4 py-2 text-sm text-sky-400 transition-colors hover:bg-sky-900/50"
-                >
-                  <i className="fa fa-sparkles mr-2"></i>
-                  <span>Atomize ({selectedTasks.length})</span>
-                </button>
-              )}
+          <div
+            className="flex gap-2"
+            style={{
+              opacity: selectedTasks.length > 0 ? 1 : 0,
+              visibility: selectedTasks.length > 0 ? "visible" : "hidden",
+              transition:
+                "opacity 0.1s ease-in-out, visibility 0.1s ease-in-out",
+              position: "relative",
+            }}
+          >
+            {handleAtomizeTasks && (
               <button
-                onClick={handleDeleteTasks}
-                className="flex items-center rounded-lg border border-red-400 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-900/50"
+                onClick={handleAtomizeTasks}
+                className="flex w-[150px] flex-row items-center justify-center rounded-lg border border-sky-400 px-4 py-2 text-sm text-sky-400 transition-colors hover:bg-sky-900/50"
               >
-                <i className="fa fa-trash mr-2"></i>
-                <span>Eliminar ({selectedTasks.length})</span>
+                <i className="fa fa-sparkles mr-2"></i>
+                <span>Atomizar ({selectedTasks.length})</span>
               </button>
-            </div>
-          )}
+            )}
+            <button
+              onClick={handleDeleteTasks}
+              className="flex w-[150px] flex-row items-center justify-center rounded-lg border border-red-400 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-900/50"
+            >
+              <i className="fa fa-trash mr-2"></i>
+              <span>Eliminar ({selectedTasks.length})</span>
+            </button>
+            <button
+              onClick={handleDeselectAll}
+              className="flex items-center rounded-lg border border-amber-400 px-4 py-2 text-sm text-amber-400 transition-colors hover:bg-amber-900/50"
+            >
+              <i className="fa fa-times-circle mr-2"></i>
+              <span>Ninguno</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

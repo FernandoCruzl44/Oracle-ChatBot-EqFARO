@@ -12,6 +12,7 @@ import { Table } from "./Table";
 import { Pagination } from "./Pagination";
 import type { Task, Sprint } from "~/types";
 import { AtomizeModal } from "~/components/Modals/Atomize/AtomizeModal";
+import ConfirmDeleteModal from "~/components/Modals/Task/ConfirmDeleteModal";
 
 export default function TaskView() {
   const {
@@ -55,6 +56,8 @@ export default function TaskView() {
   );
   const [initialSprintSelectionDone, setInitialSprintSelectionDone] =
     useState<boolean>(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [tasksToDelete, setTasksToDelete] = useState<number[]>([]);
 
   const tasksPerPage = 30;
 
@@ -234,6 +237,10 @@ export default function TaskView() {
     );
   };
 
+  const handleDeselectAll = () => {
+    setSelectedTasks([]);
+  };
+
   const handleTaskClick = (task: Task) => {
     selectTask(task.id);
   };
@@ -257,9 +264,21 @@ export default function TaskView() {
   const handleDeleteTasks = () => {
     if (selectedTasks.length === 0) return;
 
-    console.log("Deleting tasks:", selectedTasks);
-    deleteTasks(selectedTasks);
+    setTasksToDelete(selectedTasks);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteTasks = () => {
+    console.log("Deleting tasks:", tasksToDelete);
+    deleteTasks(tasksToDelete);
     setSelectedTasks([]);
+    setIsDeleteConfirmOpen(false);
+    setTasksToDelete([]);
+  };
+
+  const cancelDeleteTasks = () => {
+    setIsDeleteConfirmOpen(false);
+    setTasksToDelete([]);
   };
 
   const handleAtomizeTasks = () => {
@@ -369,6 +388,7 @@ export default function TaskView() {
           isLoadingSprints={isLoadingSprints}
           selectedTasks={selectedTasks}
           handleDeleteTasks={handleDeleteTasks}
+          handleDeselectAll={handleDeselectAll}
           handleAtomizeTasks={handleAtomizeTasks}
           isLoadingTasks={isLoadingTasks}
           viewMode={viewMode}
@@ -463,6 +483,15 @@ export default function TaskView() {
           isVisible={isAtomizeModalOpen}
           initialTasks={tasksToAtomize}
         ></AtomizeModal>
+      )}
+
+      {isDeleteConfirmOpen && (
+        <ConfirmDeleteModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={cancelDeleteTasks}
+          onConfirm={confirmDeleteTasks}
+          tasksCount={tasksToDelete.length}
+        />
       )}
     </div>
   );
