@@ -8,6 +8,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.User;
@@ -102,6 +103,17 @@ public interface TaskRepository {
 
         @SqlUpdate("DELETE FROM tasks WHERE id IN (<taskIds>)")
         int deleteMultiple(@BindList("taskIds") List<Long> taskIds);
+
+        @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
+                        "FROM tasks t " +
+                        "LEFT JOIN users u ON t.created_by_id = u.id " +
+                        "LEFT JOIN teams tm ON t.team_id = tm.id " +
+                        "WHERE t.id IN (<ids>)")
+        @UseRowMapper(TaskMapper.class)
+        List<Task> findByIds(@BindList("ids") List<Long> ids);
+
+        @SqlUpdate("UPDATE tasks SET sprint_id = :sprintId WHERE id IN (<taskIds>)")
+        int bulkUpdateSprintId(@BindList("taskIds") List<Long> taskIds, @Bind("sprintId") Long sprintId);
 
         class TaskMapper implements RowMapper<Task> {
 

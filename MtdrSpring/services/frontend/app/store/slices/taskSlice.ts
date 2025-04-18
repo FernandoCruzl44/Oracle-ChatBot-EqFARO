@@ -25,6 +25,11 @@ export interface TaskSlice extends StoreState {
     taskData: Partial<Task>,
   ) => Promise<void>;
   selectTask: (taskId: number | null) => void;
+
+  migrateTasksToSprint: (
+    targetSprintId: number,
+    taskIds: number[],
+  ) => Promise<void>;
 }
 
 // Helper function to map frontend Task to backend JSON payload
@@ -279,28 +284,22 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   updateTask: async (taskId, taskData) => {
-    // Prepare data for backend, mapping names
-    const backendTaskData = mapTaskToBackend(taskData);
+    const { currentUser } = get();
+    if (!currentUser) throw new Error("Usuario no autenticado");
+
+    const backendData = mapTaskToBackend(taskData);
 
     try {
-      const updatedBackendTask = await api.put(
-        `/tasks/${taskId}`,
-        backendTaskData,
-      );
-      // Map response back to frontend Task structure
+      const updatedBackendTask = await api.put(`/tasks/${taskId}`, backendData);
       const updatedTask = mapBackendToTask(updatedBackendTask);
-
       set((state) => ({
         tasks: state.tasks.map((task) =>
-          task.id === taskId
-            ? { ...task, ...updatedTask } // Overwrite existing task with FULL updated task from response
-            : task,
+          task.id === taskId ? { ...task, ...updatedTask } : task,
         ),
       }));
-
-      return updatedTask; // Return the mapped task
+      return updatedTask;
     } catch (error) {
-      console.error("Error updating task:", error);
+      console.error(`Error updating task ${taskId}:`, error);
       set({
         error:
           error instanceof Error
@@ -314,12 +313,11 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   deleteTask: async (taskId) => {
     try {
       await api.delete(`/tasks/${taskId}`);
-
-      set((state: { tasks: Task[] }) => ({
-        tasks: state.tasks.filter((task: Task) => task.id !== taskId),
+      set((state) => ({
+        tasks: state.tasks.filter((task) => task.id !== taskId),
       }));
     } catch (error) {
-      console.error("Error deleting task:", error);
+      console.error(`Error deleting task ${taskId}:`, error);
       set({
         error:
           error instanceof Error ? error.message : "Error al eliminar la tarea",
@@ -330,11 +328,9 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
   deleteTasks: async (taskIds) => {
     try {
-      // Use the deleteMultiple method which sends the IDs in the request body
-      await api.deleteMultiple("/tasks", taskIds);
-
-      set((state: { tasks: Task[] }) => ({
-        tasks: state.tasks.filter((task: Task) => !taskIds.includes(task.id)),
+      await api.post("/tasks/delete-multiple", taskIds);
+      set((state) => ({
+        tasks: state.tasks.filter((task) => !taskIds.includes(task.id)),
       }));
     } catch (error) {
       console.error("Error deleting tasks:", error);
@@ -350,17 +346,27 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
   updateTaskStatus: async (taskId, status, taskData) => {
     try {
-      const payload = mapTaskToBackend({
-        ...taskData,
-        status,
-      });
+      // Add the current date as endDate when task is marked as completed
+      let updatedTaskData = { ...taskData, status };
 
-      if (status === "Completada") {
-        payload.endDate = new Date().toISOString().slice(0, 10);
+      if (status === "Completada" && !updatedTaskData.endDate) {
+        // Set endDate to current date in local timezone when task is completed
+        const now = new Date();
+        const localDate = new Date(
+          now.getTime() - now.getTimezoneOffset() * 60000,
+        )
+          .toISOString()
+          .split("T")[0];
+        updatedTaskData.endDate = localDate;
+      } else if (status !== "Completada") {
+        // Optionally clear endDate if setting back to an incomplete status
+        // Uncomment this if you want to clear the end date when a task is moved back to an incomplete status
+        // updatedTaskData.endDate = null;
       }
 
-      const updatedBackendTask = await api.put(`/tasks/${taskId}`, payload);
-      console.log("Updated Backend Task:", updatedBackendTask);
+      // Map to backend format
+      const backendData = mapTaskToBackend(updatedTaskData);
+      const updatedBackendTask = await api.put(`/tasks/${taskId}`, backendData);
       const updatedTask = mapBackendToTask(updatedBackendTask);
 
       set((state) => ({
@@ -369,7 +375,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         ),
       }));
     } catch (error) {
-      console.error("Error updating task status:", error);
+      console.error(`Error updating status for task ${taskId}:`, error);
       set({
         error:
           error instanceof Error
@@ -382,5 +388,32 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
 
   selectTask: (taskId) => {
     set({ selectedTaskId: taskId });
+  },
+
+  migrateTasksToSprint: async (targetSprintId, taskIds) => {
+    set({ error: null }); // Clear previous errors
+    try {
+      // Backend expects 'targetSprintId' and 'taskIds'
+      const payload = {
+        targetSprintId,
+        taskIds,
+      };
+      await api.post("/tasks/migrate-sprint", payload);
+
+      // Update local state
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          taskIds.includes(task.id)
+            ? { ...task, sprintId: targetSprintId } // Update sprintId for migrated tasks
+            : task,
+        ),
+      }));
+    } catch (error) {
+      console.error("Error migrating tasks:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Error al migrar las tareas";
+      set({ error: errorMessage });
+      throw new Error(errorMessage); // Re-throw for the component to catch
+    }
   },
 });

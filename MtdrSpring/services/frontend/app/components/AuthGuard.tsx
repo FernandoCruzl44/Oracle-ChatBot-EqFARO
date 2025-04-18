@@ -1,41 +1,60 @@
 // app/components/AuthGuard.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import useTaskStore from "~/store";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, checkAuth } = useTaskStore();
-  const [isChecking, setIsChecking] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const initialCheckCompleted = useRef(false);
 
   useEffect(() => {
-    async function verifyAuth() {
-      setIsChecking(true);
-      const isAuth = await checkAuth();
+    let isMounted = true;
 
-      if (
-        !isAuth &&
-        !location.pathname.startsWith("/login") &&
-        !location.pathname.startsWith("/register")
-      ) {
-        // Redirect to login if not authenticated and not already on login page
-        navigate(`/login?returnUrl=${encodeURIComponent(location.pathname)}`);
-      } else if (
-        isAuth &&
-        (location.pathname.startsWith("/login") ||
-          location.pathname.startsWith("/register"))
-      ) {
-        navigate("/");
+    async function performInitialCheck() {
+      if (!initialCheckCompleted.current) {
+        try {
+          await checkAuth();
+        } finally {
+          if (isMounted) {
+            initialCheckCompleted.current = true;
+            setIsVerifying(false);
+          }
+        }
+      } else {
+        if (isMounted) {
+          setIsVerifying(false);
+        }
       }
-
-      setIsChecking(false);
     }
 
-    verifyAuth();
-  }, [location.pathname, checkAuth, navigate, isAuthenticated]);
+    performInitialCheck();
 
-  if (isChecking) {
+    return () => {
+      isMounted = false;
+    };
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (!initialCheckCompleted.current || isVerifying) {
+      return;
+    }
+
+    const isAuth = isAuthenticated;
+    const currentPath = location.pathname;
+    const isPublicRoute =
+      currentPath.startsWith("/login") || currentPath.startsWith("/register");
+
+    if (!isAuth && !isPublicRoute) {
+      navigate(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+    } else if (isAuth && isPublicRoute) {
+      navigate("/");
+    }
+  }, [isAuthenticated, location.pathname, navigate, isVerifying]);
+
+  if (isVerifying) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#181614]">
         <div className="text-center">
@@ -45,14 +64,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For login/register routes, we just render children
-  if (
-    location.pathname.startsWith("/login") ||
-    location.pathname.startsWith("/register")
-  ) {
+  const currentPath = location.pathname;
+  const isPublicRoute =
+    currentPath.startsWith("/login") || currentPath.startsWith("/register");
+
+  if (isPublicRoute) {
     return <>{children}</>;
   }
 
-  // For protected routes, we only render if authenticated
   return isAuthenticated ? <>{children}</> : null;
 }

@@ -4,6 +4,9 @@ import { Modal } from "~/components/Modal";
 import { TaskCard } from "~/views/Tasks/TaskCard";
 import { Button } from "../../Button";
 
+// Add import for the new TaskDetailModal
+import { TaskDetailModal } from "./TaskDetailModal";
+
 interface AtomizationItem {
   original: Task;
   generated: Task[];
@@ -111,11 +114,13 @@ function QueueView({
   removeTask,
   startAtomize,
   animationState,
+  onTaskClick,
 }: {
   tasks: Task[];
   removeTask: (id: number) => void;
   startAtomize: () => void;
   animationState: "entering" | "visible" | "exiting";
+  onTaskClick: (task: Task) => void;
 }) {
   return (
     <div
@@ -155,7 +160,7 @@ function QueueView({
               >
                 <TaskCard
                   task={task}
-                  onClick={() => {}}
+                  onClick={() => onTaskClick(task)}
                   onSelect={() => {}}
                   isSelected={false}
                   showAssignees={true}
@@ -163,7 +168,10 @@ function QueueView({
                   hideSelect={true}
                 />
                 <Button
-                  onClick={() => removeTask(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTask(task.id);
+                  }}
                   className="absolute top-2 right-2 flex h-6 max-w-6 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-red-600"
                 >
                   <i className="fa fa-times text-xs"></i>
@@ -240,6 +248,7 @@ function TaskAtomizationGroup({
   animationState,
   direction,
   isInitialRender,
+  onTaskClick,
 }: {
   item: AtomizationItem;
   onReatomize: () => void;
@@ -247,6 +256,7 @@ function TaskAtomizationGroup({
   animationState: "entering" | "visible" | "exiting";
   direction: "left" | "right";
   isInitialRender: boolean;
+  onTaskClick: (task: Task) => void;
 }) {
   const originalTaskRef = useRef<HTMLDivElement>(null);
   const generatedTaskRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -404,7 +414,7 @@ function TaskAtomizationGroup({
             <div className="animate-fadeIn w-[350px]" ref={originalTaskRef}>
               <TaskCard
                 task={item.original}
-                onClick={() => {}}
+                onClick={() => onTaskClick(item.original)}
                 onSelect={() => {}}
                 isSelected={false}
                 showAssignees={true}
@@ -433,7 +443,7 @@ function TaskAtomizationGroup({
                   >
                     <TaskCard
                       task={genTask}
-                      onClick={() => {}}
+                      onClick={() => onTaskClick(genTask)}
                       onSelect={() => {}}
                       isSelected={false}
                       showAssignees={true}
@@ -472,12 +482,14 @@ function SummaryView({
   onCancel,
   onBack,
   animationState,
+  onTaskClick,
 }: {
   atomizationData: AtomizationItem[];
   onAccept: () => void;
   onCancel: () => void;
   onBack: () => void;
   animationState: "entering" | "visible" | "exiting";
+  onTaskClick: (task: Task) => void;
 }) {
   const totalOriginalTasks = atomizationData.length;
   const totalGeneratedTasks = atomizationData.reduce(
@@ -522,7 +534,7 @@ function SummaryView({
                 >
                   <TaskCard
                     task={item.original}
-                    onClick={() => {}}
+                    onClick={() => onTaskClick(item.original)}
                     onSelect={() => {}}
                     isSelected={false}
                     showAssignees={true}
@@ -550,7 +562,7 @@ function SummaryView({
                   >
                     <TaskCard
                       task={genTask}
-                      onClick={() => {}}
+                      onClick={() => onTaskClick(genTask)}
                       onSelect={() => {}}
                       isSelected={false}
                       showAssignees={true}
@@ -606,6 +618,10 @@ export function AtomizeModal({
   const [visibleStep, setVisibleStep] = useState<typeof step>("queue");
   const [isInitialCarouselRender, setIsInitialCarouselRender] = useState(true);
 
+  // Add state for the selected task to view details
+  const [selectedTaskForDetail, setSelectedTaskForDetail] =
+    useState<Task | null>(null);
+
   useEffect(() => {
     if (isVisible) {
       setTimeout(() => {
@@ -619,6 +635,7 @@ export function AtomizeModal({
         setCurrentCarouselIndex(0);
         setAnimationState("visible");
         setIsInitialCarouselRender(true);
+        setSelectedTaskForDetail(null);
       }, 0);
     } else {
       setIsInternalVisible(false);
@@ -626,7 +643,10 @@ export function AtomizeModal({
   }, [isVisible, initialTasks]);
 
   const handleClose = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+    if (e && selectedTaskForDetail) {
+      e.stopPropagation();
+      return;
+    }
     setIsInternalVisible(false);
     setTimeout(() => {
       onClose();
@@ -649,6 +669,10 @@ export function AtomizeModal({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (selectedTaskForDetail) {
+        return;
+      }
+
       if (event.key === "Escape") {
         handleClose();
       } else if (step === "carousel" && animationState === "visible") {
@@ -693,6 +717,7 @@ export function AtomizeModal({
     currentCarouselIndex,
     atomizationData.length,
     animationState,
+    selectedTaskForDetail,
   ]);
 
   const removeTask = (id: number) => {
@@ -831,6 +856,14 @@ export function AtomizeModal({
     }, 300);
   };
 
+  const handleTaskClick = (task: Task) => {
+    setSelectedTaskForDetail(task);
+  };
+
+  const handleTaskDetailClose = () => {
+    setSelectedTaskForDetail(null);
+  };
+
   const renderStepContent = () => {
     switch (visibleStep) {
       case "queue":
@@ -840,6 +873,7 @@ export function AtomizeModal({
             removeTask={removeTask}
             startAtomize={startAtomize}
             animationState={animationState}
+            onTaskClick={handleTaskClick}
           />
         );
       case "loading":
@@ -855,6 +889,7 @@ export function AtomizeModal({
               animationState={animationState}
               direction={direction}
               isInitialRender={isInitialCarouselRender}
+              onTaskClick={handleTaskClick}
             />
             <div className="border-oc-outline-light flex items-center justify-center border-t p-4">
               <div className="flex items-center">
@@ -867,7 +902,7 @@ export function AtomizeModal({
                 >
                   <i className="fa fa-chevron-left"></i>
                 </Button>
-                <span className="text-oc-text-gray mx-2 w-32 text-center">
+                <span className="text-oc-text-gray mx-2 w-[200px] text-center">
                   <span className="animate-fadeIn">
                     {currentCarouselIndex + 1} / {atomizationData.length}
                   </span>
@@ -891,6 +926,7 @@ export function AtomizeModal({
             onCancel={handleClose}
             onBack={handleBackToCarousel}
             animationState={animationState}
+            onTaskClick={handleTaskClick}
           />
         );
       default:
@@ -919,16 +955,25 @@ export function AtomizeModal({
       isVisible={isInternalVisible}
       onClose={handleClose}
       handleClose={handleClose}
+      isOverlayInteractive={!selectedTaskForDetail}
     >
       <div className="flex h-full w-full flex-col overflow-hidden">
         <div className="border-oc-outline-light/60 bg-oc-dark-gray-accent sticky top-0 border-b p-4">
           <h2 className="text-xl font-semibold text-white transition-all duration-300">
-            Atomizar Tareas
+            {getModalTitle()}
           </h2>
         </div>
 
         <div className="flex-1 overflow-hidden">{renderStepContent()}</div>
       </div>
+
+      {/* Add TaskDetailModal */}
+      {selectedTaskForDetail && (
+        <TaskDetailModal
+          task={selectedTaskForDetail}
+          onClose={handleTaskDetailClose}
+        />
+      )}
     </Modal>
   );
 }

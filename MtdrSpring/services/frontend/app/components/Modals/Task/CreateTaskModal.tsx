@@ -67,10 +67,26 @@ export default function CreateTaskModal({
       fetchUsers();
     }
 
-    if (currentUser?.teamId) {
+    if (currentUser?.teamId && !teamId) {
       setTeamId(currentUser.teamId);
     }
-  }, [currentUser, fetchUsers, users.length]);
+  }, [currentUser, fetchUsers, users.length, teamId]);
+
+  useEffect(() => {
+    if (teamId) {
+      const currentTeamSprints = getSprintsByTeam(teamId);
+      if (currentTeamSprints && currentTeamSprints.length > 0) {
+        const sortedSprints = [...currentTeamSprints].sort(
+          (a, b) => b.id - a.id,
+        );
+        setSprintId(sortedSprints[0].id);
+      } else {
+        setSprintId(null);
+      }
+    } else {
+      setSprintId(null);
+    }
+  }, [teamId, getSprintsByTeam, sprints]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -274,6 +290,7 @@ export default function CreateTaskModal({
                             label: sprint.name,
                           })),
                         ]}
+                        disabled={!teamId}
                       />
                     </FormField>
                   </div>

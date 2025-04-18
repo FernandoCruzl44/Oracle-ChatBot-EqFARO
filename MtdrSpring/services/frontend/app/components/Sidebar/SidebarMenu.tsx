@@ -6,13 +6,13 @@ export default function SidebarMenu({ isExpanded = true }) {
 
   const menuItems = [
     { path: "/", icon: "list-ul", label: "Tareas", disabled: false },
-    { path: "/team", icon: "users", label: "Mi Equipo", disabled: true },
     {
       path: "/productivity",
       icon: "line-chart",
       label: "Productividad",
-      disabled: true,
+      disabled: false,
     },
+    { path: "/team", icon: "users", label: "Mi Equipo", disabled: true },
   ];
 
   return (

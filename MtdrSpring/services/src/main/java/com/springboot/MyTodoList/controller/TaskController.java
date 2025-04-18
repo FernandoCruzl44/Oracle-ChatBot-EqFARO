@@ -3,9 +3,12 @@ package com.springboot.MyTodoList.controller;
 import com.springboot.MyTodoList.IdentityUtil;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.User;
+import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.repository.TaskRepository;
 import com.springboot.MyTodoList.repository.UserRepository;
+import com.springboot.MyTodoList.repository.SprintRepository;
 import java.util.*;
+import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.http.ResponseEntity;
@@ -422,7 +425,7 @@ public class TaskController {
         });
     }
 
-    @DeleteMapping
+    @PostMapping("/delete-multiple")
     @Transactional
     public ResponseEntity<?> deleteMultipleTasks(
             @RequestBody List<Long> taskIds,
@@ -620,6 +623,116 @@ public class TaskController {
                 return ResponseEntity.status(500).body(
                         Map.of("message", "Error retrieving updated task"));
             }
+        });
+    }
+
+    @PostMapping("/migrate-sprint")
+    @Transactional
+    public ResponseEntity<?> migrateTaskSprint(
+            @RequestBody Map<String, Object> request,
+            HttpServletRequest httpRequest) {
+        Long currentUserId = identityUtil.getCurrentUserId(httpRequest);
+        if (currentUserId == null) {
+            return ResponseEntity.status(401).body(
+                    Map.of("message", "Unauthorized"));
+        }
+
+        // --- Extract data from the Map ---
+        Long extractedTargetSprintId = null;
+        List<Long> extractedTaskIds = null;
+
+        if (request.containsKey("targetSprintId") && request.get("targetSprintId") != null) {
+            try {
+                extractedTargetSprintId = Long.valueOf(request.get("targetSprintId").toString());
+            } catch (NumberFormatException e) {
+                 return ResponseEntity.badRequest().body(Map.of("message", "Invalid targetSprintId format"));
+            }
+        } else {
+             return ResponseEntity.badRequest().body(Map.of("message", "Target sprint ID is required."));
+        }
+
+        if (request.containsKey("taskIds") && request.get("taskIds") != null) {
+             try {
+                 @SuppressWarnings("unchecked")
+                 List<?> rawIds = (List<?>) request.get("taskIds");
+                 extractedTaskIds = rawIds.stream()
+                                .map(obj -> Long.valueOf(obj.toString()))
+                                .collect(Collectors.toList());
+             } catch (ClassCastException | NumberFormatException e) {
+                 return ResponseEntity.badRequest().body(Map.of("message", "Invalid taskIds format"));
+             }
+        }
+
+        if (extractedTaskIds == null || extractedTaskIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("message", "Task IDs are required."));
+        }
+        // --- End of extraction ---
+
+        // Declare final variables before the lambda
+        final Long targetSprintId = extractedTargetSprintId;
+        final List<Long> taskIds = extractedTaskIds;
+        final Long finalCurrentUserId = currentUserId; // Also make currentUserId effectively final for lambda
+
+        return jdbi.inTransaction(handle -> {
+            TaskRepository taskRepo = handle.attach(TaskRepository.class);
+            SprintRepository sprintRepo = handle.attach(SprintRepository.class);
+            UserRepository userRepo = handle.attach(UserRepository.class);
+
+            Optional<Sprint> targetSprintOpt = sprintRepo.findById(targetSprintId); // Use final variable
+            if (!targetSprintOpt.isPresent()) {
+                return ResponseEntity.status(404).body(
+                        Map.of("message", "Target sprint not found."));
+            }
+            Sprint targetSprint = targetSprintOpt.get();
+
+            User currentUser = userRepo.findById(finalCurrentUserId) // Use final variable
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            boolean isManager = "manager".equals(currentUser.getRole());
+            boolean isTargetTeamMember = currentUser.getTeamId() != null &&
+                    targetSprint.getTeamId() != null &&
+                    currentUser.getTeamId().equals(targetSprint.getTeamId());
+
+            if (!isManager && !isTargetTeamMember) {
+                 return ResponseEntity.status(403).body(
+                        Map.of("message", "Forbidden: User cannot migrate tasks to this sprint's team."));
+            }
+
+            List<Task> tasksToMigrate = taskRepo.findByIds(taskIds); // Use final variable
+
+            if (tasksToMigrate.size() != taskIds.size()) {
+                 List<Long> foundIds = tasksToMigrate.stream().map(Task::getId).toList();
+                 // Use final variable taskIds here as well
+                 List<Long> notFoundIds = taskIds.stream().filter(id -> !foundIds.contains(id)).toList();
+                 System.out.println("Warning: Some tasks not found for migration: " + notFoundIds);
+            }
+
+            for (Task task : tasksToMigrate) {
+                boolean isTaskTeamMember = currentUser.getTeamId() != null &&
+                        task.getTeamId() != null &&
+                        currentUser.getTeamId().equals(task.getTeamId());
+
+                if (!isManager && !isTaskTeamMember) {
+                    boolean isAssigned = taskRepo.findAssigneesByTaskId(task.getId())
+                            .stream()
+                            .anyMatch(user -> user.getId().equals(finalCurrentUserId)); // Use final variable
+                    if (!isAssigned) {
+                        return ResponseEntity.status(403).body(
+                                Map.of("message", "Forbidden: User cannot modify task ID " + task.getId()));
+                    }
+                }
+            }
+
+            int updatedRows = taskRepo.bulkUpdateSprintId(taskIds, targetSprintId); // Use final variables
+
+            if (updatedRows != tasksToMigrate.size()) {
+                 System.err.println("Warning: Number of updated tasks (" + updatedRows +
+                                    ") does not match the number of tasks intended for migration (" +
+                                    tasksToMigrate.size() + ").");
+             }
+
+            return ResponseEntity.ok(Map.of("message", "Tasks successfully migrated.", "count", updatedRows));
         });
     }
 

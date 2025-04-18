@@ -8,6 +8,7 @@ public class Kpi {
     private Integer totalAssignedTasks;
     private BigDecimal completionRatePercent;
     private Double totalActualHours;
+    private Double totalEstimatedHours;
 
     // Getters y setters
     public String getMemberName() {
@@ -48,5 +49,13 @@ public class Kpi {
 
     public void setTotalActualHours(Double totalActualHours) {
         this.totalActualHours = totalActualHours;
+    }
+
+    public Double getTotalEstimatedHours() {
+        return totalEstimatedHours;
+    }
+
+    public void setTotalEstimatedHours(Double totalEstimatedHours) {
+        this.totalEstimatedHours = totalEstimatedHours;
     }
 }

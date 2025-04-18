@@ -7,6 +7,7 @@ import { createCommentSlice } from "./slices/commentSlice";
 import { createSprintSlice } from "./slices/sprintSlice";
 import { createPreferencesSlice } from "./slices/preferencesSlice";
 import { createAuthSlice } from "./slices/authSlice";
+import { createProductivitySlice } from "./slices/productivitySlice";
 import type { TaskStore } from "./types";
 
 const useTaskStore = create<TaskStore>((...args) => ({
@@ -17,6 +18,7 @@ const useTaskStore = create<TaskStore>((...args) => ({
   ...createSprintSlice(...args),
   ...createPreferencesSlice(...args),
   ...createAuthSlice(...args),
+  ...createProductivitySlice(...args),
 }));
 
 export default useTaskStore;

@@ -22,6 +22,7 @@ interface ToolbarProps {
   handleDeleteTasks: () => void;
   handleDeselectAll: () => void;
   handleAtomizeTasks?: () => void;
+  handleMigrateTasks?: () => void;
   isLoadingTasks: boolean;
   teams?: any[];
 }
@@ -45,6 +46,7 @@ export function Toolbar({
   handleDeleteTasks,
   handleDeselectAll,
   handleAtomizeTasks,
+  handleMigrateTasks,
   isLoadingTasks,
   teams = [],
 }: ToolbarProps) {
@@ -52,6 +54,7 @@ export function Toolbar({
 
   return (
     <div className="flex items-center justify-between py-4">
+      {/* Left Section */}
       <div className="flex flex-row items-center gap-2">
         <div className="relative w-72">
           <input
@@ -76,7 +79,7 @@ export function Toolbar({
         <div className="flex gap-2">
           <button
             onClick={handleAddTaskClick}
-            className={`bg-oc-primary border-oc-outline-light flex items-center rounded-lg border px-4 py-2 text-sm text-white hover:bg-black ${
+            className={`border-oc-outline-light bg-oc-primary flex items-center rounded-lg border px-4 py-2 text-sm text-white hover:bg-black ${
               isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
             }`}
             disabled={isLoadingTasks}
@@ -84,31 +87,6 @@ export function Toolbar({
             <i className="fa fa-plus mr-2"></i>
             <span>Agrega tarea</span>
           </button>
-
-          <div className="border-oc-outline-light flex overflow-hidden rounded-lg border">
-            <button
-              onClick={() => setViewMode("kanban")}
-              className={`flex items-center px-3 py-2 text-sm ${
-                viewMode === "kanban"
-                  ? "bg-stone-700 text-white"
-                  : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
-              }`}
-              title="Vista de kanban"
-            >
-              <i className="fa fa-columns"></i>
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={`flex items-center px-3 py-2 text-sm ${
-                viewMode === "table"
-                  ? "bg-stone-700 text-white"
-                  : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
-              }`}
-              title="Vista de tabla"
-            >
-              <i className="fa fa-table"></i>
-            </button>
-          </div>
 
           {showSprintSelector && (
             <SprintSelector
@@ -123,6 +101,19 @@ export function Toolbar({
               isLoading={isLoadingSprints}
               teams={teams}
             />
+          )}
+
+          {handleMigrateTasks && (
+            <button
+              onClick={handleMigrateTasks}
+              className={`border-oc-outline-light bg-oc-primary flex items-center rounded-lg border px-4 py-2 text-sm text-white hover:bg-black ${
+                isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
+              }`}
+              disabled={isLoadingTasks}
+            >
+              <i className="fa fa-arrow-right mr-2"></i>
+              <span>Migrar tareas</span>
+            </button>
           )}
 
           <div
@@ -159,6 +150,36 @@ export function Toolbar({
               <span>Ninguno</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Right Section */}
+      <div className="flex items-center gap-2">
+        <div className="border-oc-outline-light flex overflow-hidden rounded-lg border">
+          <button
+            onClick={() => setViewMode("kanban")}
+            className={`flex items-center px-3 py-2 text-sm ${
+              viewMode === "kanban"
+                ? "bg-stone-700 text-white"
+                : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
+            }`}
+            title="Vista de kanban"
+          >
+            <i className="fa fa-columns mr-2"></i>
+            <span>Kanban</span>
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            className={`flex items-center px-3 py-2 text-sm ${
+              viewMode === "table"
+                ? "bg-stone-700 text-white"
+                : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
+            }`}
+            title="Vista de tabla"
+          >
+            <i className="fa fa-table mr-2"></i>
+            <span>Tabla</span>
+          </button>
         </div>
       </div>
     </div>

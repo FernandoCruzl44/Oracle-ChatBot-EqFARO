@@ -3,6 +3,7 @@ import TaskModal from "~/components/Modals/Task/TaskModal";
 import CreateTaskModal from "~/components/Modals/Task/CreateTaskModal";
 import { SprintTransitionModal } from "~/components/Modals/Sprint/SprintTransitionModal";
 import { CreateSprintModal } from "~/components/Modals/Sprint/CreateSprintModal";
+import SprintMigrationModal from "~/components/Modals/Sprint/SprintMigrationModal";
 import useTaskStore from "~/store";
 import { Header } from "./Header";
 import { Toolbar } from "./Toolbar";
@@ -36,6 +37,7 @@ export default function TaskView() {
     completeSprint,
     isLoadingSprints,
     getSprintsByTeam,
+    getSprintById,
   } = useTaskStore();
 
   const enableLogs = false;
@@ -58,6 +60,8 @@ export default function TaskView() {
     useState<boolean>(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [tasksToDelete, setTasksToDelete] = useState<number[]>([]);
+  const [isSprintMigrationModalOpen, setIsSprintMigrationModalOpen] =
+    useState(false);
 
   const tasksPerPage = 30;
 
@@ -83,6 +87,9 @@ export default function TaskView() {
 
   const isManager = currentUser?.role === "manager";
   const selectedTask = selectedTaskId ? getTaskById(selectedTaskId) : null;
+  const selectedSprint = selectedSprintId
+    ? getSprintById(selectedSprintId)
+    : null;
 
   useEffect(() => {
     if (sprints.length > 0 && isManager) {
@@ -361,6 +368,19 @@ export default function TaskView() {
   const showSprintSelector = true;
   const showAssigneesColumn = isManager || activeTab === "team";
 
+  const handleMigrateTasks = () => {
+    if (selectedSprintId === null) {
+      alert("Por favor seleccione un sprint primero");
+      return;
+    }
+
+    setIsSprintMigrationModalOpen(true);
+  };
+
+  const handleCloseMigrationModal = () => {
+    setIsSprintMigrationModalOpen(false);
+  };
+
   return (
     <div
       className="h-full bg-[#181614] p-6 pb-0"
@@ -394,6 +414,7 @@ export default function TaskView() {
           viewMode={viewMode}
           setViewMode={setViewMode}
           teams={teams}
+          handleMigrateTasks={handleMigrateTasks}
         />
 
         <div className="bg-oc-primary border-oc-outline-light flex flex-1 flex-col overflow-hidden rounded-lg border text-sm">
@@ -491,6 +512,14 @@ export default function TaskView() {
           onClose={cancelDeleteTasks}
           onConfirm={confirmDeleteTasks}
           tasksCount={tasksToDelete.length}
+        />
+      )}
+
+      {isSprintMigrationModalOpen && selectedSprint && (
+        <SprintMigrationModal
+          currentSprint={selectedSprint}
+          onClose={handleCloseMigrationModal}
+          preSelectedTaskIds={selectedTasks}
         />
       )}
     </div>

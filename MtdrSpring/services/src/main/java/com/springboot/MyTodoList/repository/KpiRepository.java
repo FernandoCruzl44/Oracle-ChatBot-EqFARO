@@ -53,7 +53,8 @@ public interface KpiRepository {
     // KPI 2: Horas actuales por miembro
     @SqlQuery("SELECT " +
             "    u.NAME AS MEMBER_NAME, " +
-            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, " +
+            "    SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS " +
             "FROM " +
             "    TODOUSER.USERS u " +
             "JOIN " +
@@ -61,17 +62,18 @@ public interface KpiRepository {
             "JOIN " +
             "    TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
             "WHERE " +
-            "    t.ACTUAL_HOURS IS NOT NULL " +
+            "    t.ACTUAL_HOURS IS NOT NULL OR t.ESTIMATED_HOURS IS NOT NULL " +
             "GROUP BY " +
             "    u.NAME " +
             "ORDER BY " +
-            "    TOTAL_ACTUAL_HOURS DESC")
+            "    MEMBER_NAME")
     List<Kpi> getTotalActualHoursByMember();
 
     // KPI 2 filtrado por equipo
     @SqlQuery("SELECT " +
             "    u.NAME AS MEMBER_NAME, " +
-            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, " +
+            "    SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS " +
             "FROM " +
             "    TODOUSER.USERS u " +
             "JOIN " +
@@ -79,12 +81,12 @@ public interface KpiRepository {
             "JOIN " +
             "    TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
             "WHERE " +
-            "    t.ACTUAL_HOURS IS NOT NULL " +
+            "    (t.ACTUAL_HOURS IS NOT NULL OR t.ESTIMATED_HOURS IS NOT NULL) " +
             "    AND u.TEAM_ID = :teamId " +
             "GROUP BY " +
             "    u.NAME " +
             "ORDER BY " +
-            "    TOTAL_ACTUAL_HOURS DESC")
+            "    MEMBER_NAME")
     List<Kpi> getTotalActualHoursByMemberAndTeam(@Bind("teamId") Long teamId);
 
     // KPI 3: Tasa de finalización por miembro
@@ -92,8 +94,9 @@ public interface KpiRepository {
             "    u.NAME AS MEMBER_NAME, " +
             "    COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS, " +
             "    COUNT(t.ID) AS TOTAL_ASSIGNED_TASKS, " +
-            "    ROUND(COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) / COUNT(t.ID) * 100, 2) AS COMPLETION_RATE_PERCENT "
-            +
+            "    ROUND(CASE WHEN COUNT(t.ID) = 0 THEN 0 ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) END, 2) AS COMPLETION_RATE_PERCENT, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, " +
+            "    SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS " +
             "FROM " +
             "    TODOUSER.USERS u " +
             "JOIN " +
@@ -103,7 +106,7 @@ public interface KpiRepository {
             "GROUP BY " +
             "    u.NAME " +
             "ORDER BY " +
-            "    COMPLETION_RATE_PERCENT DESC")
+            "    MEMBER_NAME")
     List<Kpi> getCompletionRateByMember();
 
     // KPI 3 filtrado por equipo
@@ -111,8 +114,9 @@ public interface KpiRepository {
             "    u.NAME AS MEMBER_NAME, " +
             "    COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS, " +
             "    COUNT(t.ID) AS TOTAL_ASSIGNED_TASKS, " +
-            "    ROUND(COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) / COUNT(t.ID) * 100, 2) AS COMPLETION_RATE_PERCENT "
-            +
+            "    ROUND(CASE WHEN COUNT(t.ID) = 0 THEN 0 ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) END, 2) AS COMPLETION_RATE_PERCENT, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, " +
+            "    SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS " +
             "FROM " +
             "    TODOUSER.USERS u " +
             "JOIN " +
@@ -124,7 +128,7 @@ public interface KpiRepository {
             "GROUP BY " +
             "    u.NAME " +
             "ORDER BY " +
-            "    COMPLETION_RATE_PERCENT DESC")
+            "    MEMBER_NAME")
     List<Kpi> getCompletionRateByMemberAndTeam(@Bind("teamId") Long teamId);
 
     // KPI adicional: Filtrar por sprint
@@ -132,8 +136,9 @@ public interface KpiRepository {
             "    u.NAME AS MEMBER_NAME, " +
             "    COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS, " +
             "    COUNT(t.ID) AS TOTAL_ASSIGNED_TASKS, " +
-            "    ROUND(COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) / COUNT(t.ID) * 100, 2) AS COMPLETION_RATE_PERCENT "
-            +
+            "    ROUND(CASE WHEN COUNT(t.ID) = 0 THEN 0 ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) END, 2) AS COMPLETION_RATE_PERCENT, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, " +
+            "    SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS " +
             "FROM " +
             "    TODOUSER.USERS u " +
             "JOIN " +
@@ -145,7 +150,7 @@ public interface KpiRepository {
             "GROUP BY " +
             "    u.NAME " +
             "ORDER BY " +
-            "    COMPLETION_RATE_PERCENT DESC")
+            "    MEMBER_NAME")
     List<Kpi> getCompletionRateByMemberAndSprint(@Bind("sprintId") Long sprintId);
 
     // RowMapper para mapear los resultados de las consultas a objetos Kpi
@@ -176,6 +181,18 @@ public interface KpiRepository {
 
             try {
                 kpi.setTotalActualHours(rs.getDouble("TOTAL_ACTUAL_HOURS"));
+                if (rs.wasNull()) {
+                    kpi.setTotalActualHours(null);
+                }
+            } catch (SQLException e) {
+                // Si la columna no existe, ignorar
+            }
+
+            try {
+                kpi.setTotalEstimatedHours(rs.getDouble("TOTAL_ESTIMATED_HOURS"));
+                if (rs.wasNull()) {
+                    kpi.setTotalEstimatedHours(null);
+                }
             } catch (SQLException e) {
                 // Si la columna no existe, ignorar
             }
