@@ -60,7 +60,7 @@ export function Toolbar({
           <input
             type="text"
             placeholder="Buscar por título"
-            className="border-oc-outline-light bg-oc-primary w-full rounded-lg border py-2 pr-10 pl-8 text-sm text-white"
+            className="border-oc-outline-light bg-oc-primary w-full rounded-lg border py-2 pr-10 pl-8 text-sm text-white placeholder-stone-400"
             value={searchTerm}
             onChange={handleSearch}
             disabled={isLoadingTasks}

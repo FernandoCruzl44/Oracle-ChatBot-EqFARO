@@ -122,7 +122,7 @@ export function SprintSelector({
                   ? ` (${getTeamNameById(currentSprint.teamId)})`
                   : "")
               : teamSprints.length > 0
-                ? "Todos los sprints"
+                ? "Todos"
                 : "No hay sprints"}
         </span>
         <i
@@ -146,7 +146,7 @@ export function SprintSelector({
                   : "text-white hover:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-600"
               }`}
             >
-              Todos los sprints
+              Todos
             </button>
 
             {teamSprints.map((sprint) => (

@@ -1,12 +1,10 @@
 package com.springboot.MyTodoList;
 
-import org.jdbi.v3.core.Jdbi;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import com.springboot.MyTodoList.model.User;
-import com.springboot.MyTodoList.repository.UserRepository;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
@@ -14,10 +12,8 @@ import java.util.Optional;
 @Component
 public class IdentityUtil {
 
-    private final Jdbi jdbi;
-
-    public IdentityUtil(Jdbi jdbi) {
-        this.jdbi = jdbi;
+    public IdentityUtil() {
+        // Default constructor
     }
 
     public Long getCurrentUserId(HttpServletRequest request) {

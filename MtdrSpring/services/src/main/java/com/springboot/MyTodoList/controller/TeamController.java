@@ -90,6 +90,44 @@ public class TeamController {
         });
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getUserTeams(
+            @PathVariable Long userId,
+            HttpServletRequest request) {
+
+        // Authorization: Users can only view their own teams or managers can view any
+        // teams
+        Long currentUserId = identityUtil.getCurrentUserId(request);
+        if (currentUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized - No user context"));
+        }
+
+        // Check if the user is requesting their own teams or if they're a manager
+        if (!userId.equals(currentUserId) && !identityUtil.isManager(request)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Cannot view other users' teams"));
+        }
+
+        try {
+            return jdbi.inTransaction(handle -> {
+                List<Team> teams = handle.attach(TeamRepository.class).findTeamsByUserId(userId);
+
+                // Populate members for each team
+                for (Team team : teams) {
+                    List<User> members = handle.attach(TeamRepository.class)
+                            .findMembersByTeamId(team.getId());
+                    team.setMembers(members);
+                }
+
+                return ResponseEntity.ok(teams);
+            });
+        } catch (Exception e) {
+            // Log the exception for debugging
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error fetching user teams: " + e.getMessage()));
+        }
+    }
+
     @PostMapping
     public ResponseEntity<?> createTeam(
             @RequestBody Map<String, String> requestBody, // Renamed from request to avoid confusion
@@ -135,6 +173,95 @@ public class TeamController {
         }
     }
 
-    // TODO: Implement updateTeam and deleteTeam using IdentityUtil for
-    // authorization
+    @PutMapping("/{teamId}")
+    public ResponseEntity<?> updateTeam(
+            @PathVariable Long teamId,
+            @RequestBody Map<String, String> requestBody,
+            HttpServletRequest request) {
+
+        if (!identityUtil.isManager(request)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only managers can update teams"));
+        }
+
+        // Basic validation
+        String name = requestBody.get("name");
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Team name is required"));
+        }
+
+        try {
+            return jdbi.inTransaction(handle -> {
+                TeamRepository repository = handle.attach(TeamRepository.class);
+                Optional<Team> teamOpt = repository.findById(teamId);
+
+                if (!teamOpt.isPresent()) {
+                    return ResponseEntity.notFound().build();
+                }
+
+                Team team = teamOpt.get();
+                team.setName(name);
+                team.setDescription(requestBody.get("description")); // Optional field
+
+                int updatedCount = repository.update(team);
+                if (updatedCount == 0) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of("error", "Failed to update team"));
+                }
+
+                // Fetch updated team with members
+                Optional<Team> updatedTeamOpt = repository.findById(teamId);
+                if (updatedTeamOpt.isPresent()) {
+                    Team updatedTeam = updatedTeamOpt.get();
+                    List<User> members = repository.findMembersByTeamId(updatedTeam.getId());
+                    updatedTeam.setMembers(members);
+                    return ResponseEntity.ok(updatedTeam);
+                } else {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of("error", "Failed to retrieve updated team"));
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error updating team: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{teamId}")
+    public ResponseEntity<?> deleteTeam(
+            @PathVariable Long teamId,
+            HttpServletRequest request) {
+
+        if (!identityUtil.isManager(request)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only managers can delete teams"));
+        }
+
+        try {
+            return jdbi.inTransaction(handle -> {
+                TeamRepository repository = handle.attach(TeamRepository.class);
+
+                // Check if team exists
+                Optional<Team> teamOpt = repository.findById(teamId);
+                if (!teamOpt.isPresent()) {
+                    return ResponseEntity.notFound().build();
+                }
+
+                // First, unassign all users from this team (if any)
+                repository.unassignUsersFromTeam(teamId);
+
+                // Then delete the team
+                int deletedCount = repository.delete(teamId);
+                if (deletedCount == 0) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of("error", "Failed to delete team"));
+                }
+
+                return ResponseEntity.noContent().build();
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error deleting team: " + e.getMessage()));
+        }
+    }
 }

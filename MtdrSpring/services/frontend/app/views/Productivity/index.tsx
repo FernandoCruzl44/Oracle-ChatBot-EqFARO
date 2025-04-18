@@ -109,18 +109,18 @@ const ProductivityView: React.FC = () => {
 
   const axisTickStyle = {
     fontSize: 10,
-    fill: "#a0aec0", // gray-400
+    fill: "#a0aec0",
   };
 
-  const gridStrokeColor = "#4a5568"; // gray-600
+  const gridStrokeColor = "#4a5568";
   const legendStyle = {
     fontSize: "0.75rem",
-    color: "#a0aec0", // gray-400
+    color: "#a0aec0",
   };
 
   return (
     <div
-      className="h-full bg-[#181614] p-6" // Adjusted padding
+      className="h-full bg-[#181614] p-6"
       style={{
         backgroundImage:
           "url(https://static.oracle.com/cdn/apex/20.2.0.00.20/themes/theme_42/1.6/images/rw/textures/texture-13.png)",
@@ -128,21 +128,17 @@ const ProductivityView: React.FC = () => {
       }}
     >
       <div className="flex h-full flex-col overflow-hidden">
-        {/* Header styling adjusted to match TaskView Header */}
-        <div className="flex items-center gap-2 pb-2">
-          <h1 className="text-xl font-medium text-white">Productividad</h1>
+        {/* Header - Standardized with Tasks view */}
+        <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-medium text-white">Productividad</h1>
+          </div>
         </div>
 
-        {/* Filters container with Toolbar spacing */}
-        <div className="flex items-center justify-between gap-2 py-4">
-          {" "}
-          {/* Added py-4 like Toolbar and justify-between */}
-          <div className="flex items-center gap-2">
-            {" "}
-            {/* Wrap selects in a div for left alignment */}
+        {/* Filters container with Toolbar spacing - Similar to Tasks view */}
+        <div className="flex items-center justify-between py-4 pt-6">
+          <div className="ml-[1px] flex items-center gap-3">
             <div>
-              {" "}
-              {/* Removed flex-1 sm:flex-none */}
               <label htmlFor="team-select" className="sr-only">
                 Filtrar por Equipo
               </label>
@@ -150,7 +146,7 @@ const ProductivityView: React.FC = () => {
                 id="team-select"
                 value={String(selectedTeamId)}
                 onChange={handleTeamChange}
-                className="bg-oc-primary outline-oc-outline-light/90 ml-1 min-w-[180px]" // Apply min-width directly if needed
+                className="bg-oc-primary outline-oc-outline-light/90 h-9 min-w-[180px]"
                 options={[
                   { value: "all", label: "Todos los Equipos" },
                   ...teams.map((team: Team) => ({
@@ -161,8 +157,6 @@ const ProductivityView: React.FC = () => {
               />
             </div>
             <div>
-              {" "}
-              {/* Removed flex-1 sm:flex-none */}
               <label htmlFor="sprint-select" className="sr-only">
                 Filtrar por Sprint
               </label>
@@ -173,7 +167,7 @@ const ProductivityView: React.FC = () => {
                 disabled={
                   selectedTeamId === "all" || availableSprints.length === 0
                 }
-                className="bg-oc-primary outline-oc-outline-light/90 ml-1 min-w-[180px]"
+                className="bg-oc-primary outline-oc-outline-light/90 h-9 min-w-[180px]"
                 options={[
                   { value: "all", label: "Todos los Sprints (Equipo)" },
                   ...availableSprints.map((sprint: Sprint) => ({
@@ -186,207 +180,210 @@ const ProductivityView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto pr-1 pb-4">
-          {" "}
-          {/* Adjusted pb */}
-          {isLoadingKpi && (
-            <div className="flex h-64 items-center justify-center">
-              <p className="text-gray-400">Cargando datos de KPI...</p>
-            </div>
-          )}
-          {error && (
-            <div
-              className="relative m-4 rounded border border-red-700 bg-red-900/50 px-4 py-3 text-red-300"
-              role="alert"
-            >
-              <strong className="font-bold">Error:</strong>
-              <span className="block sm:inline"> {error}</span>
-            </div>
-          )}
-          {!isLoadingKpi && !error && (
-            <div className="grid h-full grid-cols-2 grid-rows-2 gap-4">
-              {/* Card styling adjusted */}
-              <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                <h2 className="mb-3 text-base font-medium text-gray-300">
-                  Horas Estimadas vs. Horas Reales
-                </h2>
-                <div className="flex-grow">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke={gridStrokeColor}
-                      />
-                      <XAxis dataKey="name" tick={axisTickStyle} />
-                      <YAxis tick={axisTickStyle} />
-                      <Tooltip
-                        contentStyle={tooltipContentStyle}
-                        labelStyle={tooltipLabelStyle}
-                        cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                      />
-                      <Legend wrapperStyle={legendStyle} />
-                      <Bar
-                        dataKey="EstimatedHours"
-                        fill="#a78bfa"
-                        name="Estimadas"
-                        unit="h"
-                      />
-                      <Bar
-                        dataKey="ActualHours"
-                        fill="#6ee7b7"
-                        name="Reales"
-                        unit="h"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
+        {/* Main content area with border like Tasks view */}
+        <div className="bg-oc-primary border-oc-outline-light flex flex-1 flex-col overflow-hidden rounded-lg border text-sm">
+          <div className="flex-grow overflow-y-auto p-4">
+            {isLoadingKpi && (
+              <div className="flex h-64 items-center justify-center">
+                <p className="text-gray-400">Cargando datos de KPI...</p>
+              </div>
+            )}
+            {error && (
+              <div
+                className="relative m-4 rounded border border-red-700 bg-red-900/50 px-4 py-3 text-red-300"
+                role="alert"
+              >
+                <strong className="font-bold">Error:</strong>
+                <span className="block sm:inline"> {error}</span>
+              </div>
+            )}
+            {!isLoadingKpi && !error && (
+              <div className="grid h-full grid-cols-2 grid-rows-2 gap-4">
+                {/* Card styling adjusted */}
+                <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
+                  <h2 className="mb-3 text-base font-medium text-gray-300">
+                    Horas Estimadas vs. Horas Reales
+                  </h2>
+                  <div className="flex-grow">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridStrokeColor}
+                        />
+                        <XAxis dataKey="name" tick={axisTickStyle} />
+                        <YAxis tick={axisTickStyle} />
+                        <Tooltip
+                          contentStyle={tooltipContentStyle}
+                          labelStyle={tooltipLabelStyle}
+                          cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                        />
+                        <Legend wrapperStyle={legendStyle} />
+                        <Bar
+                          dataKey="EstimatedHours"
+                          fill="#a78bfa"
+                          name="Estimadas"
+                          unit="h"
+                        />
+                        <Bar
+                          dataKey="ActualHours"
+                          fill="#6ee7b7"
+                          name="Reales"
+                          unit="h"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
 
-              <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                <h2 className="mb-3 text-base font-medium text-gray-300">
-                  Ratio de Precisión de Estimación
-                </h2>
-                <div className="flex-grow">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke={gridStrokeColor}
-                      />
-                      <XAxis dataKey="name" tick={axisTickStyle} />
-                      <YAxis domain={[0, "auto"]} tick={axisTickStyle} />
-                      <ReferenceLine
-                        y={1}
-                        stroke="#e53e3e"
-                        strokeDasharray="3 3"
-                        label={{
-                          value: "Objetivo",
-                          position: "insideTopRight",
-                          fill: "#e53e3e",
-                          fontSize: 10,
-                        }}
-                      />
-                      <Tooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            const ratio = data.EstimationRatio;
-                            const tasks = data.CompletedTasks;
-                            return (
-                              <div
-                                style={tooltipContentStyle}
-                                className="text-sm"
-                              >
-                                <p
-                                  style={tooltipLabelStyle}
-                                >{`Usuario: ${label}`}</p>
-                                <p>{`Ratio: ${
-                                  ratio !== null ? ratio.toFixed(2) : "N/A"
-                                }`}</p>
-                                <p className="opacity-80">{`(${tasks} tareas completadas)`}</p>
-                              </div>
-                            );
+                <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
+                  <h2 className="mb-3 text-base font-medium text-gray-300">
+                    Ratio de Precisión de Estimación
+                  </h2>
+                  <div className="flex-grow">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridStrokeColor}
+                        />
+                        <XAxis dataKey="name" tick={axisTickStyle} />
+                        <YAxis domain={[0, "auto"]} tick={axisTickStyle} />
+                        <ReferenceLine
+                          y={1}
+                          stroke="#e53e3e"
+                          strokeDasharray="3 3"
+                          label={{
+                            value: "Objetivo",
+                            position: "insideTopRight",
+                            fill: "#e53e3e",
+                            fontSize: 10,
+                          }}
+                        />
+                        <Tooltip
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              const ratio = data.EstimationRatio;
+                              const tasks = data.CompletedTasks;
+                              return (
+                                <div
+                                  style={tooltipContentStyle}
+                                  className="text-sm"
+                                >
+                                  <p
+                                    style={tooltipLabelStyle}
+                                  >{`Usuario: ${label}`}</p>
+                                  <p>{`Ratio: ${
+                                    ratio !== null ? ratio.toFixed(2) : "N/A"
+                                  }`}</p>
+                                  <p className="opacity-80">{`(${tasks} tareas completadas)`}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                          cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                        />
+                        <Legend wrapperStyle={legendStyle} />
+                        <Bar
+                          dataKey="EstimationRatio"
+                          fill="#fbbf24"
+                          name="Ratio Real/Est."
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Ratio &gt; 1 más largo que lo est. / &lt; 1 más rápido que
+                    lo est.
+                  </p>
+                </Card>
+
+                <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
+                  <h2 className="mb-3 text-base font-medium text-gray-300">
+                    Tareas Completadas
+                  </h2>
+                  <div className="flex-grow">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridStrokeColor}
+                        />
+                        <XAxis dataKey="name" tick={axisTickStyle} />
+                        <YAxis allowDecimals={false} tick={axisTickStyle} />
+                        <Tooltip
+                          contentStyle={tooltipContentStyle}
+                          labelStyle={tooltipLabelStyle}
+                          cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                        />
+                        <Legend wrapperStyle={legendStyle} />
+                        <Bar
+                          dataKey="CompletedTasks"
+                          fill="#60a5fa"
+                          name="Tareas Completadas"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
+                  <h2 className="mb-3 text-base font-medium text-gray-300">
+                    Tiempo Promedio por Tarea
+                  </h2>
+                  <div className="flex-grow">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridStrokeColor}
+                        />
+                        <XAxis dataKey="name" tick={axisTickStyle} />
+                        <YAxis unit="h" tick={axisTickStyle} />
+                        <Tooltip
+                          formatter={(value: any) =>
+                            typeof value === "number"
+                              ? `${value.toFixed(1)}h`
+                              : "N/A"
                           }
-                          return null;
-                        }}
-                        cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                      />
-                      <Legend wrapperStyle={legendStyle} />
-                      <Bar
-                        dataKey="EstimationRatio"
-                        fill="#fbbf24"
-                        name="Ratio Real/Est."
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="mt-1 text-xs text-gray-400">
-                  Ratio &gt; 1 más largo que lo est. / &lt; 1 más rápido que lo
-                  est.
-                </p>
-              </Card>
-
-              <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                <h2 className="mb-3 text-base font-medium text-gray-300">
-                  Tareas Completadas
-                </h2>
-                <div className="flex-grow">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke={gridStrokeColor}
-                      />
-                      <XAxis dataKey="name" tick={axisTickStyle} />
-                      <YAxis allowDecimals={false} tick={axisTickStyle} />
-                      <Tooltip
-                        contentStyle={tooltipContentStyle}
-                        labelStyle={tooltipLabelStyle}
-                        cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                      />
-                      <Legend wrapperStyle={legendStyle} />
-                      <Bar
-                        dataKey="CompletedTasks"
-                        fill="#60a5fa"
-                        name="Tareas Completadas"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-
-              <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                <h2 className="mb-3 text-base font-medium text-gray-300">
-                  Tiempo Promedio por Tarea
-                </h2>
-                <div className="flex-grow">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke={gridStrokeColor}
-                      />
-                      <XAxis dataKey="name" tick={axisTickStyle} />
-                      <YAxis unit="h" tick={axisTickStyle} />
-                      <Tooltip
-                        formatter={(value: any) =>
-                          typeof value === "number"
-                            ? `${value.toFixed(1)}h`
-                            : "N/A"
-                        }
-                        labelFormatter={(label: string) => `Usuario: ${label}`}
-                        contentStyle={tooltipContentStyle}
-                        labelStyle={tooltipLabelStyle}
-                        cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                      />
-                      <Legend wrapperStyle={legendStyle} />
-                      <Bar
-                        dataKey="AverageActualTime"
-                        fill="#f87171"
-                        name="Tiempo Prom. / Tarea"
-                        unit="h"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="mt-1 text-xs text-gray-400">
-                  Promedio de horas por tarea completada.
-                </p>
-              </Card>
-            </div>
-          )}
+                          labelFormatter={(label: string) =>
+                            `Usuario: ${label}`
+                          }
+                          contentStyle={tooltipContentStyle}
+                          labelStyle={tooltipLabelStyle}
+                          cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                        />
+                        <Legend wrapperStyle={legendStyle} />
+                        <Bar
+                          dataKey="AverageActualTime"
+                          fill="#f87171"
+                          name="Tiempo Prom. / Tarea"
+                          unit="h"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Promedio de horas por tarea completada.
+                  </p>
+                </Card>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -160,6 +160,7 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   initializeData: async () => {
     if (get().isInitialized || get().isLoadingTasks) return;
 
+    // Keep isLoadingTasks true initially to prevent the TaskView effect from running too early
     set({ error: null, isLoadingTasks: true });
 
     try {
@@ -169,36 +170,34 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
         set({
           error:
             "No has seleccionado un usuario. Por favor selecciona un usuario para ver las tareas.",
-          isLoadingTasks: false,
+          isLoadingTasks: false, // Set loading false here as we stop
         });
         return;
       }
 
-      let viewMode = userData.role === "manager" ? "all" : "assigned";
+      // Removed initial viewMode determination as TaskView's effect handles it
 
-      const fetchTasks = api.get(`/tasks/?view_mode=${viewMode}`);
+      // Fetch teams, users, and sprints, but NOT tasks here
       const fetchTeams =
         userData.role === "manager" ? api.get("/teams/") : Promise.resolve([]);
       const fetchUsers = api.get("/users/");
-      const fetchSprints = api.get("/sprints");
+      const fetchSprints = api.get("/sprints/"); // Fetch all sprints initially
 
-      const [tasksData, teams, users, sprints] = await Promise.all([
-        fetchTasks,
+      // Wait for user-related data and sprints
+      const [teams, users, sprints] = await Promise.all([
         fetchTeams,
         fetchUsers,
         fetchSprints,
       ]);
 
-      // Map backend tasks to frontend tasks
-      const tasks = tasksData.map(mapBackendToTask);
-
+      // Don't set tasks here, TaskView's effect will fetch them
       set({
         currentUser: userData,
-        tasks,
+        // tasks: [], // Initialize tasks as empty or keep existing if needed
         teams,
         users,
         sprints,
-        isLoadingTasks: false,
+        isLoadingTasks: false, // Set loading false AFTER setting user/teams/sprints
         isInitialized: true,
       });
     } catch (error) {
@@ -212,26 +211,40 @@ export const createTaskSlice: StateCreator<TaskStore, [], [], TaskSlice> = (
   },
 
   fetchTasks: async (viewMode, teamId) => {
-    const { currentUser, isLoadingTasks } = get();
+    const { currentUser } = get(); // Removed isLoadingTasks check here
 
-    if (!currentUser || isLoadingTasks) return;
+    // Only proceed if currentUser is available
+    if (!currentUser) {
+      console.warn("fetchTasks called before currentUser is initialized.");
+      return;
+    }
 
     set({ isLoadingTasks: true, error: null });
 
     let url = "/tasks/?";
 
+    // Logic to determine URL based on viewMode and user role remains the same
     if (currentUser.role === "manager") {
       if (viewMode === "all") {
         url += "view_mode=all";
       } else {
-        // Assuming teamId is passed correctly when viewMode is a team ID string
+        // Assuming viewMode is a team ID string when not 'all'
         url += `view_mode=team&team_id=${viewMode}`;
       }
     } else {
+      // Non-manager logic
       if (viewMode === "all") {
-        url += "view_mode=assigned"; // Show assigned tasks for non-managers 'all' view
+        // For non-managers, 'all' might mean 'assigned' or 'team' depending on requirements
+        // Let's assume 'assigned' for now if they don't belong to a specific team view
+        url += "view_mode=assigned";
+        // If non-managers should see their team's tasks by default on 'all', adjust here
+        // url += `view_mode=team`; // Backend needs to handle this case based on user's team
       } else if (viewMode === "team") {
+        // Explicitly viewing their own team
         url += "view_mode=team"; // Backend will use user's team ID
+      } else {
+        // Fallback or handle other potential viewModes for non-managers if any
+        url += "view_mode=assigned"; // Default to assigned if viewMode is unexpected
       }
     }
 

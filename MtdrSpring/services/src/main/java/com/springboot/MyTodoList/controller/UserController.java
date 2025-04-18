@@ -120,7 +120,163 @@ public class UserController {
         }
     }
 
-    // --- REMOVE the cookie-based helper methods ---
-    // private Long getCurrentUserId(HttpServletRequest request) { ... }
-    // private boolean isManager(HttpServletRequest request) { ... }
+    @PutMapping("/{userId}/team-role")
+    public ResponseEntity<?> updateUserTeamRole(
+            @PathVariable Long userId,
+            @RequestBody Map<String, String> requestBody,
+            HttpServletRequest request) {
+
+        // Only managers can update team roles
+        if (!identityUtil.isManager(request)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only managers can update team roles"));
+        }
+
+        String newRole = requestBody.get("teamRole");
+        if (newRole == null || newRole.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Team role is required"));
+        }
+
+        try {
+            int updated = jdbi.withExtension(UserRepository.class,
+                    repository -> repository.updateTeamRole(userId, newRole));
+
+            if (updated == 0) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Return the updated user
+            Optional<User> user = jdbi.withExtension(UserRepository.class, repository -> repository.findById(userId));
+
+            return user.map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error updating user team role: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{userId}/team-assignment")
+    public ResponseEntity<?> assignUserToTeam(
+            @PathVariable Long userId,
+            @RequestBody Map<String, Object> requestBody,
+            HttpServletRequest request) {
+
+        // Only managers can assign users to teams
+        if (!identityUtil.isManager(request)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("message", "Forbidden: Only managers can assign users to teams"));
+        }
+
+        // Extract teamId from request body
+        final Long teamId;
+        if (requestBody.containsKey("teamId") && requestBody.get("teamId") != null) {
+            try {
+                String teamIdStr = requestBody.get("teamId").toString();
+                teamId = teamIdStr.isEmpty() ? null : Long.valueOf(teamIdStr);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Invalid team ID format"));
+            }
+        } else {
+            teamId = null;
+        }
+
+        try {
+            int updated = jdbi.withExtension(UserRepository.class,
+                    repository -> repository.updateTeamAssignment(userId, teamId));
+
+            if (updated == 0) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Return the updated user
+            Optional<User> user = jdbi.withExtension(UserRepository.class, repository -> repository.findById(userId));
+
+            return user.map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error assigning user to team: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{userId}")
+    public ResponseEntity<?> updateUser(
+            @PathVariable Long userId,
+            @RequestBody User user,
+            HttpServletRequest request) {
+
+        // Only managers can update users or users can update themselves
+        Long currentUserId = identityUtil.getCurrentUserId(request);
+        if (currentUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+        }
+
+        boolean isManager = identityUtil.isManager(request);
+        if (!isManager && !userId.equals(currentUserId)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("message", "Forbidden: Can only update your own user details"));
+        }
+
+        try {
+            // Set the ID from the path parameter
+            user.setId(userId);
+
+            int updated = jdbi.withExtension(UserRepository.class,
+                    repository -> repository.update(user));
+
+            if (updated == 0) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Return the updated user
+            Optional<User> updatedUser = jdbi.withExtension(UserRepository.class,
+                    repository -> repository.findById(userId));
+
+            return updatedUser.map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error updating user: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<?> deleteUser(
+            @PathVariable Long userId,
+            HttpServletRequest request) {
+
+        // Only managers can delete users
+        if (!identityUtil.isManager(request)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("message", "Forbidden: Only managers can delete users"));
+        }
+
+        try {
+            // Get the user to check if it exists
+            Optional<User> userToDelete = jdbi.withExtension(UserRepository.class,
+                    repository -> repository.findById(userId));
+
+            if (!userToDelete.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Proceed with deletion
+            int deleted = jdbi.withExtension(UserRepository.class,
+                    repository -> repository.delete(userId));
+
+            if (deleted > 0) {
+                return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
+            } else {
+                return ResponseEntity.status(500)
+                        .body(Map.of("error", "Failed to delete user"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error deleting user: " + e.getMessage()));
+        }
+    }
 }

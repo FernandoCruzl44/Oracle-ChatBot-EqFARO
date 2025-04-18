@@ -20,11 +20,11 @@ export default function LoginView() {
         navigate("/");
       }
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("An error occurred during login");
-      }
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An error occurred during login",
+      );
     }
   };
 

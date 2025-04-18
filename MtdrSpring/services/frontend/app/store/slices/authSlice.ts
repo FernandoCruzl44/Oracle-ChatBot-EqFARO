@@ -30,7 +30,6 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
 ) => {
   // Safely try to get token from localStorage using the standardized key
   const storage = getLocalStorage();
-  // --- CHANGE HERE ---
   const storedToken = storage ? storage.getItem("token") : null;
 
   return {
@@ -42,19 +41,10 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
     login: async (email, password) => {
       set({ isAuthLoading: true, error: null });
       try {
-        // api.login already stores the token under "token" in localStorage
         const data = await api.login(email, password);
 
-        // --- REMOVE REDUNDANT STORAGE or ensure consistency ---
-        // No need to set it again here if api.login does it,
-        // but ensure the state is updated correctly.
-        // const storage = getLocalStorage();
-        // if (storage) {
-        //   storage.setItem("token", data.token); // Use "token"
-        // }
-
         set({
-          token: data.token, // Update state token
+          token: data.token,
           isAuthenticated: true,
           currentUser: data.user,
           isAuthLoading: false,
@@ -68,13 +58,13 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
           isAuthenticated: false,
           token: null,
         });
-        // Ensure token is removed on login failure
+
         const storage = getLocalStorage();
         if (storage) {
-          // --- CHANGE HERE ---
           storage.removeItem("token");
         }
-        return null;
+
+        throw error; // Make sure to re-throw the error
       }
     },
 
@@ -101,12 +91,6 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
       // api.logout already removes "token" from localStorage
       api.logout();
 
-      // --- REMOVE REDUNDANT REMOVAL or ensure consistency ---
-      // const storage = getLocalStorage();
-      // if (storage) {
-      //   storage.removeItem("token"); // Use "token"
-      // }
-
       set({
         token: null,
         isAuthenticated: false,
@@ -121,7 +105,6 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
 
     checkAuth: async () => {
       const storage = getLocalStorage();
-      // --- CHANGE HERE ---
       const token = get().token || (storage ? storage.getItem("token") : null);
 
       if (!token) {
@@ -135,14 +118,11 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
       }
 
       try {
-        // api.get uses api.request which correctly looks for "token"
         const user = await api.get("/users/me");
         set({ currentUser: user, isAuthenticated: true });
         return true;
       } catch (error) {
-        // api.request handles token removal on 401/403, but we ensure state is cleared
         if (storage) {
-          // --- CHANGE HERE ---
           storage.removeItem("token");
         }
 
@@ -158,13 +138,11 @@ export const createAuthSlice: StateCreator<TaskStore, [], [], AuthSlice> = (
     },
 
     getToken: () => {
-      // Prioritize state, then check localStorage as a fallback during initialization
       const stateToken = get().token;
       if (stateToken) {
         return stateToken;
       }
       const storage = getLocalStorage();
-      // --- CHANGE HERE ---
       return storage ? storage.getItem("token") : null;
     },
   };

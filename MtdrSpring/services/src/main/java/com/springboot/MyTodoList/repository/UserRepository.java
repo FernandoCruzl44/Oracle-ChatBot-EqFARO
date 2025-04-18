@@ -64,6 +64,12 @@ public interface UserRepository {
         @SqlQuery("SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM users WHERE LOWER(email) = LOWER(:email)")
         boolean existsByEmail(@Bind("email") String email);
 
+        @SqlUpdate("UPDATE users SET team_role = :teamRole WHERE id = :userId")
+        int updateTeamRole(@Bind("userId") Long userId, @Bind("teamRole") String teamRole);
+
+        @SqlUpdate("UPDATE users SET team_id = :teamId WHERE id = :userId")
+        int updateTeamAssignment(@Bind("userId") Long userId, @Bind("teamId") Long teamId);
+
         class UserMapper implements RowMapper<User> {
 
                 @Override

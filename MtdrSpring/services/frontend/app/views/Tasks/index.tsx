@@ -366,7 +366,7 @@ export default function TaskView() {
 
   const selectorTeamId = getSelectorTeamId();
   const showSprintSelector = true;
-  const showAssigneesColumn = isManager || activeTab === "team";
+  const showAssigneesColumn = true; // isManager || activeTab === "team";
 
   const handleMigrateTasks = () => {
     if (selectedSprintId === null) {

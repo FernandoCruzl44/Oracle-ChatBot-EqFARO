@@ -1,8 +1,12 @@
 // app/components/SidebarMenu.tsx
 import { Link, useLocation } from "react-router";
+import useTaskStore from "~/store";
 
 export default function SidebarMenu({ isExpanded = true }) {
   const location = useLocation();
+  const { currentUser } = useTaskStore();
+
+  const isManager = currentUser?.role === "manager";
 
   const menuItems = [
     { path: "/", icon: "list-ul", label: "Tareas", disabled: false },
@@ -12,7 +16,7 @@ export default function SidebarMenu({ isExpanded = true }) {
       label: "Productividad",
       disabled: false,
     },
-    { path: "/team", icon: "users", label: "Mi Equipo", disabled: true },
+    { path: "/team", icon: "users", label: "Equipos", disabled: false },
   ];
 
   return (
