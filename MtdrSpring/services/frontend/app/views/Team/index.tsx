@@ -91,7 +91,7 @@ function ManagersSection({
                 >
                   <td className="px-4 py-3 text-center">
                     <div
-                      className="mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-sm font-medium"
+                      className="border-oc-outline-light/60 mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border text-sm font-semibold"
                       style={avatarStyle}
                       onClick={() => onViewProfile(user.id)}
                       title="Ver/Editar perfil"
@@ -222,7 +222,7 @@ function UnassignedUsersTable({
                 >
                   <td className="px-4 py-3 text-center">
                     <div
-                      className="mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-sm font-medium"
+                      className="border-oc-outline-light/60 mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border text-sm font-semibold"
                       style={avatarStyle}
                       onClick={() => onViewProfile(user.id)}
                       title="Ver/Editar perfil"
