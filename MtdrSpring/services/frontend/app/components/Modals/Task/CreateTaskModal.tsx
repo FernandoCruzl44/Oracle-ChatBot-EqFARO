@@ -80,6 +80,14 @@ export default function CreateTaskModal({
           (a, b) => b.id - a.id,
         );
         setSprintId(sortedSprints[0].id);
+        const startDate = sortedSprints[0].startDate;
+        const endDate = sortedSprints[0].endDate;
+        if (startDate) {
+          setStartDate(startDate);
+        }
+        if (endDate) {
+          setEndDate(endDate);
+        }
       } else {
         setSprintId(null);
       }
