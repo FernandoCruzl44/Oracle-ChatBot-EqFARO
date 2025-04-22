@@ -8,6 +8,8 @@ import com.springboot.MyTodoList.repository.SprintRepository;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.Sprint;
+import com.springboot.MyTodoList.service.AuthenticationService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -41,6 +43,8 @@ public class BotController extends TelegramLongPollingBot {
 
 	private final String botUsername;
 
+	private final AuthenticationService autentication; 
+
 	private static final String LOGIN_USER_PREFIX = "login_";
 	private static final String TASK_PREFIX = "task_";
 	private static final String SHOW_COMMENTS = "showComments";
@@ -54,6 +58,8 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String FEATURE = "Feature";
 	private static final String ISSUE = "Issue";
 	private static final String CHANGE_REAL_HOURS = "real_hours";
+	private static final String PUT_EMAIL = "put_email";
+	private static final String PUT_PASS = "put_ pass";
 
 	// TODO: Se usan?
 	// private static final String ADD_TASK_DESCRIPTION = "addTaskDescription";
@@ -63,10 +69,11 @@ public class BotController extends TelegramLongPollingBot {
 
 	private Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
-	public BotController(String botToken, String botUsername, Jdbi jdbi) {
+	public BotController(String botToken, String botUsername, Jdbi jdbi, AuthenticationService autentication) {
 		super(botToken);
 		this.botUsername = botUsername;
 		this.jdbi = jdbi;
+		this.autentication = autentication;
 
 		this.userRepository = jdbi.onDemand(UserRepository.class);
 		this.taskRepository = jdbi.onDemand(TaskRepository.class);
@@ -184,6 +191,7 @@ public class BotController extends TelegramLongPollingBot {
 		Long selectedTaskId;
 		String currentAction = "NORMAL";
 		Task NewTask;
+		String loginEmail; 
 
 		UserState() {
 			reset();
@@ -534,7 +542,8 @@ public class BotController extends TelegramLongPollingBot {
 
 	private void handleTextMessage(long chatId, String text, UserState state) {
 		if ("/login".equalsIgnoreCase(text)) {
-			showUserList(chatId);
+			state.currentAction = PUT_EMAIL;
+			sendMessage(chatId,"Email: ");
 			return;
 		}
 
@@ -640,6 +649,44 @@ public class BotController extends TelegramLongPollingBot {
 					logger.warn("Invalid number format for real hours from chat {}: {}", chatId, text);
 					sendMessage(chatId,
 							"Formato inválido. Por favor, escribe un número para las horas reales (ej: 3):");
+				}
+				break;
+
+			case PUT_EMAIL:
+				state.loginEmail = text.trim().toLowerCase();
+				state.currentAction = PUT_PASS;
+				sendMessage(chatId, "Contraseña:");
+				break;
+				
+			case PUT_PASS:
+				try {
+					String email = state.loginEmail;
+					String password = text;
+					
+					// Autenticar usando el servicio
+					User authenticatedUser = autentication.authenticate(email, password);
+					
+					// Limpiar datos temporales
+					state.loginEmail = null;
+					
+					// Si llegamos aquí, la autenticación fue exitosa
+					userRepository.forgetChatId(chatId);
+					userRepository.setChatIdForUser(authenticatedUser.getId(), chatId);
+					
+					state.loggedInUserId = authenticatedUser.getId();
+					state.userName = authenticatedUser.getName();
+					state.currentAction = "NORMAL";
+					
+					sendMessage(chatId, "Has iniciado sesión como: " + authenticatedUser.getName());
+					sendMessage(chatId, "Puedes cerrar sesión con '/logout' en cualquier momento");
+					
+					// Mostrar tareas del usuario
+					listTasksForUser(chatId, authenticatedUser.getId());
+				} catch (Exception e) {
+					logger.error("Login failed for email: {}", state.loginEmail, e);
+					sendMessage(chatId, "Error de autenticación: Correo o contraseña incorrectos.");
+					state.loginEmail = null;
+					state.currentAction = "NORMAL";
 				}
 				break;
 
