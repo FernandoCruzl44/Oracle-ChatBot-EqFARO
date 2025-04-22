@@ -557,7 +557,7 @@ public class BotController extends TelegramLongPollingBot {
 		if ("/start".equalsIgnoreCase(text) || "/tasks".equalsIgnoreCase(text)) {
 			if (state.loggedInUserId == null) {
 				sendMessage(chatId, "No hay sesión iniciada. Por favor, usa /login.");
-				showUserList(chatId);
+				//showUserList(chatId);
 			} else {
 				sendMessage(chatId, "Sesión iniciada como " + state.userName
 						+ " automáticamente. Usa '/logout' para ingresar como otro usuario.");
