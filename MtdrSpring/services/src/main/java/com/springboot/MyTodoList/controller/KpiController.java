@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,15 +54,60 @@ public class KpiController {
     @GetMapping("/completion-rate")
     public ResponseEntity<List<Kpi>> getCompletionRateByMember(
             @RequestParam(name = "teamId", required = false) Long teamId,
-            @RequestParam(name = "sprintId", required = false) Long sprintId) {
+            @RequestParam(name = "sprintId", required = false) Long sprintId,
+            @RequestParam(name = "aggregated", required = false) Boolean aggregated) {
 
         List<Kpi> kpis;
+
         if (sprintId != null) {
             kpis = kpiRepository.getCompletionRateByMemberAndSprint(sprintId);
         } else if (teamId != null) {
             kpis = kpiRepository.getCompletionRateByMemberAndTeam(teamId);
         } else {
             kpis = kpiRepository.getCompletionRateByMember();
+        }
+
+        if (Boolean.TRUE.equals(aggregated) && !kpis.isEmpty()) {
+            Kpi teamAggregate = new Kpi();
+            teamAggregate.setMemberName("Equipo");
+
+            int completedTasks = 0;
+            int totalTasks = 0;
+            double totalActualHours = 0;
+            double totalEstimatedHours = 0;
+
+            for (Kpi memberKpi : kpis) {
+                if (memberKpi.getCompletedTasks() != null) {
+                    completedTasks += memberKpi.getCompletedTasks();
+                }
+
+                if (memberKpi.getTotalAssignedTasks() != null) {
+                    totalTasks += memberKpi.getTotalAssignedTasks();
+                }
+
+                if (memberKpi.getTotalActualHours() != null) {
+                    totalActualHours += memberKpi.getTotalActualHours();
+                }
+
+                if (memberKpi.getTotalEstimatedHours() != null) {
+                    totalEstimatedHours += memberKpi.getTotalEstimatedHours();
+                }
+            }
+
+            teamAggregate.setCompletedTasks(completedTasks);
+            teamAggregate.setTotalAssignedTasks(totalTasks);
+            teamAggregate.setTotalActualHours(totalActualHours);
+            teamAggregate.setTotalEstimatedHours(totalEstimatedHours);
+
+            if (totalTasks > 0) {
+                BigDecimal completionRate = BigDecimal.valueOf((double) completedTasks * 100 / totalTasks)
+                        .setScale(2, java.math.RoundingMode.HALF_UP);
+                teamAggregate.setCompletionRatePercent(completionRate);
+            } else {
+                teamAggregate.setCompletionRatePercent(BigDecimal.ZERO);
+            }
+
+            return ResponseEntity.ok(List.of(teamAggregate));
         }
 
         return ResponseEntity.ok(kpis);

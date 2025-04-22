@@ -1,9 +1,9 @@
 // views/ProductivityView.tsx
 import React, { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
-import useTaskStore from "~/store"; // Import the main Zustand store
-import type { KpiData } from "~/store/slices/productivitySlice"; // Import KpiData type
-import type { Team, Sprint } from "~/types"; // Import Team and Sprint types
+import useTaskStore from "~/store";
+import type { KpiData } from "~/store/slices/productivitySlice";
+import type { Team, Sprint } from "~/types";
 import {
   BarChart,
   Bar,
@@ -15,26 +15,42 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { Card } from "~/components/Card"; // Correct: Use named import
-import { Select } from "~/components/Select"; // Import custom Select component
+import { Card } from "~/components/Card";
+import { Select } from "~/components/Select";
 
 const ProductivityView: React.FC = () => {
-  // Select state and actions individually for stability
   const kpiData = useTaskStore((state) => state.kpiData);
   const isLoadingKpi = useTaskStore((state) => state.isLoadingKpi);
   const error = useTaskStore((state) => state.error);
   const fetchKpiData = useTaskStore((state) => state.fetchKpiData);
   const teams = useTaskStore((state) => state.teams);
   const sprints = useTaskStore((state) => state.sprints);
+  const currentUser = useTaskStore((state) => state.currentUser);
+  const statsViewMode = useTaskStore((state) => state.statsViewMode);
+  const toggleStatsViewMode = useTaskStore(
+    (state) => state.toggleStatsViewMode,
+  );
 
   const [selectedTeamId, setSelectedTeamId] = useState<string | number>("all");
   const [selectedSprintId, setSelectedSprintId] = useState<string | number>(
     "all",
   );
 
-  // Fetch KPI data when filters change
+  const isManager = currentUser?.role === "manager";
+  const userTeamId = currentUser?.teamId || null;
+
   useEffect(() => {
-    const filters: { teamId?: number; sprintId?: number } = {};
+    if (!isManager && userTeamId) {
+      setSelectedTeamId(userTeamId);
+    }
+  }, [isManager, userTeamId]);
+
+  useEffect(() => {
+    const filters: {
+      teamId?: number;
+      sprintId?: number;
+      isTeamView?: boolean;
+    } = {};
     const teamIdNum = parseInt(String(selectedTeamId), 10);
     const sprintIdNum = parseInt(String(selectedSprintId), 10);
 
@@ -44,17 +60,21 @@ const ProductivityView: React.FC = () => {
     if (!isNaN(sprintIdNum) && selectedSprintId !== "all") {
       filters.sprintId = sprintIdNum;
       if (filters.sprintId) {
-        delete filters.teamId; // Sprint filter takes precedence
+        delete filters.teamId;
       }
     }
-    fetchKpiData(filters);
-  }, [fetchKpiData, selectedTeamId, selectedSprintId]);
 
-  // Handle filter changes
+    if (statsViewMode === "team") {
+      filters.isTeamView = true;
+    }
+
+    fetchKpiData(filters);
+  }, [fetchKpiData, selectedTeamId, selectedSprintId, statsViewMode]);
+
   const handleTeamChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedTeamId(value === "all" ? "all" : parseInt(value, 10));
-    setSelectedSprintId("all"); // Reset sprint filter
+    setSelectedSprintId("all");
   };
 
   const handleSprintChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -62,7 +82,6 @@ const ProductivityView: React.FC = () => {
     setSelectedSprintId(value === "all" ? "all" : parseInt(value, 10));
   };
 
-  // Prepare data for charts
   const chartData = kpiData.map((item: KpiData) => {
     const actual = item.totalActualHours ?? 0;
     const estimated = item.totalEstimatedHours ?? 0;
@@ -81,7 +100,6 @@ const ProductivityView: React.FC = () => {
     };
   });
 
-  // Filter sprints based on selected team for the dropdown
   const availableSprints = sprints.filter((sprint: Sprint) => {
     const currentTeamId =
       typeof selectedTeamId === "string"
@@ -90,7 +108,10 @@ const ProductivityView: React.FC = () => {
     return selectedTeamId === "all" || sprint.teamId === currentTeamId;
   });
 
-  // Consistent dark theme tooltip style
+  const availableTeams = isManager
+    ? teams
+    : teams.filter((team) => team.id === userTeamId);
+
   const tooltipContentStyle = {
     backgroundColor: "rgba(30, 27, 25, 0.9)",
     borderColor: "rgba(74, 70, 66, 0.8)",
@@ -128,14 +149,12 @@ const ProductivityView: React.FC = () => {
       }}
     >
       <div className="flex h-full flex-col overflow-hidden">
-        {/* Header - Standardized with Tasks view */}
         <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-medium text-white">Productividad</h1>
           </div>
         </div>
 
-        {/* Filters container with Toolbar spacing - Similar to Tasks view */}
         <div className="flex items-center justify-between py-4 pt-6">
           <div className="ml-[1px] flex items-center gap-3">
             <div>
@@ -147,9 +166,12 @@ const ProductivityView: React.FC = () => {
                 value={String(selectedTeamId)}
                 onChange={handleTeamChange}
                 className="bg-oc-primary outline-oc-outline-light/90 h-9 min-w-[180px]"
+                disabled={!isManager && userTeamId !== null}
                 options={[
-                  { value: "all", label: "Todos los Equipos" },
-                  ...teams.map((team: Team) => ({
+                  ...(isManager
+                    ? [{ value: "all", label: "Todos los Equipos" }]
+                    : []),
+                  ...availableTeams.map((team: Team) => ({
                     value: String(team.id),
                     label: team.name,
                   })),
@@ -178,9 +200,41 @@ const ProductivityView: React.FC = () => {
               />
             </div>
           </div>
+
+          {isManager && (
+            <div className="flex items-center gap-2">
+              <div className="border-oc-outline-light flex flex-shrink-0 overflow-hidden rounded-lg border">
+                <button
+                  onClick={toggleStatsViewMode}
+                  className={`flex items-center p-2 text-sm 2xl:px-3 2xl:py-2 ${
+                    statsViewMode === "team"
+                      ? "bg-stone-700 text-white"
+                      : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
+                  }`}
+                  title="Vista de equipo"
+                  aria-label="Vista de equipo"
+                >
+                  <i className="fa fa-users 2xl:mr-2"></i>
+                  <span className="hidden 2xl:inline">Equipo</span>
+                </button>
+                <button
+                  onClick={toggleStatsViewMode}
+                  className={`flex items-center p-2 text-sm 2xl:px-3 2xl:py-2 ${
+                    statsViewMode === "individual"
+                      ? "bg-stone-700 text-white"
+                      : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
+                  }`}
+                  title="Vista individual"
+                  aria-label="Vista individual"
+                >
+                  <i className="fa fa-user 2xl:mr-2"></i>
+                  <span className="hidden 2xl:inline">Individual</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Main content area with border like Tasks view */}
         <div className="bg-oc-primary border-oc-outline-light flex flex-1 flex-col overflow-hidden rounded-lg border text-sm">
           <div className="flex-grow overflow-y-auto p-4">
             {isLoadingKpi && (
@@ -199,7 +253,6 @@ const ProductivityView: React.FC = () => {
             )}
             {!isLoadingKpi && !error && (
               <div className="grid h-full grid-cols-2 grid-rows-2 gap-4">
-                {/* Card styling adjusted */}
                 <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
                   <h2 className="mb-3 text-base font-medium text-gray-300">
                     Horas Estimadas vs. Horas Reales

@@ -1,8 +1,7 @@
 import type { StateCreator } from "zustand";
-import type { TaskStore, StoreState } from "~/store/types"; // Use 'import type'
-import { api } from "~/lib/api"; // Assuming api helper exists
+import type { TaskStore, StoreState } from "~/store/types";
+import { api } from "~/lib/api";
 
-// Define KpiData structure (adjust path/definition if it exists elsewhere, e.g., ~/types)
 export interface KpiData {
   memberName: string;
   completedTasks: number | null;
@@ -12,13 +11,15 @@ export interface KpiData {
   totalEstimatedHours: number | null;
 }
 
-// Define the state and actions for the productivity slice
 export interface ProductivitySlice extends StoreState {
   kpiData: KpiData[];
   isLoadingKpi: boolean;
+  statsViewMode: "individual" | "team";
+  toggleStatsViewMode: () => void;
   fetchKpiData: (params: {
     teamId?: number;
     sprintId?: number;
+    isTeamView?: boolean;
   }) => Promise<void>;
 }
 
@@ -31,11 +32,19 @@ export const createProductivitySlice: StateCreator<
   kpiData: [],
   isLoadingKpi: false,
   error: null,
+  statsViewMode: "individual",
 
-  fetchKpiData: async ({ teamId, sprintId }) => {
+  toggleStatsViewMode: () => {
+    const currentViewMode = get().statsViewMode;
+    set({
+      statsViewMode: currentViewMode === "individual" ? "team" : "individual",
+    } as Partial<TaskStore>);
+  },
+
+  fetchKpiData: async ({ teamId, sprintId, isTeamView }) => {
     set({ isLoadingKpi: true, error: null } as Partial<TaskStore>);
     try {
-      let url = "/kpis/completion-rate"; // REMOVED leading /api
+      let url = "/kpis/completion-rate";
       const queryParams = new URLSearchParams();
 
       if (sprintId) {
@@ -44,13 +53,16 @@ export const createProductivitySlice: StateCreator<
         queryParams.append("teamId", String(teamId));
       }
 
+      if (isTeamView || get().statsViewMode === "team") {
+        queryParams.append("aggregated", "true");
+      }
+
       const queryString = queryParams.toString();
       if (queryString) {
         url += `?${queryString}`;
       }
 
-      console.log(`Fetching KPI data from: ${url}`); // Log the relative path
-      // api.get will prepend /api, resulting in /api/kpis/completion-rate?...
+      console.log(`Fetching KPI data from: ${url}`);
       const data = await api.get<KpiData[]>(url);
       console.log("KPI API Response:", data);
 
