@@ -1,5 +1,7 @@
 // app/components/Tasks/KanbanDnd.tsx
 import React from "react";
+import type { CSSProperties } from "react";
+
 import {
   DndContext,
   DragOverlay,
@@ -38,10 +40,20 @@ export function DraggableTask({
       id: `task-${task.id}`,
       data: { task },
     });
-
-  const style = {
+  const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
+    transition: isDragging ? "none" : undefined,
+    ...(isDragging
+      ? {
+          height: 0,
+          overflow: "hidden",
+          margin: 0,
+          padding: 0,
+          border: 0,
+          opacity: 0,
+          pointerEvents: "none",
+        }
+      : {}),
   };
 
   return (
@@ -53,7 +65,6 @@ export function DraggableTask({
         isSelected={isSelected}
         showAssignees={showAssignees}
         sprints={sprints}
-        isDragging={isDragging}
         isUpdating={isUpdating}
       />
     </div>
@@ -110,7 +121,6 @@ export function KanbanDndProvider({
     setActiveTask(task);
   };
 
-  // Update optimistico para tasks
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
