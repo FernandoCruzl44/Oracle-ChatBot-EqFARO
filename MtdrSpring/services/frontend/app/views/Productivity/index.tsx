@@ -1,4 +1,4 @@
-// views/ProductivityView.tsx
+// views/Productivity/index.tsx
 import React, { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
 import useTaskStore from "~/store";
@@ -30,6 +30,22 @@ const ProductivityView: React.FC = () => {
   const toggleStatsViewMode = useTaskStore(
     (state) => state.toggleStatsViewMode,
   );
+  const initializeData = useTaskStore((state) => state.initializeData);
+  const fetchTeams = useTaskStore((state) => state.fetchTeams);
+
+  useEffect(() => {
+    if (currentUser && teams.length === 0) {
+      if (currentUser.role === "manager") {
+        fetchTeams();
+      } else {
+        fetchTeams();
+      }
+    }
+  }, [currentUser, teams.length, fetchTeams]);
+
+  useEffect(() => {
+    initializeData();
+  }, [initializeData]);
 
   const [selectedTeamId, setSelectedTeamId] = useState<string | number>("all");
   const [selectedSprintId, setSelectedSprintId] = useState<string | number>(
