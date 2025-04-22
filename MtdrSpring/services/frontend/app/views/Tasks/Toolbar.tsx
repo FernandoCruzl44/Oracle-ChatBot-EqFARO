@@ -53,9 +53,9 @@ export function Toolbar({
   const currentUser = useTaskStore((state) => state.currentUser);
 
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="flex flex-wrap items-center justify-between gap-y-2 py-4">
       {/* Left Section */}
-      <div className="flex flex-row items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-72">
           <input
             type="text"
@@ -76,16 +76,18 @@ export function Toolbar({
             ></i>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleAddTaskClick}
-            className={`border-oc-outline-light bg-oc-primary flex items-center rounded-lg border px-4 py-2 text-sm text-white hover:bg-black ${
+            className={`border-oc-outline-light bg-oc-primary flex flex-shrink-0 items-center rounded-lg border p-2 px-4 py-2 text-sm text-white hover:bg-black ${
               isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
             }`}
             disabled={isLoadingTasks}
+            title="Agregar tarea"
+            aria-label="Agregar tarea"
           >
             <i className="fa fa-plus mr-2"></i>
-            <span>Agrega tarea</span>
+            <span className="inline">Agregar tarea</span>
           </button>
 
           {showSprintSelector && (
@@ -106,18 +108,20 @@ export function Toolbar({
           {handleMigrateTasks && (
             <button
               onClick={handleMigrateTasks}
-              className={`border-oc-outline-light bg-oc-primary flex items-center rounded-lg border px-4 py-2 text-sm text-white hover:bg-black ${
+              className={`border-oc-outline-light bg-oc-primary flex flex-shrink-0 items-center rounded-lg border p-2 text-sm text-white hover:bg-black 2xl:px-4 2xl:py-2 ${
                 isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
               }`}
               disabled={isLoadingTasks}
+              title="Migrar"
+              aria-label="Migrar"
             >
-              <i className="fa fa-arrow-right mr-2"></i>
-              <span>Migrar tareas</span>
+              <i className="fa fa-arrow-right 2xl:mr-2"></i>
+              <span className="hidden 2xl:inline">Migrar</span>
             </button>
           )}
 
           <div
-            className="flex gap-2"
+            className="flex items-center gap-2"
             style={{
               opacity: selectedTasks.length > 0 ? 1 : 0,
               visibility: selectedTasks.length > 0 ? "visible" : "hidden",
@@ -129,25 +133,35 @@ export function Toolbar({
             {handleAtomizeTasks && (
               <button
                 onClick={handleAtomizeTasks}
-                className="flex w-[150px] flex-row items-center justify-center rounded-lg border border-sky-400 px-4 py-2 text-sm text-sky-400 transition-colors hover:bg-sky-900/50"
+                className="flex flex-shrink-0 flex-row items-center rounded-lg border border-sky-400 p-2 text-sm text-sky-400 transition-colors hover:bg-sky-900/50 2xl:px-4 2xl:py-2"
+                title={`Atomizar (${selectedTasks.length})`}
+                aria-label={`Atomizar (${selectedTasks.length})`}
               >
-                <i className="fa fa-sparkles mr-2"></i>
-                <span>Atomizar ({selectedTasks.length})</span>
+                <i className="fa fa-sparkles 2xl:mr-2"></i>
+                <span className="hidden 2xl:inline">
+                  Atomizar ({selectedTasks.length})
+                </span>
               </button>
             )}
             <button
               onClick={handleDeleteTasks}
-              className="flex w-[150px] flex-row items-center justify-center rounded-lg border border-red-400 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-900/50"
+              className="flex flex-shrink-0 flex-row items-center rounded-lg border border-red-400 p-2 text-sm text-red-400 transition-colors hover:bg-red-900/50 2xl:px-4 2xl:py-2"
+              title={`Eliminar (${selectedTasks.length})`}
+              aria-label={`Eliminar (${selectedTasks.length})`}
             >
-              <i className="fa fa-trash mr-2"></i>
-              <span>Eliminar ({selectedTasks.length})</span>
+              <i className="fa fa-trash 2xl:mr-2"></i>
+              <span className="hidden 2xl:inline">
+                Eliminar ({selectedTasks.length})
+              </span>
             </button>
             <button
               onClick={handleDeselectAll}
-              className="flex items-center rounded-lg border border-amber-400 px-4 py-2 text-sm text-amber-400 transition-colors hover:bg-amber-900/50"
+              className="flex flex-shrink-0 items-center rounded-lg border border-amber-400 p-2 text-sm text-amber-400 transition-colors hover:bg-amber-900/50 2xl:px-4 2xl:py-2"
+              title="Deseleccionar todo"
+              aria-label="Deseleccionar todo"
             >
-              <i className="fa fa-times-circle mr-2"></i>
-              <span>Ninguno</span>
+              <i className="fa fa-times-circle 2xl:mr-2"></i>
+              <span className="hidden 2xl:inline">Ninguno</span>
             </button>
           </div>
         </div>
@@ -155,30 +169,32 @@ export function Toolbar({
 
       {/* Right Section */}
       <div className="flex items-center gap-2">
-        <div className="border-oc-outline-light flex overflow-hidden rounded-lg border">
+        <div className="border-oc-outline-light flex flex-shrink-0 overflow-hidden rounded-lg border">
           <button
             onClick={() => setViewMode("kanban")}
-            className={`flex items-center px-3 py-2 text-sm ${
+            className={`flex items-center p-2 text-sm 2xl:px-3 2xl:py-2 ${
               viewMode === "kanban"
                 ? "bg-stone-700 text-white"
                 : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
             }`}
             title="Vista de kanban"
+            aria-label="Vista de kanban"
           >
-            <i className="fa fa-columns mr-2"></i>
-            <span>Kanban</span>
+            <i className="fa fa-columns 2xl:mr-2"></i>
+            <span className="hidden 2xl:inline">Kanban</span>
           </button>
           <button
             onClick={() => setViewMode("table")}
-            className={`flex items-center px-3 py-2 text-sm ${
+            className={`flex items-center p-2 text-sm 2xl:px-3 2xl:py-2 ${
               viewMode === "table"
                 ? "bg-stone-700 text-white"
                 : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
             }`}
             title="Vista de tabla"
+            aria-label="Vista de tabla"
           >
-            <i className="fa fa-table mr-2"></i>
-            <span>Tabla</span>
+            <i className="fa fa-table 2xl:mr-2"></i>
+            <span className="hidden 2xl:inline">Tabla</span>
           </button>
         </div>
       </div>

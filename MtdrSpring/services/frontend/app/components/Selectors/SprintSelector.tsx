@@ -116,7 +116,8 @@ export function SprintSelector({
             ? "Cargando sprints..."
             : currentSprint
               ? currentSprint.name +
-                (teamId === undefined &&
+                (isManager &&
+                teamId === undefined &&
                 currentSprint.teamId &&
                 getTeamNameById(currentSprint.teamId)
                   ? ` (${getTeamNameById(currentSprint.teamId)})`
@@ -170,7 +171,8 @@ export function SprintSelector({
                   }`}
                 >
                   {sprint.name}
-                  {teamId === undefined &&
+                  {isManager &&
+                    teamId === undefined &&
                     sprint.teamId &&
                     getTeamNameById(sprint.teamId) && (
                       <span className="ml-2 text-xs text-stone-500">
