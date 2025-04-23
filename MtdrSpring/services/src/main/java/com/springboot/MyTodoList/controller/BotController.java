@@ -49,7 +49,7 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String TASK_PREFIX = "task_";
 	private static final String SHOW_COMMENTS = "showComments";
 	private static final String ADD_COMMENT = "addComment";
-	private static final String ADD_TASK_TITLE = "addTaskTitle";
+	private static final String ADD_TASK_CALLBACK = "addTaskTitle";
 	private static final String SPRINT_SELECT_PREFIX = "sprint_select_";
 	private static final String NO_SPRINT_OPTION = "no_sprint";
 	private static final String STATUS_SELECT_PREFIX = "status_select_";
@@ -60,6 +60,12 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String CHANGE_REAL_HOURS = "real_hours";
 	private static final String PUT_EMAIL = "put_email";
 	private static final String PUT_PASS = "put_ pass";
+
+	private static final String SHOW_FLOATING_TASKS = "showFloatingTasks";
+
+	private static final String SHOW_KPIS = "showKpis";
+
+	private static final String SELF_ASSIGN_PREFIX = "selfAssign_";
 
 	// TODO: Se usan?
 	// private static final String ADD_TASK_DESCRIPTION = "addTaskDescription";
@@ -100,6 +106,10 @@ public class BotController extends TelegramLongPollingBot {
 
 			button.setCallbackData(callbackData);
 			return button;
+		}
+
+		public static InlineKeyboardMarkup createSingleButtonKeyboard(ButtonData button) {
+			return createSingleColumnKeyboard(Collections.singletonList(button));
 		}
 
 		public static InlineKeyboardMarkup createSingleColumnKeyboard(List<ButtonData> buttons) {
@@ -234,8 +244,7 @@ public class BotController extends TelegramLongPollingBot {
 	@Override
 	public void onUpdateReceived(Update update) {
 		final long chatId;
-		String text = null;
-		String callbackData = null;
+		final String data;
 		boolean isCallback = update.hasCallbackQuery();
 		boolean isMessage = update.hasMessage() && update.getMessage().hasText();
 
@@ -243,12 +252,12 @@ public class BotController extends TelegramLongPollingBot {
 		// If this raises, we are cooked anyway
 		if (isCallback) {
 			chatId = update.getCallbackQuery().getMessage().getChatId();
-			callbackData = update.getCallbackQuery().getData();
-			logger.debug("Handling callback query from Tel_ID {}: {}", chatId, callbackData);
+			data = update.getCallbackQuery().getData();
+			logger.debug("Handling callback query from Tel_ID {}: {}", chatId, data);
 		} else if (isMessage) {
 			chatId = update.getMessage().getChatId();
-			text = update.getMessage().getText();
-			logger.debug("Handling message from Tel_ID {}: {}", chatId, text);
+			data = update.getMessage().getText();
+			logger.debug("Handling message from Tel_ID {}: {}", chatId, data);
 		} else {
 			return; // Maybe an error? What would lead to this?
 		}
@@ -269,19 +278,19 @@ public class BotController extends TelegramLongPollingBot {
 			}
 
 			if (isMessage) {
-				logger.debug("Processing text '{}' in context {}", text, state);
-				handleTextMessage(chatId, text, state);
+				logger.debug("Processing data '{}' in context {}", data, state);
+				handleTextMessage(chatId, data, state);
 			} else if (isCallback) {
-				logger.debug("Processing callback '{}' in context {}", callbackData, state);
+				logger.debug("Processing callback '{}' in context {}", data, state);
 
-				if (state.loggedInUserId == null && !callbackData.startsWith(LOGIN_USER_PREFIX)) {
-					logger.debug("Chat {} received callback '{}' but is not logged in.", chatId, callbackData);
+				if (state.loggedInUserId == null && !data.startsWith(LOGIN_USER_PREFIX)) {
+					logger.debug("Chat {} received callback '{}' but is not logged in.", chatId, data);
 					sendMessage(chatId,
 							"No has iniciado sesión actualmente. Inicia sesión con '/login' para continuar.");
 					return;
 				}
 
-				handleCallback(chatId, callbackData, state);
+				handleCallback(chatId, data, state);
 			}
 		} catch (Exception e) {
 			logger.error("Unhandled exception during onUpdateReceived for chat {}: {}",
@@ -299,6 +308,7 @@ public class BotController extends TelegramLongPollingBot {
 		}
 	}
 
+		// Deprecado, solo se usaba para previo a login usuario/contraseña
 	private void showUserList(long chatId) {
 		List<User> allUsers = userRepository.findAll(100000, 0);
 
@@ -319,19 +329,51 @@ public class BotController extends TelegramLongPollingBot {
 
 	private void listTasksForUser(long chatId, Long userId) {
 		List<Task> tasks = taskRepository.findTasksAssignedToUser(userId);
+		
+		// Primer mensaje de respuesta. No incluye tareas, solo avisa si las hay
+		sendMessage(chatId,
+					tasks.isEmpty() ? "No tienes tareas asignadas:" : "Estas son tus tareas asignadas:");
 
+		// Map to categorize the tasks by status
+		HashMap<TaskStatus, List<Task>> ByStatus = new HashMap<>(4);
+		for (TaskStatus status : TaskStatus.values()) {
+			ByStatus.put(status, new ArrayList<Task>());
+		}
+
+		for (Task task : tasks) {
+			ByStatus.get(TaskStatus.fromString(task.getStatus())).add(task);
+		}
+
+		// Show all taks assigned to this user, grouped by status
+		for (TaskStatus status : TaskStatus.values()) {
+			List<Task> task_subset = ByStatus.get(status);
+
+			if (!task_subset.isEmpty()) {
+				InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(getButtonsFromTasks(task_subset));
+				sendMessage(chatId, "Estatus " + status.displayName + ":", markup);
+			}
+		}
+
+		// TODO: Show all tasks in the team that are unassigned (floating)
+		// This leads to the self-assign button
+		List<TelegramUI.ButtonData> actionButtons =
+			Arrays.asList(
+						  new TelegramUI.ButtonData("Agregar tarea", ADD_TASK_CALLBACK),
+						  new TelegramUI.ButtonData("Ver tareas del equipo", SHOW_FLOATING_TASKS),
+						  new TelegramUI.ButtonData("Ver progreso de KPIs", SHOW_KPIS)
+						  );
+		// Mandar actionButtons al final
+		sendMessage(chatId, "Acciones adicionales:",
+					TelegramUI.createSingleColumnKeyboard(actionButtons));
+	}
+
+	private List<TelegramUI.ButtonData> getButtonsFromTasks(List<Task> tasks) {
 		List<TelegramUI.ButtonData> buttons = tasks.stream()
 				.map(task -> new TelegramUI.ButtonData(
 						task.getTitle() + " [ID: " + task.getId() + "]",
 						TASK_PREFIX + task.getId()))
 				.collect(Collectors.toList());
-
-		buttons.add(new TelegramUI.ButtonData("Agregar tarea", ADD_TASK_TITLE));
-
-		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
-		String message = tasks.isEmpty() ? "No tienes tareas asignadas:" : "Estas son tus tareas asignadas:";
-
-		sendMessage(chatId, message, markup);
+		return buttons;
 	}
 
 	private void showTaskDetails(long chatId, Long taskId) {
@@ -367,6 +409,8 @@ public class BotController extends TelegramLongPollingBot {
 				new TelegramUI.ButtonData("Agregar comentario", ADD_COMMENT),
 				new TelegramUI.ButtonData("Cambiar estatus", CHANGE_STATUS),
 				new TelegramUI.ButtonData("Colocar horas reales", CHANGE_REAL_HOURS));
+
+		// TODO: Option to self assign if not assigned to this user
 
 		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
 		sendMessage(chatId, messageText, markup);
@@ -738,16 +782,54 @@ public class BotController extends TelegramLongPollingBot {
 				state.selectedTaskId = taskId;
 				state.currentAction = "NORMAL";
 				showTaskDetails(chatId, taskId);
+
+				// Check if this task is not assigned to the user, to offer to self-assign
+				List<User> assignees = taskRepository.findAssigneesByTaskId(taskId);
+				Boolean assigned = false;
+				for (User asignee : assignees) {
+					if (asignee.getId() == state.loggedInUserId) {
+						assigned = true;
+						break;
+					}
+				}
+
+				if (!assigned) {					
+					TelegramUI.ButtonData button =
+						new TelegramUI.ButtonData("Auto-asignar tarea", SELF_ASSIGN_PREFIX);
+					InlineKeyboardMarkup markup = TelegramUI.createSingleButtonKeyboard(button);
+					sendMessage(chatId, "Puedes tomar esta tarea", markup);
+				}
+
+				// Mensaje de salida
+				sendMessage(chatId, "Puedes volver con /tasks");
 			} catch (NumberFormatException e) {
 				logger.error("Invalid task ID format in task callback: {}", callbackData, e);
 				sendMessage(chatId, "Error interno (formato de ID de tarea inválido).");
 			}
+			
 			return;
+		}
+
+		if (callbackData.startsWith(SELF_ASSIGN_PREFIX)) {
+			try {
+				String taskIdString = callbackData.substring(TASK_PREFIX.length());
+				Long taskId = Long.parseLong(taskIdString);
+
+				int newAssignee = taskRepository.addAssignee(taskId, state.loggedInUserId);
+				if (newAssignee > 0 ) {
+					sendMessage(chatId, "Tarea asignada con éxito.");
+				}
+			}
+			catch (NumberFormatException e) {
+				System.out.println("Error " + e.getMessage());
+				e.printStackTrace();
+			}
+
 		}
 
 		if (SHOW_COMMENTS.equals(callbackData)) {
 			if (state.selectedTaskId == null) {
-				sendMessage(chatId, "Por favor, selecciona una tarea primero.");
+				sendMessage(chatId, "Por favor, selecciona una tarea primero. (/tasks)");
 			} else {
 				showComments(chatId, state.selectedTaskId);
 				showTaskDetails(chatId, state.selectedTaskId);
@@ -755,9 +837,34 @@ public class BotController extends TelegramLongPollingBot {
 			return;
 		}
 
+		if (SHOW_KPIS.equals(callbackData)) {
+			// TODO: Accion de mostrar KPIs
+			sendMessage(chatId, "NO IMPLEMENTADO!!");
+			return;
+		}
+
+		if (SHOW_FLOATING_TASKS.equals(callbackData)) {
+			Optional<User> userOptional = userRepository.findById(state.loggedInUserId);
+			if (userOptional.isEmpty()) {
+				logger.error("User ID {} not found after callback", state.loggedInUserId);
+				return;
+			}
+
+			// Get user, and its team. Show all tasks in its team
+			User user = userOptional.get();
+			List<Task> teamTasks = taskRepository.findTasksByTeamId(user.getTeamId());
+
+			InlineKeyboardMarkup markup =
+				TelegramUI.createSingleColumnKeyboard(getButtonsFromTasks(teamTasks));
+
+			sendMessage(chatId, "Todas las tareas en el equipo " + user.getTeamName(), markup);
+			sendMessage(chatId, "Puedes volver con /tasks");
+			return;
+		}
+
 		if (ADD_COMMENT.equals(callbackData)) {
 			if (state.selectedTaskId == null) {
-				sendMessage(chatId, "Por favor, selecciona una tarea primero.");
+				sendMessage(chatId, "Por favor, selecciona una tarea primero. (/tasks)");
 			} else {
 				state.currentAction = "ADDING_COMMENT";
 				sendMessage(chatId, "Por favor, escribe tu comentario ahora:");
@@ -766,7 +873,7 @@ public class BotController extends TelegramLongPollingBot {
 			return;
 		}
 
-		if (ADD_TASK_TITLE.equals(callbackData)) {
+		if (ADD_TASK_CALLBACK.equals(callbackData)) {
 			state.currentAction = "ADDING_TASK_TITLE";
 			state.NewTask = new Task();
 			sendMessage(chatId, "Por favor, escribe el título de la tarea:");

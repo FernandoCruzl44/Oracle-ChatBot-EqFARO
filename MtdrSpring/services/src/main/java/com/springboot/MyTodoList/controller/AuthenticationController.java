@@ -70,6 +70,8 @@ public class AuthenticationController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Authentication failed: {}", e.getMessage());
+	    logger.error("AuthController stacktrace:", e);
+	    
             return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: " + e.getMessage()));
         }
     }
