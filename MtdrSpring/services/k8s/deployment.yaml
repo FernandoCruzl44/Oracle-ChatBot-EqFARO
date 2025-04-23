@@ -12,9 +12,10 @@ spec:
       labels:
         app: telegram-bot
     spec:
+      serviceAccountName: telegram-bot-sa
       containers:
       - name: telegram-bot
-        image: mx-queretaro-1.ocir.io/axco8elk7e3y/faro/oraclechatbot:1743653761
+        image: mx-queretaro-1.ocir.io/axco8elk7e3y/faro/oraclechatbot:1745349981-auth-wip
         env:
         - name: POD_NAME
           valueFrom:
