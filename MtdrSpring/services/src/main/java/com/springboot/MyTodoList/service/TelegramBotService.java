@@ -9,6 +9,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import com.springboot.MyTodoList.controller.BotController;
+import com.springboot.MyTodoList.controller.GeminiController;
 
 
 @Service
@@ -17,12 +18,13 @@ public class TelegramBotService {
 
     private final Jdbi jdbi;
     private final AuthenticationService autentication; 
-    
+    private final GeminiController geminiController;
 
-    public TelegramBotService(Jdbi jdbi, AuthenticationService autentication) {
+	public TelegramBotService(Jdbi jdbi, AuthenticationService autentication, GeminiController geminiController) {
+		//public TelegramBotService(Jdbi jdbi, AuthenticationService autentication) {
         this.jdbi = jdbi;
         this.autentication = autentication;
-
+	this.geminiController = geminiController;
     }
 
     public void registerBot() {
@@ -35,7 +37,7 @@ public class TelegramBotService {
 
             logger.info("Bot initializing with username: {}", telegramBotName);
 
-            BotController botController = new BotController(telegramBotToken, telegramBotName, jdbi, autentication);
+            BotController botController = new BotController(telegramBotToken, telegramBotName, jdbi, autentication, geminiController);
             telegramBotsApi.registerBot(botController);
 
             logger.info("Bot registered and started successfully!");

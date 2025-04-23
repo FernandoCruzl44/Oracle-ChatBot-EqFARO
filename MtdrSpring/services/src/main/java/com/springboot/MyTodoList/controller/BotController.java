@@ -36,10 +36,11 @@ public class BotController extends TelegramLongPollingBot {
 
 	private final Jdbi jdbi;
 
-	private UserRepository userRepository;
-	private TaskRepository taskRepository;
-	private CommentRepository commentRepository;
-	private SprintRepository sprintRepository;
+	private final UserRepository userRepository;
+	private final TaskRepository taskRepository;
+	private final CommentRepository commentRepository;
+	private final SprintRepository sprintRepository;
+	private final GeminiController geminiController;
 
 	private final String botUsername;
 
@@ -60,26 +61,24 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String CHANGE_REAL_HOURS = "real_hours";
 	private static final String PUT_EMAIL = "put_email";
 	private static final String PUT_PASS = "put_ pass";
-
 	private static final String SHOW_FLOATING_TASKS = "showFloatingTasks";
-
 	private static final String SHOW_KPIS = "showKpis";
-
 	private static final String SELF_ASSIGN_PREFIX = "selfAssign_";
+	private static final String GEMINI_DIVIDE_TASK = "gemini_divide_task";
 
-	// TODO: Se usan?
-	// private static final String ADD_TASK_DESCRIPTION = "addTaskDescription";
-	// private static final String ADD_TASK_ESTIMATED_HOURS =
-	// "addTaskEstimatedHours";
-	// private static final String ADD_TASK_SPRINT = "addTaskSprint";
 
 	private Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
-	public BotController(String botToken, String botUsername, Jdbi jdbi, AuthenticationService autentication) {
+	public BotController(String botToken,
+			     String botUsername,
+			     Jdbi jdbi,
+			     AuthenticationService autentication,
+			     GeminiController geminiController) {
 		super(botToken);
 		this.botUsername = botUsername;
 		this.jdbi = jdbi;
 		this.autentication = autentication;
+		this.geminiController = geminiController;
 
 		this.userRepository = jdbi.onDemand(UserRepository.class);
 		this.taskRepository = jdbi.onDemand(TaskRepository.class);
@@ -408,7 +407,8 @@ public class BotController extends TelegramLongPollingBot {
 				new TelegramUI.ButtonData("Ver comentarios", SHOW_COMMENTS),
 				new TelegramUI.ButtonData("Agregar comentario", ADD_COMMENT),
 				new TelegramUI.ButtonData("Cambiar estatus", CHANGE_STATUS),
-				new TelegramUI.ButtonData("Colocar horas reales", CHANGE_REAL_HOURS));
+				new TelegramUI.ButtonData("Colocar horas reales", CHANGE_REAL_HOURS),
+				new TelegramUI.ButtonData("Dividir con Gemini", GEMINI_DIVIDE_TASK));
 
 		// TODO: Option to self assign if not assigned to this user
 
@@ -582,6 +582,40 @@ public class BotController extends TelegramLongPollingBot {
 
 		InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(buttons);
 		sendMessage(chatId, "Selecciona el nuevo estado para la tarea:", markup);
+	}
+
+	// Gemini Metodos
+	private void getGeminiSuggestions(long chatId, Long taskId) {
+		if (taskId == null) {
+			sendMessage(chatId, "No hay tarea seleccionada.");
+			return;
+		}
+    
+		Optional<Task> optTask = taskRepository.findById(taskId);
+		if (optTask.isEmpty()) {
+			sendMessage(chatId, "Tarea no encontrada con ID: " + taskId);
+			return;
+		}
+    
+		Task task = optTask.get();
+		String taskDescription = "Tarea a dividir:\n"+ task.getTitle() + ": " + task.getDescription() + "\nDatos dados: \ncreatorName: " + task.getCreatorName()+"\n status: " +task.getStatus()+"\n startDate: "+task.getStartDate() + "\nassignees: " + task.getCreatorName();
+		//sendMessage(chatId, taskDescription);
+		sendMessage(chatId, "Consultando a Gemini para sugerencias...");
+    
+		try {
+			//String response = geminiController.callGeminiAPI(taskDescription);
+			String geminiResponse = geminiController.callGeminiAPI(taskDescription);
+			if (geminiResponse != null && !geminiResponse.isEmpty()) {
+				// Formatear la respuesta para Telegram
+				String formattedResponse = geminiController.formatSubtasksForTelegram(geminiResponse);
+				sendMessage(chatId, formattedResponse);
+			} else {
+				sendMessage(chatId, "No se pudo obtener una respuesta de Gemini.");
+			}
+		} catch (Exception e) {
+			logger.error("Error al consultar Gemini: " + e.getMessage(), e);
+			sendMessage(chatId, "Error al consultar Gemini: " + e.getMessage());
+		}
 	}
 
 	private void handleTextMessage(long chatId, String text, UserState state) {
@@ -993,6 +1027,17 @@ public class BotController extends TelegramLongPollingBot {
 				sendMessage(chatId, "Por favor, escribe las horas reales de la tarea (número):");
 				sendMessage(chatId, "Puedes cancelar esta accion en todo momento con /cancel");
 			}
+			return;
+		}
+
+		if (callbackData.equals(GEMINI_DIVIDE_TASK)) {
+			if (state.selectedTaskId != null) {
+				getGeminiSuggestions(chatId, state.selectedTaskId);
+			}
+			else {
+				sendMessage(chatId, "No hay tarea seleccionada.");
+			}
+
 			return;
 		}
 
