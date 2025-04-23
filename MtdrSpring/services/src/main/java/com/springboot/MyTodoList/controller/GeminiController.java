@@ -10,6 +10,11 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.springboot.MyTodoList.MyTodoListApplication;
 
@@ -21,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @RestController
+@RequestMapping("/api/ai")
 public class GeminiController {
     
 	private static final Logger logger = LoggerFactory.getLogger(MyTodoListApplication.class);
@@ -30,8 +36,24 @@ public class GeminiController {
 	public GeminiController(@Value("${gemini_api_key}") String geminiApiKey) {
 		this.apiKey =geminiApiKey;
 	}
-// Gemini Metodos
-	public String callGeminiAPI(String taskDescription) {
+
+
+	@GetMapping("/atomize")
+	public ResponseEntity<?> getTaskAtomizedByTaskId(@RequestBody Task task) {
+		String response = callGeminiToAtomize(descriptionFromTask(task));
+		if (response == null) {
+			return ResponseEntity.internalServerError()
+				.body("{\"msg\": \"Error atomizando con Gemini\"}");
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(response);
+	}
+
+	public static String descriptionFromTask(Task task)	{
+		return "Tarea a dividir:\n"+ task.getTitle() + ": " + task.getDescription() + "\nDatos dados: \ncreatorName: " + task.getCreatorName()+"\n status: " +task.getStatus()+"\n startDate: "+task.getStartDate() + "\nassignees: " + task.getCreatorName();
+	}
+
+	// Llamada a Gemini y manipulación de respuesta
+	public String callGeminiToAtomize(String taskDescription) {
 		String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
     
 		// Crear el cuerpo de la solicitud en formato JSON
@@ -44,7 +66,7 @@ public class GeminiController {
     
 		JSONArray firstParts = new JSONArray();
 		JSONObject firstTextPart = new JSONObject();
-		firstTextPart.put("text", "Te voy a mandar la informacion de tres tareas ocupo que me generes 3 subtareas apartir de esa tarea y solo necesito que me mandes  solo el objeto json sin ningún tipo de marcado (sin ```, sin la palabra json, solo el array JSON puro) y que al inicio que tenga una propiedad generated con los siguientes campos title, tag, status, description, estimatedHours, startDate, endDate, creatorName, assignees - esos son todos los campos, el tag solo puede ser un issue o un feature y el campo de status, startDate, creatorname y assignees, te los proveer yo");
+		firstTextPart.put("text", "Te voy a dar la informacion de una tarea. Necesito que a partir de esa tarea, crees tareas mas pequeñas que forman ese trabajo. De ser posible, piensa en tareas que se pueden paralelizar, o de otra forma, modularizar. Solo necesito que me mandes solo el objeto json sin ningún tipo de marcado o markup (sin ```, sin la palabra json, solo el array JSON puro o crudo) y que al inicio que tenga una propiedad generated con los siguientes campos title, tag, status, description, estimatedHours, startDate, endDate, creatorName, assignees - esos son todos los campos, el tag solo puede ser un issue o un feature y el campo de status, startDate, creatorname y assignees, te los voy a proveer yo");
 		firstParts.put(firstTextPart);
     
 		firstMessage.put("parts", firstParts);
@@ -106,21 +128,8 @@ public class GeminiController {
 
 	public String formatSubtasksForTelegram(String geminiResponse) {
 		try {
-			// Intentar limpiar cualquier texto markdown que pueda haber en la respuesta
-			String cleanedResponse = geminiResponse.trim();
-			if (cleanedResponse.startsWith("```json")) {
-				cleanedResponse = cleanedResponse.substring("```json".length());
-			} else if (cleanedResponse.startsWith("```")) {
-				cleanedResponse = cleanedResponse.substring("```".length());
-			}
-            
-			if (cleanedResponse.endsWith("```")) {
-				cleanedResponse = cleanedResponse.substring(0, cleanedResponse.lastIndexOf("```"));
-			}
-            
-			cleanedResponse = cleanedResponse.trim();
-			//System.out.println("\n\n\n\n"+cleanedResponse+"\n\n\n\n");
-            
+			String cleanedResponse = cleanGeminiResponse(geminiResponse);
+
 			// Crear un mensaje formateado para Telegram
 			StringBuilder formattedMessage = new StringBuilder("🔄 Subtareas sugeridas:\n\n");
             
@@ -146,34 +155,21 @@ public class GeminiController {
 		}
 	}
 
-// // private void getGeminiSuggestions(long chatId, Long taskId) {
-//     if (taskId == null) {
-//         sendTelegramMessage(chatId, "No hay tarea seleccionada.");
-//         return;
-//     }
-    
-//     Optional<Task> optTask = taskRepository.findById(taskId);
-//     if (optTask.isEmpty()) {
-//         sendTelegramMessage(chatId, "Tarea no encontrada con ID: " + taskId);
-//         return;
-//     }
-    
-//     Task task = optTask.get();
-//     String taskDescription = "Tarea a dividir:\n"+ task.getTitle() + ": " + task.getDescription() + "\nDatos dados: \ncreatorName: " + task.getCreatorName()+"\n status: " +task.getStatus()+"\n startDate: "+task.getStartDate() + "\nassignees: " + task.getCreatorName();
-//     sendTelegramMessage(chatId, taskDescription);
-//     sendTelegramMessage(chatId, "Consultando a Gemini para sugerencias...");
-    
-//     try {
-//         String response = geminiController.callGeminiAPI(taskDescription);
-//         if (response != null) {
-//             sendTelegramMessage(chatId, "Respuesta de Gemini:\n\n" + response);
-//         } else {
-//             sendTelegramMessage(chatId, "No se pudo obtener una respuesta de Gemini.");
-//         }
-//     } catch (Exception e) {
-//         logger.error("Error al consultar Gemini: " + e.getMessage(), e);
-//         sendTelegramMessage(chatId, "Error al consultar Gemini: " + e.getMessage());}
-
-
 	
+	public static String cleanGeminiResponse(String rawResponse) {
+		// Intentar limpiar cualquier texto markdown que pueda haber en la respuesta
+		String cleanedResponse = rawResponse.trim();
+		if (cleanedResponse.startsWith("```json")) {
+			cleanedResponse = cleanedResponse.substring("```json".length());
+		} else if (cleanedResponse.startsWith("```")) {
+			cleanedResponse = cleanedResponse.substring("```".length());
+		}
+		
+		if (cleanedResponse.endsWith("```")) {
+			cleanedResponse = cleanedResponse.substring(0, cleanedResponse.lastIndexOf("```"));
+		}
+		
+		cleanedResponse = cleanedResponse.trim();
+		return cleanedResponse;
+	}	
 }

@@ -598,16 +598,17 @@ public class BotController extends TelegramLongPollingBot {
 		}
     
 		Task task = optTask.get();
-		String taskDescription = "Tarea a dividir:\n"+ task.getTitle() + ": " + task.getDescription() + "\nDatos dados: \ncreatorName: " + task.getCreatorName()+"\n status: " +task.getStatus()+"\n startDate: "+task.getStartDate() + "\nassignees: " + task.getCreatorName();
+		String taskDescription = GeminiController.descriptionFromTask(task);
 		//sendMessage(chatId, taskDescription);
 		sendMessage(chatId, "Consultando a Gemini para sugerencias...");
     
 		try {
-			//String response = geminiController.callGeminiAPI(taskDescription);
-			String geminiResponse = geminiController.callGeminiAPI(taskDescription);
-			if (geminiResponse != null && !geminiResponse.isEmpty()) {
+			// Get response from Gemini
+			String response = geminiController.callGeminiToAtomize(taskDescription);
+			
+			if (response != null && !response.isEmpty()) {
 				// Formatear la respuesta para Telegram
-				String formattedResponse = geminiController.formatSubtasksForTelegram(geminiResponse);
+				String formattedResponse = geminiController.formatSubtasksForTelegram(response);
 				sendMessage(chatId, formattedResponse);
 			} else {
 				sendMessage(chatId, "No se pudo obtener una respuesta de Gemini.");
@@ -829,7 +830,7 @@ public class BotController extends TelegramLongPollingBot {
 
 				if (!assigned) {					
 					TelegramUI.ButtonData button =
-						new TelegramUI.ButtonData("Auto-asignar tarea", SELF_ASSIGN_PREFIX);
+						new TelegramUI.ButtonData("Auto-asignar tarea", SELF_ASSIGN_PREFIX + taskId);
 					InlineKeyboardMarkup markup = TelegramUI.createSingleButtonKeyboard(button);
 					sendMessage(chatId, "Puedes tomar esta tarea", markup);
 				}
@@ -846,7 +847,7 @@ public class BotController extends TelegramLongPollingBot {
 
 		if (callbackData.startsWith(SELF_ASSIGN_PREFIX)) {
 			try {
-				String taskIdString = callbackData.substring(TASK_PREFIX.length());
+				String taskIdString = callbackData.substring(SELF_ASSIGN_PREFIX.length());
 				Long taskId = Long.parseLong(taskIdString);
 
 				int newAssignee = taskRepository.addAssignee(taskId, state.loggedInUserId);
@@ -859,6 +860,7 @@ public class BotController extends TelegramLongPollingBot {
 				e.printStackTrace();
 			}
 
+			return;
 		}
 
 		if (SHOW_COMMENTS.equals(callbackData)) {
