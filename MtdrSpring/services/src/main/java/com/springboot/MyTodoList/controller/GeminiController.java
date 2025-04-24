@@ -7,7 +7,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
 import com.springboot.MyTodoList.MyTodoListApplication;
+import com.springboot.MyTodoList.model.Task;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -127,6 +131,87 @@ public class GeminiController {
 		} catch (Exception e) {
 			logger.error("Error in atomize endpoint: " + e.getMessage(), e);
 			throw new RuntimeException("Error processing atomize request", e);
+		}
+	}
+
+	public static String descriptionFromTask(Task task) {
+		return "Tarea a dividir:\n" + task.getTitle() + ": " + task.getDescription() + "\nDatos dados: \ncreatorName: "
+				+ task.getCreatorName() + "\n status: " + task.getStatus() + "\n startDate: " + task.getStartDate()
+				+ "\nassignees: " + task.getCreatorName();
+	}
+
+	public String callGeminiToAtomize(String taskDescription) {
+		String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+				+ apiKey;
+
+		// Crear el cuerpo de la solicitud en formato JSON
+		JSONObject requestBody = new JSONObject();
+		JSONArray contents = new JSONArray();
+
+		// Primer mensaje - instrucción
+		JSONObject firstMessage = new JSONObject();
+		firstMessage.put("role", "user");
+
+		JSONArray firstParts = new JSONArray();
+		JSONObject firstTextPart = new JSONObject();
+		firstTextPart.put("text",
+				"Te voy a dar la informacion de una tarea. Necesito que a partir de esa tarea, crees tareas mas pequeñas que forman ese trabajo. De ser posible, piensa en tareas que se pueden paralelizar, o de otra forma, modularizar. Solo necesito que me mandes solo el objeto json sin ningún tipo de marcado o markup (sin ```, sin la palabra json, solo el array JSON puro o crudo) y que al inicio que tenga una propiedad generated con los siguientes campos title, tag, status, description, estimatedHours, startDate, endDate, creatorName, assignees - esos son todos los campos, el tag solo puede ser un issue o un feature y el campo de status, startDate, creatorname y assignees, te los voy a proveer yo");
+		firstParts.put(firstTextPart);
+
+		firstMessage.put("parts", firstParts);
+		contents.put(firstMessage);
+
+		// Segundo mensaje - la tarea
+		JSONObject secondMessage = new JSONObject();
+		secondMessage.put("role", "user");
+
+		JSONArray secondParts = new JSONArray();
+		JSONObject secondTextPart = new JSONObject();
+		secondTextPart.put("text", taskDescription);
+		secondParts.put(secondTextPart);
+
+		secondMessage.put("parts", secondParts);
+		contents.put(secondMessage);
+
+		requestBody.put("contents", contents);
+
+		try {
+			// Crear cliente HTTP
+			HttpClient client = HttpClient.newBuilder()
+					.connectTimeout(Duration.ofSeconds(10))
+					.build();
+
+			// Crear la solicitud HTTP
+			HttpRequest request = HttpRequest.newBuilder()
+					.uri(URI.create(url))
+					.header("Content-Type", "application/json")
+					.POST(HttpRequest.BodyPublishers.ofString(requestBody.toString(), StandardCharsets.UTF_8))
+					.build();
+
+			// Enviar la solicitud y recibir la respuesta
+
+			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+			// Analizar la respuesta JSON
+			JSONObject jsonResponse = new JSONObject(response.body());
+
+			if (jsonResponse.has("candidates") && jsonResponse.getJSONArray("candidates").length() > 0) {
+				JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
+
+				if (candidate.has("content") && candidate.getJSONObject("content").has("parts")) {
+					JSONArray parts = candidate.getJSONObject("content").getJSONArray("parts");
+
+					if (parts.length() > 0 && parts.getJSONObject(0).has("text")) {
+						return parts.getJSONObject(0).getString("text");
+					}
+				}
+			}
+
+			logger.error("No se pudo extraer el texto de la respuesta: " + jsonResponse.toString());
+			return null;
+		} catch (Exception e) {
+			logger.error("Error al llamar a la API de Gemini: " + e.getMessage(), e);
+			return null;
 		}
 	}
 
