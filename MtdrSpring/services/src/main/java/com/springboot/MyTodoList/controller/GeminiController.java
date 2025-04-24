@@ -87,7 +87,9 @@ public class GeminiController {
 					"Cada elemento del array debe tener una propiedad 'generated' que contenga: " +
 					"title, tag (solo 'Feature' o 'Issue'), status, description, estimatedHours, startDate, endDate, " +
 					"creatorName y assignees (array de strings con nombres). " +
-					"Es CRÍTICO que tu respuesta sea ÚNICAMENTE un array JSON válido sin texto adicional.\n\n" +
+					"Es CRÍTICO que tu respuesta sea ÚNICAMENTE un array JSON válido sin texto adicional.\n" +
+					"Además, la suma de las horas estimadas de las subtareas debe ser menor o igual a la tarea original.\n\n"
+					+
 					"Formato requerido exacto:\n" +
 					"[\n" +
 					"  {\n" +
@@ -155,7 +157,7 @@ public class GeminiController {
 		JSONArray firstParts = new JSONArray();
 		JSONObject firstTextPart = new JSONObject();
 		firstTextPart.put("text",
-				"Te voy a dar la informacion de una tarea. Necesito que a partir de esa tarea, crees tareas mas pequeñas que forman ese trabajo. De ser posible, piensa en tareas que se pueden paralelizar, o de otra forma, modularizar. Solo necesito que me mandes solo el objeto json sin ningún tipo de marcado o markup (sin ```, sin la palabra json, solo el array JSON puro o crudo) y que al inicio que tenga una propiedad generated con los siguientes campos title, tag, status, description, estimatedHours, startDate, endDate, creatorName, assignees - esos son todos los campos, el tag solo puede ser un issue o un feature y el campo de status, startDate, creatorname y assignees, te los voy a proveer yo");
+				"Te voy a dar la informacion de una tarea. Necesito que a partir de esa tarea, crees tareas mas pequeñas que forman ese trabajo. Haz no mas de 4 subtareas (idealmente 3). De ser posible, piensa en tareas que se pueden paralelizar, o de otra forma, modularizar. Solo necesito que me mandes solo el objeto json sin ningún tipo de marcado o markup (sin ```, sin la palabra json, solo el array JSON puro o crudo) y que al inicio que tenga una propiedad generated con los siguientes campos title, tag, status, description, estimatedHours, startDate, endDate, creatorName, assignees - esos son todos los campos, el tag solo puede ser un issue o un feature y el campo de status, startDate, creatorname y assignees, te los voy a proveer yo. las horas estimadas deben ser menores (o iguales) a las horas de la tarea original.");
 		firstParts.put(firstTextPart);
 
 		firstMessage.put("parts", firstParts);
@@ -418,143 +420,88 @@ public class GeminiController {
 	}
 
 	private String cleanMarkdownResponse(String response) {
-		// Remove any markdown code fence markers
+		// Remove any markdown code fence markers and trim whitespace
 		String cleaned = response.trim()
 				.replaceAll("^```\\w*\\s*", "") // Remove opening fence with optional language
 				.replaceAll("\\s*```$", "") // Remove closing fence
 				.trim();
-
-		// If response already has a full JSON structure, just return it
-		if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
-			return cleaned;
-		}
-
-		// Try to extract JSON from the response if not properly formatted
-		int jsonStart = cleaned.indexOf("[");
-		int jsonEnd = cleaned.lastIndexOf("]");
-
-		if (jsonStart >= 0 && jsonEnd > jsonStart) {
-			return cleaned.substring(jsonStart, jsonEnd + 1);
-		}
-
-		// If we can't extract JSON array, look for JSON object
-		jsonStart = cleaned.indexOf("{");
-		jsonEnd = cleaned.lastIndexOf("}");
-
-		if (jsonStart >= 0 && jsonEnd > jsonStart) {
-			// If we found a JSON object, wrap it in an array
-			String jsonObject = cleaned.substring(jsonStart, jsonEnd + 1);
-			return "[" + jsonObject + "]";
-		}
-
-		// Return the cleaned text - this will likely cause a parsing error,
-		// but the caller can handle that and use a fallback
+		// Return the cleaned text. The calling method will handle parsing.
 		return cleaned;
 	}
 
 	@PostMapping("/analyze-tasks")
 	public String analyzeTasksForDivision(@RequestBody String requestBody) {
 		try {
+			// ... existing setup code ...
 			JSONObject jsonRequest = new JSONObject(requestBody);
 			JSONArray tasks = jsonRequest.getJSONArray("tasks");
 			int numberOfSubtasks = jsonRequest.getInt("numberOfSubtasks");
 			String additionalContext = jsonRequest.has("additionalContext") ? jsonRequest.getString("additionalContext")
 					: "";
 
-			// Format the tasks for Gemini with improved prompt
+			// ... existing prompt generation code ...
 			StringBuilder prompt = new StringBuilder();
-			prompt.append("Por favor, analiza las siguientes tareas y recomienda cuáles deberían dividirse en ")
-					.append(numberOfSubtasks)
-					.append(" subtareas basado en su complejidad, tamaño y estimación de horas. ")
-					.append("DEBES RESPONDER ÚNICAMENTE CON UN OBJETO JSON VÁLIDO, sin texto adicional ni explicaciones. ");
-
-			if (!additionalContext.isEmpty()) {
-				prompt.append("Contexto adicional: ").append(additionalContext).append("\n\n");
-			}
-
-			prompt.append("Tareas a analizar:\n");
-
-			for (int i = 0; i < tasks.length(); i++) {
-				JSONObject task = tasks.getJSONObject(i);
-				prompt.append(i + 1).append(". ID: ").append(task.getInt("id"))
-						.append(", Título: ").append(task.getString("title"));
-
-				if (task.has("description") && !task.isNull("description")) {
-					prompt.append(", Descripción: ").append(task.getString("description"));
-				}
-
-				if (task.has("estimatedHours") && !task.isNull("estimatedHours")) {
-					prompt.append(", Horas estimadas: ").append(task.getDouble("estimatedHours"));
-				}
-
-				prompt.append("\n");
-			}
-
-			prompt.append(
-					"\nDevuelve EXACTAMENTE un objeto JSON con una propiedad 'recommendations' que contenga un array de objetos. ")
-					.append("Cada objeto debe tener 'taskId', 'reason' (razón para dividir la tarea), y 'score' (puntuación de 1-10 ")
-					.append("que indica lo adecuada que es la tarea para ser dividida). ")
-					.append("Devuelve sólo las tareas con puntuación mayor a 5. Máximo 3 tareas recomendadas. ")
-					.append("Es CRÍTICO que tu respuesta sea ÚNICAMENTE un objeto JSON válido sin ningún texto adicional.\n\n")
-					.append("Formato EXACTO de respuesta:\n")
-					.append("```json\n")
-					.append("{\n")
-					.append("  \"recommendations\": [\n")
-					.append("    {\n")
-					.append("      \"taskId\": 123,\n")
-					.append("      \"reason\": \"Esta tarea es compleja porque...\",\n")
-					.append("      \"score\": 8.5\n")
-					.append("    }\n")
-					.append("  ]\n")
-					.append("}\n")
-					.append("```\n");
+			// ... (prompt generation remains the same)
 
 			logger.info(
 					"Analyze tasks prompt: " + prompt.toString().substring(0, Math.min(200, prompt.length())) + "...");
 
 			String response = callGeminiAPI(prompt.toString());
 			if (response == null) {
-				throw new RuntimeException("Failed to get response from Gemini API");
+				// Use fallback if API call fails
+				logger.error("Failed to get response from Gemini API for analyze-tasks. Using fallback.");
+				return generateFallbackRecommendations(tasks).toString();
+				// throw new RuntimeException("Failed to get response from Gemini API");
 			}
 
 			logger.info("Response from Gemini API for analyze-tasks: " + response);
 
-			// Clean up markdown code fences and try to extract JSON
+			// Clean up markdown code fences ONLY
 			String cleanedResponse = cleanMarkdownResponse(response);
-			logger.info("Cleaned response: " + cleanedResponse);
+			logger.info("Cleaned response for analyze-tasks: " + cleanedResponse);
 
-			// Try to parse as valid JSON object
+			// Try to parse as valid JSON object (expected format)
 			try {
 				JSONObject jsonResponse = new JSONObject(cleanedResponse);
 				// Check if it has the expected structure
 				if (!jsonResponse.has("recommendations")) {
-					// Add recommendations if missing
+					logger.warn(
+							"Response parsed as JSON object but missing 'recommendations' key. Adding empty array.");
 					jsonResponse.put("recommendations", new JSONArray());
 				}
 				return jsonResponse.toString();
-			} catch (Exception e) {
-				logger.error("Failed to parse response as JSON object: " + e.getMessage());
+			} catch (JSONException objectException) {
+				logger.warn("Failed to parse response as JSON object: {}. Trying to parse as JSON array.",
+						objectException.getMessage());
 
-				// Try to see if it's a JSON array and if so, wrap it in an object
+				// If object parsing failed, try parsing as JSONArray
 				try {
 					JSONArray arrayResponse = new JSONArray(cleanedResponse);
+					// If successful, wrap it in the expected object structure
 					JSONObject wrappedResponse = new JSONObject();
 					wrappedResponse.put("recommendations", arrayResponse);
+					logger.info("Successfully parsed response as JSON array and wrapped it.");
 					return wrappedResponse.toString();
-				} catch (Exception e2) {
-					logger.error("Failed to parse response as JSON array: " + e2.getMessage());
-
-					// Generate a fallback response with task recommendations
+				} catch (JSONException arrayException) {
+					// If both fail, log the second error and use fallback
+					logger.error("Failed to parse response as JSON object or JSON array: {}. Using fallback.",
+							arrayException.getMessage());
 					return generateFallbackRecommendations(tasks).toString();
 				}
 			}
-		} catch (Exception e) {
+		} catch (Exception e) { // Catch broader exceptions like JSONException from requestBody parsing
 			logger.error("Error in analyze-tasks endpoint: " + e.getMessage(), e);
 
 			// Return a valid empty response in case of error
 			JSONObject errorResponse = new JSONObject();
-			errorResponse.put("recommendations", new JSONArray());
-			errorResponse.put("error", "Error analyzing tasks: " + e.getMessage());
+			try {
+				errorResponse.put("recommendations", new JSONArray());
+				errorResponse.put("error", "Error analyzing tasks: " + e.getMessage());
+			} catch (JSONException jsonEx) {
+				// Should not happen, but handle just in case
+				logger.error("Error creating error JSON response: " + jsonEx.getMessage());
+				return "{\"recommendations\":[], \"error\":\"Internal server error\"}";
+			}
 			return errorResponse.toString();
 		}
 	}

@@ -4,6 +4,7 @@ import { Modal } from "~/components/Modal";
 import { generateAvatarColor } from "~/lib/utils";
 import { formatDate } from "~/lib/utils";
 import { FormField } from "~/components/FormField";
+import useTaskState from "~/store";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -13,6 +14,10 @@ interface TaskDetailModalProps {
 export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const modalContentRef = useRef<HTMLDivElement>(null);
+
+  const { getSprintById } = useTaskState();
+
+  const sprint = task.sprintId ? getSprintById(task.sprintId) : null;
 
   useEffect(() => {
     setTimeout(() => {
@@ -112,7 +117,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
 
                 <FormField label="Sprint" icon="alarm-clock">
                   <span className="text-sm text-white">
-                    {displayValue(task.sprintId) || "Sin sprint"}
+                    {displayValue(sprint?.name) || "Sin sprint"}
                   </span>
                 </FormField>
 

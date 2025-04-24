@@ -6,6 +6,7 @@ import { FormField } from "~/components/FormField";
 import { Input } from "~/components/Input"; // Use your existing Input
 import { Select } from "~/components/Select"; // Import the custom Select
 import { Button } from "~/components/Button";
+import useTaskState from "~/store";
 
 interface EditableTaskModalProps {
   task: Task;
@@ -37,6 +38,10 @@ EditableTaskModalProps) {
   const [formData, setFormData] = useState<Task>({ ...task });
   const [isDirty, setIsDirty] = useState(false);
   const modalContentRef = useRef<HTMLDivElement>(null);
+
+  const { getSprintById } = useTaskState();
+
+  const sprint = task.sprintId ? getSprintById(task.sprintId) : null;
 
   useEffect(() => {
     setFormData({ ...task });
@@ -269,7 +274,7 @@ EditableTaskModalProps) {
                 <FormField label="Sprint" icon="alarm-clock">
                   {/* Display only, not editable */}
                   <span className="text-sm text-white">
-                    {displayValue(task.sprintId) || "Sin sprint"}
+                    {displayValue(sprint?.name) || "Sin sprint"}
                   </span>
                   {/* If Sprint needs to be editable, replace span with Select and pass teamSprints prop */}
                   {/* <Select

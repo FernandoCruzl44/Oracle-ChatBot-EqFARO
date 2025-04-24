@@ -130,11 +130,11 @@ export function Toolbar({
                   isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
                 }`}
                 disabled={isLoadingTasks}
-                title="Asistente IA"
-                aria-label="Asistente IA"
+                title="Asistente AI"
+                aria-label="Asistente AI"
               >
                 <i className="fa fa-robot 2xl:mr-2"></i>
-                <span className="hidden 2xl:inline">Asistente IA</span>
+                <span className="hidden 2xl:inline">Asistente AI</span>
               </button>
             )}
           </div>
