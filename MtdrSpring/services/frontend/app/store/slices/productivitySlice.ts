@@ -4,6 +4,10 @@ import { api } from "~/lib/api";
 
 export interface KpiData {
   memberName: string;
+  teamName?: string; // Added for team context
+  teamId?: number; // Added for team context
+  sprintId?: number; // Added for sprint-level aggregation
+  sprintName?: string; // Added for sprint-level aggregation
   completedTasks: number | null;
   totalAssignedTasks: number | null;
   completionRatePercent: number | null;
@@ -14,12 +18,12 @@ export interface KpiData {
 export interface ProductivitySlice extends StoreState {
   kpiData: KpiData[];
   isLoadingKpi: boolean;
-  statsViewMode: "individual" | "team";
+  statsViewMode: "member" | "sprint"; // Corrected: Renamed from "individual" | "team"
   toggleStatsViewMode: () => void;
   fetchKpiData: (params: {
     teamId?: number;
     sprintId?: number;
-    isTeamView?: boolean;
+    isTeamView?: boolean; // Backend param for aggregation
   }) => Promise<void>;
 }
 
@@ -32,28 +36,30 @@ export const createProductivitySlice: StateCreator<
   kpiData: [],
   isLoadingKpi: false,
   error: null,
-  statsViewMode: "individual",
+  statsViewMode: "member", // Default to member view
 
   toggleStatsViewMode: () => {
     const currentViewMode = get().statsViewMode;
     set({
-      statsViewMode: currentViewMode === "individual" ? "team" : "individual",
+      statsViewMode: currentViewMode === "member" ? "sprint" : "member", // Toggle between member and sprint
     } as Partial<TaskStore>);
   },
 
   fetchKpiData: async ({ teamId, sprintId, isTeamView }) => {
-    set({ isLoadingKpi: true, error: null } as Partial<TaskStore>);
+    set({ isLoadingKpi: true, error: null, kpiData: [] } as Partial<TaskStore>); // Clear previous data
     try {
       let url = "/kpis/completion-rate";
       const queryParams = new URLSearchParams();
 
+      // Add filters based on provided params
       if (sprintId) {
         queryParams.append("sprintId", String(sprintId));
       } else if (teamId) {
         queryParams.append("teamId", String(teamId));
       }
 
-      if (isTeamView || get().statsViewMode === "team") {
+      // The 'isTeamView' param controls aggregation on the backend
+      if (isTeamView) {
         queryParams.append("aggregated", "true");
       }
 

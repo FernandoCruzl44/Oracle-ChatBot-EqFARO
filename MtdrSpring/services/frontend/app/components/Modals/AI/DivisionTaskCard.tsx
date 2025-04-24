@@ -102,9 +102,6 @@ export function DivisionTaskCard({
               <i className="fa fa-minus"></i>
             </button>
             <input
-              type="number"
-              min="2"
-              max="5"
               value={subtaskCount}
               onChange={handleSubtaskCountChange}
               onClick={(e) => e.stopPropagation()}

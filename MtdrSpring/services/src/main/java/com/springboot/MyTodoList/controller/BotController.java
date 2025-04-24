@@ -47,7 +47,7 @@ public class BotController extends TelegramLongPollingBot {
 
 	private final String botUsername;
 
-	private final AuthenticationService autentication; 
+	private final AuthenticationService autentication;
 
 	private static final String LOGIN_USER_PREFIX = "login_";
 	private static final String TASK_PREFIX = "task_";
@@ -69,14 +69,13 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String SELF_ASSIGN_PREFIX = "selfAssign_";
 	private static final String GEMINI_DIVIDE_TASK = "gemini_divide_task";
 
-
 	private Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
 	public BotController(String botToken,
-			     String botUsername,
-			     Jdbi jdbi,
-			     AuthenticationService autentication,
-			     GeminiController geminiController) {
+			String botUsername,
+			Jdbi jdbi,
+			AuthenticationService autentication,
+			GeminiController geminiController) {
 		super(botToken);
 		this.botUsername = botUsername;
 		this.jdbi = jdbi;
@@ -204,7 +203,7 @@ public class BotController extends TelegramLongPollingBot {
 		Long selectedTaskId;
 		String currentAction = "NORMAL";
 		Task NewTask;
-		String loginEmail; 
+		String loginEmail;
 
 		UserState() {
 			reset();
@@ -301,8 +300,8 @@ public class BotController extends TelegramLongPollingBot {
 
 			// chatId is always set
 			sendMessage(chatId,
-				    "Ocurrió un error inesperado procesando tu solicitud. " +
-				    "Por favor, intenta de nuevo más tarde o usa /cancel.");
+					"Ocurrió un error inesperado procesando tu solicitud. " +
+							"Por favor, intenta de nuevo más tarde o usa /cancel.");
 
 			UserState errorState = userStates.get(chatId);
 			if (errorState != null) {
@@ -311,7 +310,7 @@ public class BotController extends TelegramLongPollingBot {
 		}
 	}
 
-		// Deprecado, solo se usaba para previo a login usuario/contraseña
+	// Deprecado, solo se usaba para previo a login usuario/contraseña
 	private void showUserList(long chatId) {
 		List<User> allUsers = userRepository.findAll(100000, 0);
 
@@ -332,10 +331,10 @@ public class BotController extends TelegramLongPollingBot {
 
 	private void listTasksForUser(long chatId, Long userId) {
 		List<Task> tasks = taskRepository.findTasksAssignedToUser(userId);
-		
+
 		// Primer mensaje de respuesta. No incluye tareas, solo avisa si las hay
 		sendMessage(chatId,
-					tasks.isEmpty() ? "No tienes tareas asignadas:" : "Estas son tus tareas asignadas:");
+				tasks.isEmpty() ? "No tienes tareas asignadas:" : "Estas son tus tareas asignadas:");
 
 		// Map to categorize the tasks by status
 		HashMap<TaskStatus, List<Task>> ByStatus = new HashMap<>(4);
@@ -359,15 +358,13 @@ public class BotController extends TelegramLongPollingBot {
 		}
 
 		// This leads to the self-assign button
-		List<TelegramUI.ButtonData> actionButtons =
-			Arrays.asList(
-						  new TelegramUI.ButtonData("Agregar tarea", ADD_TASK_CALLBACK),
-						  new TelegramUI.ButtonData("Ver tareas del equipo", SHOW_FLOATING_TASKS),
-						  new TelegramUI.ButtonData("Ver progreso de KPIs", SHOW_KPIS)
-						  );
+		List<TelegramUI.ButtonData> actionButtons = Arrays.asList(
+				new TelegramUI.ButtonData("Agregar tarea", ADD_TASK_CALLBACK),
+				new TelegramUI.ButtonData("Ver tareas del equipo", SHOW_FLOATING_TASKS),
+				new TelegramUI.ButtonData("Ver progreso de KPIs", SHOW_KPIS));
 		// Mandar actionButtons al final
 		sendMessage(chatId, "Acciones adicionales:",
-					TelegramUI.createSingleColumnKeyboard(actionButtons));
+				TelegramUI.createSingleColumnKeyboard(actionButtons));
 	}
 
 	private List<TelegramUI.ButtonData> getButtonsFromTasks(List<Task> tasks) {
@@ -594,22 +591,22 @@ public class BotController extends TelegramLongPollingBot {
 			sendMessage(chatId, "No hay tarea seleccionada.");
 			return;
 		}
-    
+
 		Optional<Task> optTask = taskRepository.findById(taskId);
 		if (optTask.isEmpty()) {
 			sendMessage(chatId, "Tarea no encontrada con ID: " + taskId);
 			return;
 		}
-    
+
 		Task task = optTask.get();
 		String taskDescription = GeminiController.descriptionFromTask(task);
-		//sendMessage(chatId, taskDescription);
+		// sendMessage(chatId, taskDescription);
 		sendMessage(chatId, "Consultando a Gemini para sugerencias...");
-    
+
 		try {
 			// Get response from Gemini
 			String response = geminiController.callGeminiToAtomize(taskDescription);
-			
+
 			if (response != null && !response.isEmpty()) {
 				// Formatear la respuesta para Telegram
 				String formattedResponse = geminiController.formatSubtasksForTelegram(response);
@@ -625,40 +622,42 @@ public class BotController extends TelegramLongPollingBot {
 
 	private void showKpis(Long chatId, Long userId) {
 		Optional<User> userOptional = userRepository.findById(userId);
-			if (userOptional.isEmpty()) {
-				logger.error("User ID {} not found after callback", userId);
-				return;
+		if (userOptional.isEmpty()) {
+			logger.error("User ID {} not found after callback", userId);
+			return;
+		}
+
+		User user = userOptional.get();
+		Long teamId = user.getTeamId();
+
+		List<Sprint> sprints = sprintRepository.findByTeamId(teamId);
+		if (sprints.size() > 0) {
+			String message = "";
+			Sprint firstSprint = sprints.getFirst();
+
+			List<Kpi> allKpis = kpiRepository.getCompletionRateByMemberAndSprint(firstSprint.getId());
+			for (Kpi kpi : allKpis) {
+				String member = kpi.getMemberName();
+				Integer completedTasks = kpi.getCompletedTasks();
+				Double totalActualHours = kpi.getTotalActualHours();
+
+				message = message
+						+ String.format("\n\nMiembro %s:\n" + "Tareas completadas: %d\n" + "Horas trabajadas: %.1f",
+								member, completedTasks, (totalActualHours == null) ? 0.0 : totalActualHours);
 			}
 
-			User user = userOptional.get();
-			Long teamId = user.getTeamId();
+			sendMessage(chatId, "Evaluando mas reciente sprint: " + firstSprint.getName() + message);
+		} else {
+			sendMessage(chatId, "No hay sprints para evaluar...");
+		}
 
-			List<Sprint> sprints = sprintRepository.findByTeamId(teamId);
-			if (sprints.size() > 0) {
-				String message = "";
-				Sprint firstSprint = sprints.getFirst();
-
-				List<Kpi> allKpis = kpiRepository.getCompletionRateByMemberAndSprint(firstSprint.getId());
-				for (Kpi kpi : allKpis) {
-					String member = kpi.getMemberName();
-					Integer completedTasks = kpi.getCompletedTasks();
-					Double totalActualHours = kpi.getTotalActualHours();
-
-					message = message + String.format("\n\nMiembro %s:\n" + "Tareas completadas: %d\n" + "Horas trabajadas: %.1f", member, completedTasks, (totalActualHours == null) ? 0.0 : totalActualHours);
-				}
-				
-				sendMessage(chatId, "Evaluando mas reciente sprint: " + firstSprint.getName() + message);
-			} else {
-				sendMessage(chatId, "No hay sprints para evaluar...");
-			}
-
-			sendMessage(chatId, "Puedes volver con /tasks");
+		sendMessage(chatId, "Puedes volver con /tasks");
 	}
 
 	private void handleTextMessage(long chatId, String text, UserState state) {
 		if ("/login".equalsIgnoreCase(text)) {
 			state.currentAction = PUT_EMAIL;
-			sendMessage(chatId,"Email: ");
+			sendMessage(chatId, "Email: ");
 			return;
 		}
 
@@ -672,11 +671,11 @@ public class BotController extends TelegramLongPollingBot {
 		if ("/start".equalsIgnoreCase(text) || "/tasks".equalsIgnoreCase(text)) {
 			if (state.loggedInUserId == null) {
 				sendMessage(chatId, "No hay sesión iniciada. Por favor, usa /login.");
-				//showUserList(chatId);
+				// showUserList(chatId);
 			} else {
 				if ("/start".equalsIgnoreCase(text)) {
 					sendMessage(chatId, "Sesión iniciada como " + state.userName
-								+ " automáticamente. Usa '/logout' para ingresar como otro usuario.");
+							+ " automáticamente. Usa '/logout' para ingresar como otro usuario.");
 				}
 				listTasksForUser(chatId, state.loggedInUserId);
 			}
@@ -785,29 +784,29 @@ public class BotController extends TelegramLongPollingBot {
 				state.currentAction = PUT_PASS;
 				sendMessage(chatId, "Contraseña:");
 				break;
-				
+
 			case PUT_PASS:
 				try {
 					String email = state.loginEmail;
 					String password = text;
-					
+
 					// Autenticar usando el servicio
 					User authenticatedUser = autentication.authenticate(email, password);
-					
+
 					// Limpiar datos temporales
 					state.loginEmail = null;
-					
+
 					// Si llegamos aquí, la autenticación fue exitosa
 					userRepository.forgetChatId(chatId);
 					userRepository.setChatIdForUser(authenticatedUser.getId(), chatId);
-					
+
 					state.loggedInUserId = authenticatedUser.getId();
 					state.userName = authenticatedUser.getName();
 					state.currentAction = "NORMAL";
-					
+
 					sendMessage(chatId, "Has iniciado sesión como: " + authenticatedUser.getName());
 					sendMessage(chatId, "Puedes cerrar sesión con '/logout' en cualquier momento");
-					
+
 					// Mostrar tareas del usuario
 					listTasksForUser(chatId, authenticatedUser.getId());
 				} catch (Exception e) {
@@ -877,9 +876,9 @@ public class BotController extends TelegramLongPollingBot {
 					}
 				}
 
-				if (!assigned) {					
-					TelegramUI.ButtonData button =
-						new TelegramUI.ButtonData("Auto-asignar tarea", SELF_ASSIGN_PREFIX + taskId);
+				if (!assigned) {
+					TelegramUI.ButtonData button = new TelegramUI.ButtonData("Auto-asignar tarea",
+							SELF_ASSIGN_PREFIX + taskId);
 					InlineKeyboardMarkup markup = TelegramUI.createSingleButtonKeyboard(button);
 					sendMessage(chatId, "Puedes tomar esta tarea", markup);
 				}
@@ -890,7 +889,7 @@ public class BotController extends TelegramLongPollingBot {
 				logger.error("Invalid task ID format in task callback: {}", callbackData, e);
 				sendMessage(chatId, "Error interno (formato de ID de tarea inválido).");
 			}
-			
+
 			return;
 		}
 
@@ -900,11 +899,10 @@ public class BotController extends TelegramLongPollingBot {
 				Long taskId = Long.parseLong(taskIdString);
 
 				int newAssignee = taskRepository.addAssignee(taskId, state.loggedInUserId);
-				if (newAssignee > 0 ) {
+				if (newAssignee > 0) {
 					sendMessage(chatId, "Tarea asignada con éxito.");
 				}
-			}
-			catch (NumberFormatException e) {
+			} catch (NumberFormatException e) {
 				System.out.println("Error " + e.getMessage());
 				e.printStackTrace();
 			}
@@ -938,8 +936,7 @@ public class BotController extends TelegramLongPollingBot {
 			User user = userOptional.get();
 			List<Task> teamTasks = taskRepository.findTasksByTeamId(user.getTeamId());
 
-			InlineKeyboardMarkup markup =
-				TelegramUI.createSingleColumnKeyboard(getButtonsFromTasks(teamTasks));
+			InlineKeyboardMarkup markup = TelegramUI.createSingleColumnKeyboard(getButtonsFromTasks(teamTasks));
 
 			sendMessage(chatId, "Todas las tareas en el equipo " + user.getTeamName(), markup);
 			sendMessage(chatId, "Puedes volver con /tasks");
@@ -1083,8 +1080,7 @@ public class BotController extends TelegramLongPollingBot {
 		if (callbackData.equals(GEMINI_DIVIDE_TASK)) {
 			if (state.selectedTaskId != null) {
 				getGeminiSuggestions(chatId, state.selectedTaskId);
-			}
-			else {
+			} else {
 				sendMessage(chatId, "No hay tarea seleccionada.");
 			}
 

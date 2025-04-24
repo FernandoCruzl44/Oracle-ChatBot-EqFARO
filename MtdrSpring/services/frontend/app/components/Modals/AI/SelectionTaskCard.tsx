@@ -61,7 +61,7 @@ export function SelectionTaskCard({
   return (
     <div
       className={`relative rounded-lg transition-all duration-200 ${
-        selected ? "ring-2 ring-blue-500" : "border border-gray-700"
+        selected ? "outline-1" : "outline outline-gray-700"
       }`}
     >
       {/* Selection background */}
@@ -92,7 +92,7 @@ export function SelectionTaskCard({
 
           {/* Subtask counter */}
           <div
-            className="flex h-7 items-center rounded border border-gray-600 bg-gray-800/50"
+            className="bg-oc-primary/50 flex h-7 items-center rounded border border-gray-600"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -105,7 +105,6 @@ export function SelectionTaskCard({
             </button>
 
             <input
-              type="number"
               value={subtaskCount}
               min={2}
               max={5}

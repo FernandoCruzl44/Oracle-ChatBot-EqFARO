@@ -217,7 +217,7 @@ export function AITaskDivisionModal({
               <div className="flex h-full flex-col items-center justify-center p-8">
                 <div className="mb-4 animate-spin">
                   <svg
-                    className="h-16 w-16 text-blue-500"
+                    className="h-16 w-16 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -298,7 +298,7 @@ export function AITaskDivisionModal({
                   <Button
                     onClick={handleStartDivide}
                     disabled={selectedTaskIds.size === 0}
-                    className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                    className="rounded px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                   >
                     Iniciar División
                   </Button>
