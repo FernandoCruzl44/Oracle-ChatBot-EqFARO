@@ -21,8 +21,9 @@ interface ToolbarProps {
   selectedTasks: number[];
   handleDeleteTasks: () => void;
   handleDeselectAll: () => void;
-  handleAtomizeTasks?: () => void;
+  handleDivideTasks?: () => void;
   handleMigrateTasks?: () => void;
+  handleAIClick?: () => void;
   isLoadingTasks: boolean;
   teams?: any[];
 }
@@ -45,8 +46,9 @@ export function Toolbar({
   selectedTasks,
   handleDeleteTasks,
   handleDeselectAll,
-  handleAtomizeTasks,
+  handleDivideTasks,
   handleMigrateTasks,
+  handleAIClick,
   isLoadingTasks,
   teams = [],
 }: ToolbarProps) {
@@ -120,6 +122,23 @@ export function Toolbar({
             </button>
           )}
 
+          <div className="flex items-center gap-2">
+            {handleAIClick && (
+              <button
+                onClick={handleAIClick}
+                className={`border-oc-outline-light bg-oc-primary flex flex-shrink-0 items-center rounded-lg border p-2 text-sm text-white hover:bg-black 2xl:px-4 2xl:py-2 ${
+                  isLoadingTasks ? "cursor-not-allowed opacity-50" : ""
+                }`}
+                disabled={isLoadingTasks}
+                title="Asistente IA"
+                aria-label="Asistente IA"
+              >
+                <i className="fa fa-robot 2xl:mr-2"></i>
+                <span className="hidden 2xl:inline">Asistente IA</span>
+              </button>
+            )}
+          </div>
+
           <div
             className="flex items-center gap-2"
             style={{
@@ -130,16 +149,16 @@ export function Toolbar({
               position: "relative",
             }}
           >
-            {handleAtomizeTasks && (
+            {handleDivideTasks && (
               <button
-                onClick={handleAtomizeTasks}
+                onClick={handleDivideTasks}
                 className="flex flex-shrink-0 flex-row items-center rounded-lg border border-sky-400 p-2 text-sm text-sky-400 transition-colors hover:bg-sky-900/50 2xl:px-4 2xl:py-2"
-                title={`Atomizar (${selectedTasks.length})`}
-                aria-label={`Atomizar (${selectedTasks.length})`}
+                title={`Dividir (${selectedTasks.length})`}
+                aria-label={`Dividir (${selectedTasks.length})`}
               >
                 <i className="fa fa-sparkles 2xl:mr-2"></i>
                 <span className="hidden 2xl:inline">
-                  Atomizar ({selectedTasks.length})
+                  Dividir ({selectedTasks.length})
                 </span>
               </button>
             )}

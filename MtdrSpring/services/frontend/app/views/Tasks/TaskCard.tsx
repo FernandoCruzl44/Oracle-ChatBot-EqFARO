@@ -101,7 +101,8 @@ export function TaskCard({
           </div>
           <div className="flex flex-wrap justify-end gap-1">
             {task.assignees.map((assignee, i) => {
-              const colors = generateAvatarColor(assignee.name);
+              const name = assignee?.name || "Unknown";
+              const colors = generateAvatarColor(name);
               return (
                 <span
                   key={i}
@@ -110,9 +111,9 @@ export function TaskCard({
                     color: colors.color,
                   }}
                   className="border-oc-outline-light/60 rounded-full border px-1.5 py-0.5 text-xs font-bold whitespace-nowrap"
-                  title={assignee.name}
+                  title={name}
                 >
-                  {assignee.name.slice(0, 1)}
+                  {name.slice(0, 1)}
                 </span>
               );
             })}

@@ -25,7 +25,7 @@ export function formatDate(dateString: string | null | undefined): string {
 
 export function getSprintName(
   sprints: any[],
-  sprintId?: number | null
+  sprintId?: number | null,
 ): string {
   if (!sprintId) return "—";
   const sprint = sprints.find((s) => s.id === sprintId);
@@ -33,8 +33,14 @@ export function getSprintName(
 }
 
 export const generateAvatarColor = (
-  name: string
+  name?: string | null,
 ): { backgroundColor: string; color: string } => {
+  if (!name) {
+    return {
+      backgroundColor: `hsl(0, 0%, 80%)`,
+      color: `hsl(0, 0%, 30%)`,
+    };
+  }
   const hash = name.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   const hue = (hash * 37) % 360;
 

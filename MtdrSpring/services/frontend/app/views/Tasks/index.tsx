@@ -12,8 +12,10 @@ import { KanbanBoard } from "./KanbanBoard";
 import { Table } from "./Table";
 import { Pagination } from "./Pagination";
 import type { Task, Sprint } from "~/types";
-import { AtomizeModal } from "~/components/Modals/Atomize/AtomizeModal";
+import { DivideModal } from "~/components/Modals/AI/DivideModal";
 import ConfirmDeleteModal from "~/components/Modals/Task/ConfirmDeleteModal";
+import { AIModal } from "~/components/Modals/AI/AIModal";
+import { AITaskDivisionModal } from "~/components/Modals/AI/AITaskDivisionModal";
 
 export default function TaskView() {
   const {
@@ -51,8 +53,11 @@ export default function TaskView() {
   const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
   const [isSprintTransitionModalOpen, setIsSprintTransitionModalOpen] =
     useState(false);
-  const [isAtomizeModalOpen, setIsAtomizeModalOpen] = useState(false);
-  const [tasksToAtomize, setTasksToAtomize] = useState<Task[]>([]);
+  const [isDivideModalOpen, setIsDivideModalOpen] = useState(false); // Renamed state
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false); // Added state
+  const [isAITaskDivisionModalOpen, setIsAITaskDivisionModalOpen] =
+    useState(false); // Added state
+  const [tasksToBeProcessed, setTasksToBeProcessed] = useState<Task[]>([]); // Renamed state
   const [transitioningSprint, setTransitioningSprint] = useState<Sprint | null>(
     null,
   );
@@ -258,6 +263,9 @@ export default function TaskView() {
     setIsCreateSprintModalOpen(false);
     setIsSprintTransitionModalOpen(false);
     setTransitioningSprint(null);
+    setIsDivideModalOpen(false);
+    setIsAIModalOpen(false);
+    setIsAITaskDivisionModalOpen(false);
   };
 
   const handleAddTaskClick = () => {
@@ -288,15 +296,34 @@ export default function TaskView() {
     setTasksToDelete([]);
   };
 
-  const handleAtomizeTasks = () => {
+  const handleAIClick = () => {
+    setIsAIModalOpen(true);
+  };
+
+  const handleGenerateTasksClick = () => {
+    setIsAIModalOpen(false);
+    // This would be implemented in the future
+    // For now, just show a placeholder message
+    alert(
+      "La funcionalidad de generación de tareas estará disponible próximamente",
+    );
+  };
+
+  const handleDivideTasksClick = () => {
+    // This opens the AI task division modal where the AI will analyze and recommend tasks to divide
+    setIsAIModalOpen(false);
+    setIsAITaskDivisionModalOpen(true);
+  };
+
+  const handleDivideTasks = () => {
     if (selectedTasks.length === 0) return;
 
     // Get the full task objects for the selected task IDs
     const tasksToProcess = tasks.filter((task) =>
       selectedTasks.includes(task.id),
     );
-    setTasksToAtomize(tasksToProcess);
-    setIsAtomizeModalOpen(true);
+    setTasksToBeProcessed(tasksToProcess);
+    setIsDivideModalOpen(true);
   };
 
   const handleStatusChange = async (
@@ -342,15 +369,15 @@ export default function TaskView() {
       console.error("Error completing sprint:", error);
     }
   };
-
   const handleCloseTransitionModal = () => {
     setIsSprintTransitionModalOpen(false);
     setTransitioningSprint(null);
   };
 
-  const handleCloseAtomizeModal = () => {
-    setIsAtomizeModalOpen(false);
-    setTasksToAtomize([]);
+  const handleCloseDivideModal = () => {
+    setIsDivideModalOpen(false);
+    setTasksToBeProcessed([]);
+    setSelectedTasks([]);
   };
 
   const getSelectorTeamId = (): number | undefined => {
@@ -409,12 +436,13 @@ export default function TaskView() {
           selectedTasks={selectedTasks}
           handleDeleteTasks={handleDeleteTasks}
           handleDeselectAll={handleDeselectAll}
-          handleAtomizeTasks={handleAtomizeTasks}
+          handleDivideTasks={handleDivideTasks}
+          handleMigrateTasks={handleMigrateTasks}
           isLoadingTasks={isLoadingTasks}
           viewMode={viewMode}
           setViewMode={setViewMode}
           teams={teams}
-          handleMigrateTasks={handleMigrateTasks}
+          handleAIClick={handleAIClick}
         />
 
         <div className="bg-oc-primary border-oc-outline-light flex flex-1 flex-col overflow-hidden rounded-lg border text-sm">
@@ -498,12 +526,29 @@ export default function TaskView() {
           onComplete={handleCompleteSprint}
         />
       )}
-      {isAtomizeModalOpen && (
-        <AtomizeModal
-          onClose={handleCloseAtomizeModal}
-          isVisible={isAtomizeModalOpen}
-          initialTasks={tasksToAtomize}
-        ></AtomizeModal>
+
+      {isDivideModalOpen && (
+        <DivideModal
+          onClose={handleCloseDivideModal}
+          isVisible={isDivideModalOpen}
+          initialTasks={tasksToBeProcessed}
+        />
+      )}
+      {isAIModalOpen && (
+        <AIModal
+          onClose={() => setIsAIModalOpen(false)}
+          isVisible={isAIModalOpen}
+          onGenerateSelected={handleGenerateTasksClick}
+          onDivideSelected={handleDivideTasksClick}
+        />
+      )}
+
+      {isAITaskDivisionModalOpen && (
+        <AITaskDivisionModal
+          onClose={() => setIsAITaskDivisionModalOpen(false)}
+          isVisible={isAITaskDivisionModalOpen}
+          tasks={tasks}
+        />
       )}
 
       {isDeleteConfirmOpen && (
