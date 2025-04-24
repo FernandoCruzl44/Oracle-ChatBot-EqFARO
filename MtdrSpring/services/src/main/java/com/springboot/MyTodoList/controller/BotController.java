@@ -4,9 +4,11 @@ import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
 import com.springboot.MyTodoList.repository.TaskRepository;
 import com.springboot.MyTodoList.repository.CommentRepository;
+import com.springboot.MyTodoList.repository.KpiRepository;
 import com.springboot.MyTodoList.repository.SprintRepository;
 import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.model.Comment;
+import com.springboot.MyTodoList.model.Kpi;
 import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.service.AuthenticationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,7 @@ public class BotController extends TelegramLongPollingBot {
 	private final TaskRepository taskRepository;
 	private final CommentRepository commentRepository;
 	private final SprintRepository sprintRepository;
+	private final KpiRepository kpiRepository;
 	private final GeminiController geminiController;
 
 	private final String botUsername;
@@ -84,6 +87,7 @@ public class BotController extends TelegramLongPollingBot {
 		this.taskRepository = jdbi.onDemand(TaskRepository.class);
 		this.commentRepository = jdbi.onDemand(CommentRepository.class);
 		this.sprintRepository = jdbi.onDemand(SprintRepository.class);
+		this.kpiRepository = jdbi.onDemand(KpiRepository.class);
 
 		logger.info("BotController initialized for bot username: {}", botUsername);
 	}
@@ -340,6 +344,7 @@ public class BotController extends TelegramLongPollingBot {
 		}
 
 		for (Task task : tasks) {
+			// TODO: Show only this sprint's tasks?
 			ByStatus.get(TaskStatus.fromString(task.getStatus())).add(task);
 		}
 
@@ -353,7 +358,6 @@ public class BotController extends TelegramLongPollingBot {
 			}
 		}
 
-		// TODO: Show all tasks in the team that are unassigned (floating)
 		// This leads to the self-assign button
 		List<TelegramUI.ButtonData> actionButtons =
 			Arrays.asList(
@@ -619,6 +623,38 @@ public class BotController extends TelegramLongPollingBot {
 		}
 	}
 
+	private void showKpis(Long chatId, Long userId) {
+		Optional<User> userOptional = userRepository.findById(userId);
+			if (userOptional.isEmpty()) {
+				logger.error("User ID {} not found after callback", userId);
+				return;
+			}
+
+			User user = userOptional.get();
+			Long teamId = user.getTeamId();
+
+			List<Sprint> sprints = sprintRepository.findByTeamId(teamId);
+			if (sprints.size() > 0) {
+				String message = "";
+				Sprint firstSprint = sprints.getFirst();
+
+				List<Kpi> allKpis = kpiRepository.getCompletionRateByMemberAndSprint(firstSprint.getId());
+				for (Kpi kpi : allKpis) {
+					String member = kpi.getMemberName();
+					Integer completedTasks = kpi.getCompletedTasks();
+					Double totalActualHours = kpi.getTotalActualHours();
+
+					message = message + String.format("\n\nMiembro %s:\n" + "Tareas completadas: %d\n" + "Horas trabajadas: %.1f", member, completedTasks, (totalActualHours == null) ? 0.0 : totalActualHours);
+				}
+				
+				sendMessage(chatId, "Evaluando mas reciente sprint: " + firstSprint.getName() + message);
+			} else {
+				sendMessage(chatId, "No hay sprints para evaluar...");
+			}
+
+			sendMessage(chatId, "Puedes volver con /tasks");
+	}
+
 	private void handleTextMessage(long chatId, String text, UserState state) {
 		if ("/login".equalsIgnoreCase(text)) {
 			state.currentAction = PUT_EMAIL;
@@ -638,9 +674,22 @@ public class BotController extends TelegramLongPollingBot {
 				sendMessage(chatId, "No hay sesión iniciada. Por favor, usa /login.");
 				//showUserList(chatId);
 			} else {
+				if ("/start".equalsIgnoreCase(text)) {
+					sendMessage(chatId, "Sesión iniciada como " + state.userName
+								+ " automáticamente. Usa '/logout' para ingresar como otro usuario.");
+				}
+				listTasksForUser(chatId, state.loggedInUserId);
+			}
+			return;
+		}
+
+		if ("/kpis".equalsIgnoreCase(text)) {
+			if (state.loggedInUserId == null) {
+				sendMessage(chatId, "No hay sesión iniciada. Por favor, usa /login.");
+			} else {
 				sendMessage(chatId, "Sesión iniciada como " + state.userName
 						+ " automáticamente. Usa '/logout' para ingresar como otro usuario.");
-				listTasksForUser(chatId, state.loggedInUserId);
+				showKpis(chatId, state.loggedInUserId);
 			}
 			return;
 		}
@@ -874,8 +923,7 @@ public class BotController extends TelegramLongPollingBot {
 		}
 
 		if (SHOW_KPIS.equals(callbackData)) {
-			// TODO: Accion de mostrar KPIs
-			sendMessage(chatId, "NO IMPLEMENTADO!!");
+			showKpis(chatId, state.loggedInUserId);
 			return;
 		}
 
@@ -1040,6 +1088,7 @@ public class BotController extends TelegramLongPollingBot {
 				sendMessage(chatId, "No hay tarea seleccionada.");
 			}
 
+			sendMessage(chatId, "Puedes volver con /tasks");
 			return;
 		}
 
