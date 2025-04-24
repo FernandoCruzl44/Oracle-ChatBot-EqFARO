@@ -336,7 +336,7 @@ const ProductivityView: React.FC = () => {
                 <div className="grid h-full grid-cols-2 grid-rows-2 gap-4">
                   <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
                     <h2 className="mb-3 text-base font-medium text-gray-300">
-                      Horas Estimadas vs. Horas Reales
+                      Horas Reales
                     </h2>
                     <div className="flex-grow">
                       <ResponsiveContainer width="100%" height="100%">
@@ -356,12 +356,12 @@ const ProductivityView: React.FC = () => {
                             cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
                           />
                           <Legend wrapperStyle={legendStyle} />
-                          <Bar
+                          {/* <Bar
                             dataKey="EstimatedHours"
                             fill="#a78bfa"
                             name="Estimadas"
                             unit="h"
-                          />
+                          /> */}
                           <Bar
                             dataKey="ActualHours"
                             fill="#6ee7b7"

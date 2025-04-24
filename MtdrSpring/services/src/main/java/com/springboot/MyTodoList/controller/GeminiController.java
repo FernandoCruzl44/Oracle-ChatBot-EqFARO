@@ -439,9 +439,53 @@ public class GeminiController {
 			String additionalContext = jsonRequest.has("additionalContext") ? jsonRequest.getString("additionalContext")
 					: "";
 
-			// ... existing prompt generation code ...
+			// Format the tasks for Gemini with improved prompt
 			StringBuilder prompt = new StringBuilder();
-			// ... (prompt generation remains the same)
+			prompt.append("Por favor, analiza las siguientes tareas y recomienda cuáles deberían dividirse en ")
+					.append(numberOfSubtasks)
+					.append(" subtareas basado en su complejidad, tamaño y estimación de horas. ")
+					.append("DEBES RESPONDER ÚNICAMENTE CON UN OBJETO JSON VÁLIDO, sin texto adicional ni explicaciones. ");
+
+			if (!additionalContext.isEmpty()) {
+				prompt.append("Contexto adicional: ").append(additionalContext).append("\n\n");
+			}
+
+			prompt.append("Tareas a analizar:\n");
+
+			for (int i = 0; i < tasks.length(); i++) {
+				JSONObject task = tasks.getJSONObject(i);
+				prompt.append(i + 1).append(". ID: ").append(task.getInt("id"))
+						.append(", Título: ").append(task.getString("title"));
+
+				if (task.has("description") && !task.isNull("description")) {
+					prompt.append(", Descripción: ").append(task.getString("description"));
+				}
+
+				if (task.has("estimatedHours") && !task.isNull("estimatedHours")) {
+					prompt.append(", Horas estimadas: ").append(task.getDouble("estimatedHours"));
+				}
+
+				prompt.append("\n");
+			}
+
+			prompt.append(
+					"\nDevuelve EXACTAMENTE un objeto JSON con una propiedad 'recommendations' que contenga un array de objetos. ")
+					.append("Cada objeto debe tener 'taskId', 'reason' (razón para dividir la tarea), y 'score' (puntuación de 1-10 ")
+					.append("que indica lo adecuada que es la tarea para ser dividida). ")
+					.append("Devuelve sólo las tareas con puntuación mayor a 5. Máximo 3 tareas recomendadas. ")
+					.append("Es CRÍTICO que tu respuesta sea ÚNICAMENTE un objeto JSON válido sin ningún texto adicional.\n\n")
+					.append("Formato EXACTO de respuesta:\n")
+					.append("```json\n")
+					.append("{\n")
+					.append("  \"recommendations\": [\n")
+					.append("    {\n")
+					.append("      \"taskId\": 123,\n")
+					.append("      \"reason\": \"Esta tarea es compleja porque...\",\n")
+					.append("      \"score\": 8.5\n")
+					.append("    }\n")
+					.append("  ]\n")
+					.append("}\n")
+					.append("```\n");
 
 			logger.info(
 					"Analyze tasks prompt: " + prompt.toString().substring(0, Math.min(200, prompt.length())) + "...");
