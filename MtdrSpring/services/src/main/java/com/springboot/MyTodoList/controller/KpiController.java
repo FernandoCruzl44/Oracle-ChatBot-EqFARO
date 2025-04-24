@@ -62,52 +62,13 @@ public class KpiController {
         if (sprintId != null) {
             kpis = kpiRepository.getCompletionRateByMemberAndSprint(sprintId);
         } else if (teamId != null) {
-            kpis = kpiRepository.getCompletionRateByMemberAndTeam(teamId);
+			if (Boolean.TRUE.equals(aggregated)) {
+				kpis = kpiRepository.getCompletionRateBySprintAndTeam(teamId);
+			} else {
+				kpis = kpiRepository.getCompletionRateByMemberAndTeam(teamId);
+			}
         } else {
             kpis = kpiRepository.getCompletionRateByMember();
-        }
-
-        if (Boolean.TRUE.equals(aggregated) && !kpis.isEmpty()) {
-            Kpi teamAggregate = new Kpi();
-            teamAggregate.setMemberName("Equipo");
-
-            int completedTasks = 0;
-            int totalTasks = 0;
-            double totalActualHours = 0;
-            double totalEstimatedHours = 0;
-
-            for (Kpi memberKpi : kpis) {
-                if (memberKpi.getCompletedTasks() != null) {
-                    completedTasks += memberKpi.getCompletedTasks();
-                }
-
-                if (memberKpi.getTotalAssignedTasks() != null) {
-                    totalTasks += memberKpi.getTotalAssignedTasks();
-                }
-
-                if (memberKpi.getTotalActualHours() != null) {
-                    totalActualHours += memberKpi.getTotalActualHours();
-                }
-
-                if (memberKpi.getTotalEstimatedHours() != null) {
-                    totalEstimatedHours += memberKpi.getTotalEstimatedHours();
-                }
-            }
-
-            teamAggregate.setCompletedTasks(completedTasks);
-            teamAggregate.setTotalAssignedTasks(totalTasks);
-            teamAggregate.setTotalActualHours(totalActualHours);
-            teamAggregate.setTotalEstimatedHours(totalEstimatedHours);
-
-            if (totalTasks > 0) {
-                BigDecimal completionRate = BigDecimal.valueOf((double) completedTasks * 100 / totalTasks)
-                        .setScale(2, java.math.RoundingMode.HALF_UP);
-                teamAggregate.setCompletionRatePercent(completionRate);
-            } else {
-                teamAggregate.setCompletionRatePercent(BigDecimal.ZERO);
-            }
-
-            return ResponseEntity.ok(List.of(teamAggregate));
         }
 
         return ResponseEntity.ok(kpis);
@@ -120,9 +81,12 @@ public class KpiController {
         Map<String, List<Kpi>> dashboard = new HashMap<>();
 
         if (teamId != null) {
-            dashboard.put("completedTasks", kpiRepository.getCompletedTasksByMemberAndTeam(teamId));
-            dashboard.put("actualHours", kpiRepository.getTotalActualHoursByMemberAndTeam(teamId));
-            dashboard.put("completionRate", kpiRepository.getCompletionRateByMemberAndTeam(teamId));
+            // dashboard.put("completedTasks", kpiRepository.getCompletedTasksByMemberAndTeam(teamId));
+            // dashboard.put("actualHours", kpiRepository.getTotalActualHoursByMemberAndTeam(teamId));
+            // dashboard.put("completionRate", kpiRepository.getCompletionRateByMemberAndTeam(teamId));
+            dashboard.put("completedTasks", kpiRepository.getCompletedTasksBySprintAndTeam(teamId));
+            dashboard.put("actualHours", kpiRepository.getTotalActualHoursBySprintAndTeam(teamId));
+            dashboard.put("completionRate", kpiRepository.getCompletionRateBySprintAndTeam(teamId));
         } else {
             dashboard.put("completedTasks", kpiRepository.getCompletedTasksByMember());
             dashboard.put("actualHours", kpiRepository.getTotalActualHoursByMember());

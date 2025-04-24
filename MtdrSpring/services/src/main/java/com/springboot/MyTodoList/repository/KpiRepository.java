@@ -153,6 +153,102 @@ public interface KpiRepository {
             "    MEMBER_NAME")
     List<Kpi> getCompletionRateByMemberAndSprint(@Bind("sprintId") Long sprintId);
 
+
+	// Ahora por sprint
+
+    // KPI 1: Completed tasks per sprint
+    @SqlQuery(
+        "SELECT \n" +
+        "  s.NAME AS MEMBER_NAME, \n" +
+        "  COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS \n" +
+        "FROM TODOUSER.SPRINTS s \n" +
+        "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
+        "GROUP BY s.NAME, s.START_DATE \n" +
+        "ORDER BY s.START_DATE"
+    )
+    List<Kpi> getCompletedTasksBySprint();
+
+    // KPI 1 filtered by team
+    @SqlQuery(
+        "SELECT \n" +
+        "  s.NAME AS MEMBER_NAME, \n" +
+        "  COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS \n" +
+        "FROM TODOUSER.SPRINTS s \n" +
+        "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
+        "WHERE s.TEAM_ID = :teamId \n" +
+        "GROUP BY s.NAME, s.START_DATE \n" +
+        "ORDER BY s.START_DATE"
+    )
+    List<Kpi> getCompletedTasksBySprintAndTeam(@Bind("teamId") Long teamId);
+
+    // KPI 2: Total actual & estimated hours per sprint
+    @SqlQuery(
+        "SELECT \n" +
+        "  s.NAME AS MEMBER_NAME, \n" +
+        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
+        "FROM TODOUSER.SPRINTS s \n" +
+        "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
+        "GROUP BY s.NAME, s.START_DATE \n" +
+        "ORDER BY s.START_DATE"
+    )
+    List<Kpi> getTotalActualHoursBySprint();
+
+    // KPI 2 filtered by team
+    @SqlQuery(
+        "SELECT \n" +
+        "  s.NAME AS MEMBER_NAME, \n" +
+        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
+        "FROM TODOUSER.SPRINTS s \n" +
+        "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
+        "WHERE s.TEAM_ID = :teamId \n" +
+        "GROUP BY s.NAME, s.START_DATE \n" +
+        "ORDER BY s.START_DATE"
+    )
+    List<Kpi> getTotalActualHoursBySprintAndTeam(@Bind("teamId") Long teamId);
+
+    // KPI 3: Completion rate & detailed metrics per sprint
+    @SqlQuery(
+        "SELECT \n" +
+        "  s.NAME AS MEMBER_NAME, \n" +
+        "  COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS, \n" +
+        "  COUNT(t.ID) AS TOTAL_ASSIGNED_TASKS, \n" +
+        "  ROUND(\n" +
+        "    CASE WHEN COUNT(t.ID) = 0 THEN 0 \n" +
+        "         ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) \n" +
+        "    END, 2\n" +
+        "  ) AS COMPLETION_RATE_PERCENT, \n" +
+        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
+        "FROM TODOUSER.SPRINTS s \n" +
+        "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
+        "GROUP BY s.NAME, s.START_DATE \n" +
+        "ORDER BY s.START_DATE"
+    )
+    List<Kpi> getCompletionRateBySprint();
+
+    // KPI 3 filtered by team
+    @SqlQuery(
+        "SELECT \n" +
+        "  s.NAME AS MEMBER_NAME, \n" +
+        "  COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS, \n" +
+        "  COUNT(t.ID) AS TOTAL_ASSIGNED_TASKS, \n" +
+        "  ROUND(\n" +
+        "    CASE WHEN COUNT(t.ID) = 0 THEN 0 \n" +
+        "         ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) \n" +
+        "    END, 2\n" +
+        "  ) AS COMPLETION_RATE_PERCENT, \n" +
+        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
+        "FROM TODOUSER.SPRINTS s \n" +
+        "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
+        "WHERE s.TEAM_ID = :teamId \n" +
+        "GROUP BY s.NAME, s.START_DATE \n" +
+        "ORDER BY s.START_DATE"
+    )
+    List<Kpi> getCompletionRateBySprintAndTeam(@Bind("teamId") Long teamId);
+
     // RowMapper para mapear los resultados de las consultas a objetos Kpi
     class KpiMapper implements RowMapper<Kpi> {
         @Override
