@@ -114,7 +114,7 @@ public interface KpiRepository {
             "    u.NAME AS MEMBER_NAME, " +
             "    COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) AS COMPLETED_TASKS, " +
             "    COUNT(t.ID) AS TOTAL_ASSIGNED_TASKS, " +
-            "    ROUND(CASE WHEN COUNT(t.ID) = 0 THEN 0 ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) END, 2) AS COMPLETION_RATE_PERCENT, " +
+            "    ROUND(CASE WHEN COUNT(t.ID) = 0 THEN 0 ELSE COUNT(CASE WHEN t.STATUS = 'Completada' THEN 1 END) * 100.0 / COUNT(t.ID) END, 2) AS COMPLETION_RATE_PERCENT, " +
             "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, " +
             "    SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS " +
             "FROM " +

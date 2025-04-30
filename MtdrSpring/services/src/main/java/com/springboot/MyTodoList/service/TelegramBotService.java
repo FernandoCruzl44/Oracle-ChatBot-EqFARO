@@ -4,9 +4,12 @@ import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import org.telegram.telegrambots.webhook.TelegramBotsWebhookApplication;
+import org.telegram.telegrambots.webhook.WebhookOptions;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
 
 import com.springboot.MyTodoList.controller.BotController;
 import com.springboot.MyTodoList.controller.GeminiController;
@@ -28,9 +31,10 @@ public class TelegramBotService {
     }
 
     public void registerBot() {
-        try {
+		try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
             logger.info("Registering Telegram bot");
-            TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
+            //TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
+			;
 
             String telegramBotToken = System.getProperty("TELEGRAM_BOT_TOKEN");
             String telegramBotName = System.getProperty("TELEGRAM_BOT_NAME");
@@ -38,10 +42,12 @@ public class TelegramBotService {
             logger.info("Bot initializing with username: {}", telegramBotName);
 
             BotController botController = new BotController(telegramBotToken, telegramBotName, jdbi, autentication, geminiController);
-            telegramBotsApi.registerBot(botController);
+            //telegramBotsApi.registerBot(botController);
+			botsApplication.registerBot(telegramBotToken, botController);
 
             logger.info("Bot registered and started successfully!");
-        } catch (TelegramApiException e) {
+			Thread.currentThread().join();
+        } catch (Exception e) {
             logger.error("Failed to register Telegram bot", e);
         }
     }

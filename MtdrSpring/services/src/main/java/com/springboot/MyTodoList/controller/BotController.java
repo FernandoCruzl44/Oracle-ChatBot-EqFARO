@@ -11,17 +11,19 @@ import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.Kpi;
 import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.service.AuthenticationService;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+
+import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -32,11 +34,14 @@ import java.util.stream.Collectors;
  * Bot controller that is created programmatically by TelegramBotService.
  * Not a Spring component, so it doesn't use Spring's autowiring.
  */
-public class BotController extends TelegramLongPollingBot {
+public class BotController implements LongPollingSingleThreadUpdateConsumer {
 
 	private static final Logger logger = LoggerFactory.getLogger(BotController.class);
 
 	private final Jdbi jdbi;
+
+    private final TelegramClient telegramClient;
+    //private SilentSender silentSender;
 
 	private final UserRepository userRepository;
 	private final TaskRepository taskRepository;
@@ -77,7 +82,7 @@ public class BotController extends TelegramLongPollingBot {
 			     Jdbi jdbi,
 			     AuthenticationService autentication,
 			     GeminiController geminiController) {
-		super(botToken);
+		telegramClient = new OkHttpTelegramClient(botToken);
 		this.botUsername = botUsername;
 		this.jdbi = jdbi;
 		this.autentication = autentication;
@@ -92,15 +97,13 @@ public class BotController extends TelegramLongPollingBot {
 		logger.info("BotController initialized for bot username: {}", botUsername);
 	}
 
-	@Override
 	public String getBotUsername() {
 		return this.botUsername;
 	}
 
 	private static class TelegramUI {
 		public static InlineKeyboardButton createButton(String text, String callbackData) {
-			InlineKeyboardButton button = new InlineKeyboardButton();
-			button.setText(text);
+			InlineKeyboardButton button = InlineKeyboardButton.builder().text(text).build();
 
 			if (callbackData.length() > 64) {
 				LoggerFactory.getLogger(TelegramUI.class).warn("Callback data exceeds 64 bytes limit: {}",
@@ -116,14 +119,14 @@ public class BotController extends TelegramLongPollingBot {
 		}
 
 		public static InlineKeyboardMarkup createSingleColumnKeyboard(List<ButtonData> buttons) {
-			InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-			List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+			List<InlineKeyboardRow> rows = new ArrayList<>();
 
 			for (ButtonData buttonData : buttons) {
-				rows.add(Collections.singletonList(createButton(buttonData.text, buttonData.callbackData)));
+				rows.add(new InlineKeyboardRow(createButton(buttonData.text, buttonData.callbackData)));
 			}
-
+			InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder().build();
 			markup.setKeyboard(rows);
+
 			return markup;
 		}
 
@@ -143,7 +146,7 @@ public class BotController extends TelegramLongPollingBot {
 	}
 
 	private void sendMessage(long chatId, String text, InlineKeyboardMarkup markup) {
-		SendMessage message = new SendMessage();
+		SendMessage message = SendMessage.builder().build();
 		message.setChatId(String.valueOf(chatId));
 		message.setText(text);
 
@@ -152,7 +155,7 @@ public class BotController extends TelegramLongPollingBot {
 		}
 
 		try {
-			execute(message);
+			telegramClient.execute(message);
 		} catch (TelegramApiException e) {
 			logger.error("Telegram API error sending message to chat {}: {}", chatId, e.getMessage(), e);
 		} catch (Exception e) {
@@ -245,7 +248,7 @@ public class BotController extends TelegramLongPollingBot {
 	}
 
 	@Override
-	public void onUpdateReceived(Update update) {
+	public void consume(Update update) {
 		final long chatId;
 		final String data;
 		boolean isCallback = update.hasCallbackQuery();
@@ -254,11 +257,23 @@ public class BotController extends TelegramLongPollingBot {
 		// Prepare to handle and log.
 		// If this raises, we are cooked anyway
 		if (isCallback) {
-			chatId = update.getCallbackQuery().getMessage().getChatId();
+			Long cID = update.getCallbackQuery().getMessage().getChatId();
+			if (cID != null) {
+				chatId = cID;
+			} else {
+				logger.error("chatId from callback is null!");
+				return;
+			}
 			data = update.getCallbackQuery().getData();
 			logger.debug("Handling callback query from Tel_ID {}: {}", chatId, data);
 		} else if (isMessage) {
-			chatId = update.getMessage().getChatId();
+			Long cID = update.getMessage().getChatId();
+			if (cID != null) {
+				chatId = cID;
+			} else {
+				logger.error("chatId from message is null!");
+				return;
+			}
 			data = update.getMessage().getText();
 			logger.debug("Handling message from Tel_ID {}: {}", chatId, data);
 		} else {
@@ -345,6 +360,7 @@ public class BotController extends TelegramLongPollingBot {
 
 		for (Task task : tasks) {
 			// TODO: Show only this sprint's tasks?
+			task.getSprintId();
 			ByStatus.get(TaskStatus.fromString(task.getStatus())).add(task);
 		}
 
