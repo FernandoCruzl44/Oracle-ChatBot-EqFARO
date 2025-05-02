@@ -41,7 +41,7 @@ public class BotController implements LongPollingSingleThreadUpdateConsumer {
 	private final Jdbi jdbi;
 
     private final TelegramClient telegramClient;
-    //private SilentSender silentSender;
+    private List<SendMessage> messageDiverter = null; // For the mock tests
 
 	private final UserRepository userRepository;
 	private final TaskRepository taskRepository;
@@ -97,6 +97,10 @@ public class BotController implements LongPollingSingleThreadUpdateConsumer {
 		logger.info("BotController initialized for bot username: {}", botUsername);
 	}
 
+	public void setMessageDiverter(List<SendMessage> diverter) {
+		messageDiverter = diverter;
+	}
+
 	public String getBotUsername() {
 		return this.botUsername;
 	}
@@ -146,12 +150,25 @@ public class BotController implements LongPollingSingleThreadUpdateConsumer {
 	}
 
 	private void sendMessage(long chatId, String text, InlineKeyboardMarkup markup) {
-		SendMessage message = SendMessage.builder().build();
-		message.setChatId(String.valueOf(chatId));
-		message.setText(text);
+		SendMessage message = SendMessage.builder()
+				.chatId(chatId)
+				.text(text)
+				.build();
 
 		if (markup != null) {
 			message.setReplyMarkup(markup);
+		}
+
+		if (messageDiverter != null) {
+			try {
+				// Add message to the list
+				messageDiverter.add(message);
+			}
+			catch (Throwable e) {
+				System.out.println("Error diverting message for mock tests: " + e.getMessage());
+				e.printStackTrace();
+			}
+			return; // Early return
 		}
 
 		try {
@@ -247,8 +264,14 @@ public class BotController implements LongPollingSingleThreadUpdateConsumer {
 		return newState;
 	}
 
+
 	@Override
 	public void consume(Update update) {
+		RespondToUpdate(update);
+	}
+
+	// Keep the function exposed
+	public void RespondToUpdate(Update update) {
 		final long chatId;
 		final String data;
 		boolean isCallback = update.hasCallbackQuery();

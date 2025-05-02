@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+
+import io.github.cdimascio.dotenv.Dotenv;
+
 import javax.sql.DataSource;
 import java.sql.SQLException;
 
@@ -25,6 +28,19 @@ public class OracleConfig {
         @Bean
         public DataSource dataSource() throws SQLException {
                 OracleDataSource ds = new OracleDataSource();
+
+				if (!env.containsProperty("driver_class_name")) {
+						
+						Dotenv dotenv = Dotenv.configure().load();
+
+						dotenv.entries().forEach(entry -> {
+										String key = entry.getKey();
+										String value = entry.getValue();
+										System.setProperty(key, value);
+										String maskedValue = key.toLowerCase().contains("token") || key.toLowerCase().contains("password")
+												|| key.toLowerCase().contains("secret") ? "********" : value;
+								});
+				}
 
                 String driver_class = env.getRequiredProperty("driver_class_name");
                 logger.info("Using Driver " + driver_class);
