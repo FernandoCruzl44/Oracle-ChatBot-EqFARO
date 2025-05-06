@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
-    "dev": "react-router dev",
+    "dev": "bunx --bun vite",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "test:e2e": "playwright test",
@@ -23,7 +23,7 @@
     "react": "^19.0.0",
     "react-cookie": "^8.0.1",
     "react-dom": "^19.0.0",
-    "react-router": "^7.2.0",
+    "react-router": "^7.5.3",
     "recharts": "^2.15.2",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
