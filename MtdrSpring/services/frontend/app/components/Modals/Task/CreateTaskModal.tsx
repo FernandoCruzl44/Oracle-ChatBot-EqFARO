@@ -76,9 +76,19 @@ export default function CreateTaskModal({
     if (teamId) {
       const currentTeamSprints = getSprintsByTeam(teamId);
       if (currentTeamSprints && currentTeamSprints.length > 0) {
-        const sortedSprints = [...currentTeamSprints].sort(
-          (a, b) => b.id - a.id,
-        );
+        const sortedSprints = [...currentTeamSprints].sort((a, b) => {
+          const aEndDate = a.endDate ? new Date(a.endDate).getTime() : 0;
+          const bEndDate = b.endDate ? new Date(b.endDate).getTime() : 0;
+
+          if (aEndDate !== bEndDate) {
+            return bEndDate - aEndDate;
+          }
+
+          const aStartDate = a.startDate ? new Date(a.startDate).getTime() : 0;
+          const bStartDate = b.startDate ? new Date(b.startDate).getTime() : 0;
+          return bStartDate - aStartDate;
+        });
+
         setSprintId(sortedSprints[0].id);
         const startDate = sortedSprints[0].startDate;
         const endDate = sortedSprints[0].endDate;
