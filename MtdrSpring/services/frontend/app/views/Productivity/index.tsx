@@ -2,8 +2,6 @@
 import React, { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
 import useTaskStore from "~/store";
-import type { KpiData } from "~/store/slices/productivitySlice";
-import type { Team, Sprint, Task } from "~/types";
 import { generateAvatarColor } from "~/lib/utils";
 import {
   BarChart,
@@ -19,7 +17,6 @@ import { Select } from "~/components/Select";
 import { useSprintPerformance } from "./hooks/useSprintPerformance";
 import { useDeveloperSprints } from "./hooks/useDeveloperSprints";
 import { useLastSprint } from "./hooks/useLastSprint";
-import { AlignCenter } from "lucide-react";
 import OldProductivityView from "./old";
 import { Modal } from "~/components/Modal";
 // Chart theme and styling
@@ -38,8 +35,8 @@ const chartTheme = {
 
   // Chart configuration
   chart: {
-    margin: { top: 20, right: 30, left: 30, bottom: 20 },
-    modalMargin: { top: 40, right: 30, left: 30, bottom: 20 },
+    margin: { top: -5, right: 0, left: 0, bottom: -15 },
+    modalMargin: { top: 0, right: 30, left: 30, bottom: 20 },
   },
 
   // Tooltip styles
@@ -95,9 +92,9 @@ const chartTheme = {
 
   // Bar label styles
   barLabel: {
-    position: "insideBottom" as const,
+    position: "insideTop" as const,
     fill: "#0000008f",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "900",
   },
 
@@ -220,7 +217,7 @@ const ProductivityView: React.FC = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Vista Actual
+              KPIs Principales
             </button>
             <button
               onClick={() => setActiveTab("old")}
@@ -230,7 +227,7 @@ const ProductivityView: React.FC = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Vista Anterior
+              Otros
             </button>
           </div>
         </div>
@@ -244,7 +241,7 @@ const ProductivityView: React.FC = () => {
             {/* Hours per Sprint */}
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-200">
+                <h2 className="text-md font-medium text-gray-200">
                   Horas Trabajadas por Sprint
                 </h2>
                 <button
@@ -256,7 +253,10 @@ const ProductivityView: React.FC = () => {
               </div>
               <div className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sprintPerformanceData}>
+                  <BarChart
+                    data={sprintPerformanceData}
+                    margin={chartTheme.chart.margin}
+                  >
                     <CartesianGrid
                       strokeDasharray={chartTheme.grid.strokeDasharray}
                       stroke={chartTheme.grid.stroke}
@@ -306,7 +306,7 @@ const ProductivityView: React.FC = () => {
             {/* Hours per Sprint per Developer */}
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-200">
+                <h2 className="text-base font-medium text-gray-200">
                   Horas Trabajadas por Sprint y Usuario
                 </h2>
                 <button
@@ -318,7 +318,10 @@ const ProductivityView: React.FC = () => {
               </div>
               <div className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sprintPerformanceData}>
+                  <BarChart
+                    data={sprintPerformanceData}
+                    margin={chartTheme.chart.margin}
+                  >
                     <CartesianGrid
                       strokeDasharray={chartTheme.grid.strokeDasharray}
                       stroke={chartTheme.grid.stroke}
@@ -372,7 +375,7 @@ const ProductivityView: React.FC = () => {
             {/* Tasks per Sprint per Developer */}
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-200">
+                <h2 className="text-base font-medium text-gray-200">
                   Tareas Completadas por Developer por Sprint
                 </h2>
                 <button
@@ -384,7 +387,10 @@ const ProductivityView: React.FC = () => {
               </div>
               <div className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={developerSprintsData}>
+                  <BarChart
+                    data={developerSprintsData}
+                    margin={chartTheme.chart.margin}
+                  >
                     <CartesianGrid
                       strokeDasharray={chartTheme.grid.strokeDasharray}
                       stroke={chartTheme.grid.stroke}
@@ -441,7 +447,7 @@ const ProductivityView: React.FC = () => {
           <div className="w-2/5">
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-200">
+                <h2 className="text-base font-medium text-gray-200">
                   Reporte de Sprint
                 </h2>
                 <Select
@@ -459,12 +465,6 @@ const ProductivityView: React.FC = () => {
                   <div className="flex h-full items-center justify-center">
                     <p className="text-lg text-gray-400">Cargando datos...</p>
                   </div>
-                ) : lastSprintData.error ? (
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-lg text-red-400">
-                      {lastSprintData.error}
-                    </p>
-                  </div>
                 ) : Object.keys(lastSprintTableData.developerTasks).length ===
                   0 ? (
                   <div className="flex h-full items-center justify-center">
@@ -473,13 +473,13 @@ const ProductivityView: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <table className="w-full">
-                    <thead className="bg-oc-primary sticky top-0 z-10 text-left text-gray-300 backdrop-blur-2xl">
+                  <table className="w-full table-fixed border-separate border-spacing-x-2">
+                    <thead className="bg-oc-primary sticky top-0 z-10 text-left text-gray-300">
                       <tr className="border-oc-outline-light/60 border-b">
                         <th className="pb-2 text-base">Tarea</th>
-                        <th className="pb-2 text-base">Dev</th>
-                        <th className="pb-2 text-base">H. Est.</th>
-                        <th className="pb-2 text-base">H. Real</th>
+                        <th className="w-20 pb-2 text-base">Dev</th>
+                        <th className="w-15 pb-2 text-base">H. Est.</th>
+                        <th className="w-15 pb-2 text-base">H. Real</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -557,7 +557,6 @@ const ProductivityView: React.FC = () => {
                   height={40}
                   interval={0}
                   textAnchor="middle"
-                  label={renderAxisLabel("Sprints", 0, "bottom")}
                 />
                 <YAxis
                   label={renderAxisLabel("Horas", -90, "insideLeft")}

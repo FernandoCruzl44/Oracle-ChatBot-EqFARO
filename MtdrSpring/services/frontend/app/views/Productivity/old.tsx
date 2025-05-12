@@ -134,9 +134,13 @@ const OldProductivityView: React.FC = () => {
     const averageTime = completedTasks > 0 ? actual / completedTasks : null;
 
     // Determine name based on view mode
-    // The backend query aliases sprint name into memberName when aggregating by sprint,
-    // so we can consistently use memberName for the label.
-    const name = item.memberName || "Unknown"; // Use memberName as the primary source
+    // In sprint view, we should use sprint name; in member view, use member name
+    let name = "Unknown";
+    if (statsViewMode === "sprint") {
+      name = item.sprintName || item.memberName || "Unknown";
+    } else {
+      name = item.memberName || "Unknown";
+    }
 
     return {
       name: name,
@@ -187,11 +191,11 @@ const OldProductivityView: React.FC = () => {
   };
 
   const axisTickStyle = {
-    fontSize: 10,
-    fill: "#a0aec0",
+    fontSize: 14,
+    fill: "#ffffff",
   };
 
-  const gridStrokeColor = "#4a5568";
+  const gridStrokeColor = "#646464";
   const legendStyle = {
     fontSize: "0.75rem",
     color: "#a0aec0",
@@ -494,7 +498,7 @@ const OldProductivityView: React.FC = () => {
                                 : "N/A"
                             }
                             labelFormatter={(label: string) =>
-                              `Usuario: ${label}`
+                              `${statsViewMode === "sprint" ? "Sprint" : "Usuario"}: ${label}`
                             }
                             contentStyle={tooltipContentStyle}
                             labelStyle={tooltipLabelStyle}
