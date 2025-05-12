@@ -1,0 +1,36 @@
+name: JMeter Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: "Number of concurrent users"
+        required: true
+        default: "10"
+      rampup:
+        description: "Ramp-up period in seconds"
+        required: true
+        default: "30"
+      duration:
+        description: "Test duration in seconds"
+        required: true
+        default: "300"
+
+jobs:
+  load_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run All JMeter Tests In tests Folder
+        uses: rbhadti94/apache-jmeter-action@v0.7.0
+        with:
+          testFilePath: tests/
+          outputReportsFolder: reports/all-tests/
+          args: "--loglevel INFO -Jusers=${{ github.event.inputs.users || '10' }} -Jrampup=${{ github.event.inputs.rampup || '30' }} -Jduration=${{ github.event.inputs.duration || '300' }}"
+
+      - name: Upload JMeter test results
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: jmeter-test-results
+          path: reports/
