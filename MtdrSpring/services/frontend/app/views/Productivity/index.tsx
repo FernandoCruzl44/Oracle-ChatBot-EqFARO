@@ -21,7 +21,7 @@ import { useDeveloperSprints } from "./hooks/useDeveloperSprints";
 import { useLastSprint } from "./hooks/useLastSprint";
 import { AlignCenter } from "lucide-react";
 import OldProductivityView from "./old";
-
+import { Modal } from "~/components/Modal";
 // Chart theme and styling
 const chartTheme = {
   // Color palette - consistent colors across all charts
@@ -106,30 +106,6 @@ const chartTheme = {
     radius: [5, 5, 0, 0] as [number, number, number, number],
     opacity: 1,
   },
-};
-
-// Modal component for expanded charts
-const ChartModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  title: string;
-}> = ({ isOpen, onClose, children, title }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-oc-primary border-oc-outline-light/60 w-[90vw] max-w-[1200px] rounded-lg border p-6">
-        <div className="items- center mb-4 flex justify-between">
-          <h2 className="text-xl font-medium text-white">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <i className="fa fa-times"></i>
-          </button>
-        </div>
-        <div className="h-[70vh]">{children}</div>
-      </div>
-    </div>
-  );
 };
 
 const ProductivityView: React.FC = () => {
@@ -553,170 +529,202 @@ const ProductivityView: React.FC = () => {
       )}
 
       {/* Modals for expanded charts */}
-      <ChartModal
-        isOpen={activeModal === "hoursPerSprint"}
+      <Modal
+        isVisible={activeModal === "hoursPerSprint"}
         onClose={() => setActiveModal(null)}
-        title="Horas Trabajadas por Sprint"
+        handleClose={() => setActiveModal(null)}
+        className="w-[90vw] max-w-[1200px] p-6"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={sprintPerformanceData}
-            margin={chartTheme.chart.modalMargin}
-          >
-            <CartesianGrid
-              strokeDasharray={chartTheme.grid.strokeDasharray}
-              stroke={chartTheme.grid.stroke}
-            />
-            <XAxis
-              dataKey="sprintName"
-              tick={chartTheme.axis.tick}
-              height={40}
-              interval={0}
-              textAnchor="middle"
-              label={renderAxisLabel("Sprints", 0, "bottom")}
-            />
-            <YAxis
-              label={renderAxisLabel("Horas", -90, "insideLeft")}
-              tick={chartTheme.axis.tick}
-            />
-            <Tooltip
-              contentStyle={chartTheme.tooltip.contentStyle}
-              labelStyle={chartTheme.tooltip.labelStyle}
-              cursor={chartTheme.tooltip.cursor}
-            />
-            <Legend
-              verticalAlign="top"
-              align="right"
-              wrapperStyle={chartTheme.legend.style}
-              iconType={chartTheme.legend.iconType}
-              iconSize={chartTheme.legend.iconSize}
-            />
-            <Bar
-              dataKey="totalHours"
-              fill="#aaaaaa"
-              name="Horas trabajadas"
-              radius={chartTheme.bar.radius}
-              opacity={chartTheme.bar.opacity}
-              label={{
-                ...chartTheme.barLabel,
-                formatter: (value: number) => formatBarLabel(value, "number"),
-              }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartModal>
+        <div className="flex h-full w-full flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="pt-5 pl-5 text-xl font-medium text-white">
+              Horas Trabajadas por Sprint
+            </h2>
+          </div>
+          <div className="h-[70vh] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={sprintPerformanceData}
+                margin={chartTheme.chart.modalMargin}
+              >
+                <CartesianGrid
+                  strokeDasharray={chartTheme.grid.strokeDasharray}
+                  stroke={chartTheme.grid.stroke}
+                />
+                <XAxis
+                  dataKey="sprintName"
+                  tick={chartTheme.axis.tick}
+                  height={40}
+                  interval={0}
+                  textAnchor="middle"
+                  label={renderAxisLabel("Sprints", 0, "bottom")}
+                />
+                <YAxis
+                  label={renderAxisLabel("Horas", -90, "insideLeft")}
+                  tick={chartTheme.axis.tick}
+                />
+                <Tooltip
+                  contentStyle={chartTheme.tooltip.contentStyle}
+                  labelStyle={chartTheme.tooltip.labelStyle}
+                  cursor={chartTheme.tooltip.cursor}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={chartTheme.legend.style}
+                  iconType={chartTheme.legend.iconType}
+                  iconSize={chartTheme.legend.iconSize}
+                />
+                <Bar
+                  dataKey="totalHours"
+                  fill="#aaaaaa"
+                  name="Horas trabajadas"
+                  radius={chartTheme.bar.radius}
+                  opacity={chartTheme.bar.opacity}
+                  label={{
+                    ...chartTheme.barLabel,
+                    formatter: (value: number) =>
+                      formatBarLabel(value, "number"),
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Modal>
 
-      <ChartModal
-        isOpen={activeModal === "hoursPerSprintUser"}
+      <Modal
+        isVisible={activeModal === "hoursPerSprintUser"}
         onClose={() => setActiveModal(null)}
-        title="Horas Trabajadas por Sprint y Usuario"
+        handleClose={() => setActiveModal(null)}
+        className="w-[90vw] max-w-[1200px] p-6"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={sprintPerformanceData}
-            margin={chartTheme.chart.modalMargin}
-          >
-            <CartesianGrid
-              strokeDasharray={chartTheme.grid.strokeDasharray}
-              stroke={chartTheme.grid.stroke}
-            />
-            <XAxis
-              dataKey="sprintName"
-              tick={chartTheme.axis.tick}
-              height={40}
-              interval={0}
-              textAnchor="middle"
-            />
-            <YAxis
-              label={renderAxisLabel("Horas", -90, "insideLeft")}
-              tick={chartTheme.axis.tick}
-            />
-            <Tooltip
-              contentStyle={chartTheme.tooltip.contentStyle}
-              labelStyle={chartTheme.tooltip.labelStyle}
-              cursor={chartTheme.tooltip.cursor}
-            />
-            <Legend
-              verticalAlign="top"
-              align="right"
-              wrapperStyle={chartTheme.legend.style}
-              iconType={chartTheme.legend.iconType}
-              iconSize={chartTheme.legend.iconSize}
-            />
-            {membersList.map((member, index) => (
-              <Bar
-                key={member}
-                dataKey={(data) => data.memberHours[member] || 0}
-                name={member}
-                radius={chartTheme.bar.radius}
-                opacity={chartTheme.bar.opacity}
-                fill={generateAvatarColor(member).chartColor}
-                label={{
-                  ...chartTheme.barLabel,
-                  formatter: (value: number) => formatBarLabel(value, "number"),
-                }}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartModal>
+        <div className="flex h-full w-full flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="pt-5 pl-5 text-xl font-medium text-white">
+              Horas Trabajadas por Sprint y Usuario
+            </h2>
+          </div>
+          <div className="h-[70vh] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={sprintPerformanceData}
+                margin={chartTheme.chart.modalMargin}
+              >
+                <CartesianGrid
+                  strokeDasharray={chartTheme.grid.strokeDasharray}
+                  stroke={chartTheme.grid.stroke}
+                />
+                <XAxis
+                  dataKey="sprintName"
+                  tick={chartTheme.axis.tick}
+                  height={40}
+                  interval={0}
+                  textAnchor="middle"
+                />
+                <YAxis
+                  label={renderAxisLabel("Horas", -90, "insideLeft")}
+                  tick={chartTheme.axis.tick}
+                />
+                <Tooltip
+                  contentStyle={chartTheme.tooltip.contentStyle}
+                  labelStyle={chartTheme.tooltip.labelStyle}
+                  cursor={chartTheme.tooltip.cursor}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={chartTheme.legend.style}
+                  iconType={chartTheme.legend.iconType}
+                  iconSize={chartTheme.legend.iconSize}
+                />
+                {membersList.map((member, index) => (
+                  <Bar
+                    key={member}
+                    dataKey={(data) => data.memberHours[member] || 0}
+                    name={member}
+                    radius={chartTheme.bar.radius}
+                    opacity={chartTheme.bar.opacity}
+                    fill={generateAvatarColor(member).chartColor}
+                    label={{
+                      ...chartTheme.barLabel,
+                      formatter: (value: number) =>
+                        formatBarLabel(value, "number"),
+                    }}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Modal>
 
-      <ChartModal
-        isOpen={activeModal === "tasksPerSprintUser"}
+      <Modal
+        isVisible={activeModal === "tasksPerSprintUser"}
         onClose={() => setActiveModal(null)}
-        title="Tareas Completadas por Developer por Sprint"
+        handleClose={() => setActiveModal(null)}
+        className="w-[90vw] max-w-[1200px] p-6"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={developerSprintsData}
-            margin={chartTheme.chart.modalMargin}
-          >
-            <CartesianGrid
-              strokeDasharray={chartTheme.grid.strokeDasharray}
-              stroke={chartTheme.grid.stroke}
-            />
-            <XAxis
-              dataKey="sprintName"
-              tick={chartTheme.axis.tick}
-              height={40}
-              interval={0}
-              textAnchor="middle"
-            />
-            <YAxis
-              label={renderAxisLabel("Tareas", -90, "insideLeft")}
-              tick={chartTheme.axis.tick}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={chartTheme.tooltip.contentStyle}
-              labelStyle={chartTheme.tooltip.labelStyle}
-              cursor={chartTheme.tooltip.cursor}
-            />
-            <Legend
-              verticalAlign="top"
-              align="right"
-              wrapperStyle={chartTheme.legend.style}
-              iconType={chartTheme.legend.iconType}
-              iconSize={chartTheme.legend.iconSize}
-            />
-            {membersList.map((member, index) => (
-              <Bar
-                key={member}
-                dataKey={(data) => data.memberTasks[member] || 0}
-                name={member}
-                radius={chartTheme.bar.radius}
-                opacity={chartTheme.bar.opacity}
-                fill={generateAvatarColor(member).chartColor}
-                label={{
-                  ...chartTheme.barLabel,
-                  formatter: (value: number) =>
-                    formatBarLabel(value, "integer"),
-                }}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartModal>
+        <div className="flex h-full w-full flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="pt-5 pl-5 text-xl font-medium text-white">
+              Tareas Completadas por Developer por Sprint
+            </h2>
+          </div>
+          <div className="h-[70vh] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={developerSprintsData}
+                margin={chartTheme.chart.modalMargin}
+              >
+                <CartesianGrid
+                  strokeDasharray={chartTheme.grid.strokeDasharray}
+                  stroke={chartTheme.grid.stroke}
+                />
+                <XAxis
+                  dataKey="sprintName"
+                  tick={chartTheme.axis.tick}
+                  height={40}
+                  interval={0}
+                  textAnchor="middle"
+                />
+                <YAxis
+                  label={renderAxisLabel("Tareas", -90, "insideLeft")}
+                  tick={chartTheme.axis.tick}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={chartTheme.tooltip.contentStyle}
+                  labelStyle={chartTheme.tooltip.labelStyle}
+                  cursor={chartTheme.tooltip.cursor}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={chartTheme.legend.style}
+                  iconType={chartTheme.legend.iconType}
+                  iconSize={chartTheme.legend.iconSize}
+                />
+                {membersList.map((member, index) => (
+                  <Bar
+                    key={member}
+                    dataKey={(data) => data.memberTasks[member] || 0}
+                    name={member}
+                    radius={chartTheme.bar.radius}
+                    opacity={chartTheme.bar.opacity}
+                    fill={generateAvatarColor(member).chartColor}
+                    label={{
+                      ...chartTheme.barLabel,
+                      formatter: (value: number) =>
+                        formatBarLabel(value, "integer"),
+                    }}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
