@@ -19,27 +19,13 @@ import { useDeveloperSprints } from "./hooks/useDeveloperSprints";
 import { useLastSprint } from "./hooks/useLastSprint";
 import OldProductivityView from "./old";
 import { Modal } from "~/components/Modal";
-// Chart theme and styling
-const chartTheme = {
-  // Color palette - consistent colors across all charts
-  colors: [
-    "#2ca070", // green
-    "#4a89c7", // blue
-    "#c75b5b", // red
-    "#c79a4a", // yellow
-    "#8b6fc7", // purple
-    "#2ba77b", // emerald
-    "#c75b8f", // pink
-    "#c76f3a", // orange
-  ],
 
-  // Chart configuration
+const chartTheme = {
   chart: {
     margin: { top: -5, right: 0, left: 0, bottom: -15 },
     modalMargin: { top: 0, right: 30, left: 30, bottom: 20 },
   },
 
-  // Tooltip styles
   tooltip: {
     contentStyle: {
       backgroundColor: "rgba(30, 27, 25, 1)",
@@ -61,7 +47,6 @@ const chartTheme = {
     },
   },
 
-  // Axis styles
   axis: {
     tick: {
       fontSize: 14,
@@ -73,13 +58,11 @@ const chartTheme = {
     },
   },
 
-  // Grid styles
   grid: {
     stroke: "#646464",
     strokeDasharray: "3 3",
   },
 
-  // Legend styles
   legend: {
     style: {
       fontSize: "1rem",
@@ -90,7 +73,6 @@ const chartTheme = {
     iconSize: 10,
   },
 
-  // Bar label styles
   barLabel: {
     position: "insideTop" as const,
     fill: "#0000008f",
@@ -98,7 +80,6 @@ const chartTheme = {
     fontWeight: "900",
   },
 
-  // Bar styles
   bar: {
     radius: [5, 5, 0, 0] as [number, number, number, number],
     opacity: 1,
@@ -106,16 +87,10 @@ const chartTheme = {
 };
 
 const ProductivityView: React.FC = () => {
-  // Add tab state
   const [activeTab, setActiveTab] = useState<"new" | "old">("new");
-
-  // State for modals
   const [activeModal, setActiveModal] = useState<string | null>(null);
-
-  // Get data from store
   const sprints = useTaskStore((state) => state.sprints);
   const [selectedSprintId, setSelectedSprintId] = useState<string | number>(
-    // Find the newest sprint by comparing start dates
     sprints.reduce((newest, current) => {
       const newestDate = new Date(newest.startDate);
       const currentDate = new Date(current.startDate);
@@ -144,14 +119,23 @@ const ProductivityView: React.FC = () => {
     }
   }, [sprints]);
 
-  // Handle sprint selection
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveModal(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
   const handleSprintChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setSelectedSprintId(
       e.target.value === "all" ? "all" : parseInt(e.target.value, 10),
     );
   };
 
-  // Get all unique member names
   const allMembers = new Set<string>();
   (sprintPerformance.isLoading
     ? sprintPerformance.loadingData
@@ -161,7 +145,6 @@ const ProductivityView: React.FC = () => {
   });
   const membersList = Array.from(allMembers);
 
-  // Use loading states for charts
   const sprintPerformanceData = sprintPerformance.isLoading
     ? sprintPerformance.loadingData
     : sprintPerformance.data;
@@ -172,7 +155,6 @@ const ProductivityView: React.FC = () => {
     ? lastSprintData.loadingData
     : lastSprintData.data;
 
-  // Reusable function to render axis labels
   const renderAxisLabel = (
     value: string,
     angle: number,
@@ -184,7 +166,6 @@ const ProductivityView: React.FC = () => {
     style: chartTheme.axis.label,
   });
 
-  // Reusable formatter for bar labels
   const formatBarLabel = (value: number, type: "number" | "integer") => {
     if (value <= 0) return "";
     return type === "integer" ? value.toString() : value.toFixed(1);
@@ -233,12 +214,9 @@ const ProductivityView: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Content */}
       {activeTab === "new" ? (
         <div className="flex h-[calc(100%-90px)] gap-4">
-          {/* Left Column - Charts */}
           <div className="flex w-2/3 flex-col gap-4">
-            {/* Hours per Sprint */}
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <h2 className="text-md font-medium text-gray-200">
@@ -303,7 +281,6 @@ const ProductivityView: React.FC = () => {
               </div>
             </div>
 
-            {/* Hours per Sprint per Developer */}
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-medium text-gray-200">
@@ -372,7 +349,6 @@ const ProductivityView: React.FC = () => {
               </div>
             </div>
 
-            {/* Tasks per Sprint per Developer */}
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-medium text-gray-200">
@@ -443,7 +419,6 @@ const ProductivityView: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column - Sprint Report */}
           <div className="w-2/5">
             <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-3 backdrop-blur-sm">
               <div className="mb-3 flex items-center justify-between">
@@ -528,7 +503,6 @@ const ProductivityView: React.FC = () => {
         </div>
       )}
 
-      {/* Modals for expanded charts */}
       <Modal
         isVisible={activeModal === "hoursPerSprint"}
         onClose={() => setActiveModal(null)}
