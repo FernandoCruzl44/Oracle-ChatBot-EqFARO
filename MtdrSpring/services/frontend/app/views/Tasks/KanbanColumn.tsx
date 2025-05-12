@@ -28,18 +28,19 @@ export function KanbanColumn({
   const foldedColumns = useTaskStore((state) => state.foldedColumns);
   const toggleColumnFolded = useTaskStore((state) => state.toggleColumnFolded);
 
-  const isFolded = typeof foldedColumns[status] === "boolean" ? foldedColumns[status] : false;
+  const isFolded =
+    typeof foldedColumns[status] === "boolean" ? foldedColumns[status] : false;
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Completada":
-        return "bg-green-900";
+        return "bg-stone-900";
       case "En progreso":
-        return "bg-blue-900";
+        return "bg-stone-900";
       case "Cancelada":
-        return "bg-red-900";
+        return "bg-stone-900";
       case "Backlog":
-        return "bg-yellow-900";
+        return "bg-stone-900";
       default:
         return "bg-stone-900";
     }
@@ -72,12 +73,12 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`flex-col border-r border-oc-outline-light/60 last:border-r-0 transition-discrete duration-100 ease-out overflow-clip ${
-        isFolded ? "w-12" : "flex flex-1 min-w-64 h-full"
+      className={`border-oc-outline-light/60 flex-col overflow-clip border-r transition-discrete duration-100 ease-out last:border-r-0 ${
+        isFolded ? "w-12" : "flex h-full min-w-64 flex-1"
       }`}
     >
       <div
-        className={`px-4 py-3 font-medium border-b border-oc-outline-light/60 flex justify-between items-center sticky top-0 z-10 ${
+        className={`border-oc-outline-light/60 sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 font-medium ${
           isFolded ? "flex-col items-center" : "flex-row"
         }`}
       >
@@ -85,7 +86,7 @@ export function KanbanColumn({
           {!isFolded && <span className="mr-2">{status}</span>}
           <button
             onClick={handleToggleFold}
-            className="text-xs rounded p-1 focus:outline-none hover:bg-oc-amber/20 hover:text-oc-amber transition-colors group"
+            className="hover:bg-oc-amber/20 hover:text-oc-amber group rounded p-1 text-xs transition-colors focus:outline-none"
           >
             {isFolded ? (
               <span className="fa fa-expand rotate-45 transition-transform group-active:scale-80" />
@@ -97,15 +98,15 @@ export function KanbanColumn({
         {!isFolded && (
           <div className="flex items-center gap-3">
             <span
-              className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${getStatusColor(
-                status
+              className={`outline-oc-outline-light flex h-6 w-6 items-center justify-center rounded-full text-xs outline ${getStatusColor(
+                status,
               )} `}
             >
               {tasks.length}
             </span>
             <input
               type="checkbox"
-              className="w-4 h-4 mr-[5px]"
+              className="mr-[5px] h-4 w-4"
               onChange={handleSelectAllInColumn}
               checked={tasks.length > 0 && allTasksInColumnSelected}
               disabled={tasks.length === 0}
@@ -114,16 +115,16 @@ export function KanbanColumn({
         )}
       </div>
       {isFolded && (
-        <div className="flex justify-center w-full h-full">
-          <div className="mt-3 text-base w-6 h-6 flex items-center justify-center rounded-full">
+        <div className="flex h-full w-full justify-center">
+          <div className="mt-3 flex h-6 w-6 items-center justify-center rounded-full text-base">
             {tasks.length}
           </div>
         </div>
       )}
       <DroppableColumn
         status={status}
-        className={`flex-1 overflow-y-auto p-2 space-y-2 transition-opacity duration-100 ${
-          isFolded ? "opacity-0 pointer-events-none" : "opacity-100"
+        className={`flex-1 space-y-2 overflow-y-auto p-2 transition-opacity duration-100 ${
+          isFolded ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
         {tasks.map((task) => (

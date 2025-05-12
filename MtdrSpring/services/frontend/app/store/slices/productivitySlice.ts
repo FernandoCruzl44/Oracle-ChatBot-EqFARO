@@ -72,7 +72,33 @@ export const createProductivitySlice: StateCreator<
       const data = await api.get<KpiData[]>(url);
       console.log("KPI API Response:", data);
 
-      set({ kpiData: data, isLoadingKpi: false } as Partial<TaskStore>);
+      // Transform data if needed for sprint view
+      let transformedData = data;
+      if (isTeamView && teamId) {
+        // For sprint view, ensure we have all sprints represented
+        transformedData = data.map((item) => ({
+          ...item,
+          // Use memberName as sprintName for sprint view since the backend returns it this way
+          sprintName: item.memberName,
+          memberName: "Team", // Not used in sprint view
+        }));
+      } else if (!isTeamView && teamId) {
+        // For developer view, ensure we have all necessary fields
+        transformedData = data.map((item) => ({
+          ...item,
+          sprintName: item.sprintName || "Current Sprint",
+          completedTasks: item.completedTasks || 0,
+          totalAssignedTasks: item.totalAssignedTasks || 0,
+          completionRatePercent: item.completionRatePercent || 0,
+          totalActualHours: item.totalActualHours || 0,
+          totalEstimatedHours: item.totalEstimatedHours || 0,
+        }));
+      }
+
+      set({
+        kpiData: transformedData,
+        isLoadingKpi: false,
+      } as Partial<TaskStore>);
     } catch (error: any) {
       console.error("Error fetching KPI data:", error);
       const errorMessage =

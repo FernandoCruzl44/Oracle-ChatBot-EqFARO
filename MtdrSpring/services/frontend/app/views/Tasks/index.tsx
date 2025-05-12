@@ -410,7 +410,7 @@ export default function TaskView() {
 
   return (
     <div
-      className="h-full bg-[#181614] p-6 pb-0"
+      className="h-full bg-[#161411] p-6 pb-0"
       style={{
         backgroundImage:
           "url(https://static.oracle.com/cdn/apex/20.2.0.00.20/themes/theme_42/1.6/images/rw/textures/texture-13.png)",
