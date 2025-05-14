@@ -73,10 +73,26 @@ const chartTheme = {
     iconSize: 10,
   },
 
+  modal_legend: {
+    style: {
+      fontSize: "1.15rem",
+      color: "#dfe5ee",
+      paddingBottom: "5px",
+    },
+    iconType: "circle" as const,
+    iconSize: 12,
+  },
+
   barLabel: {
-    position: "insideTop" as const,
+    position: "insideBottom" as const,
     fill: "#0000008f",
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  modal_barLabel: {
+    position: "insideBottom" as const,
+    fill: "#0000008f",
+    fontSize: 14,
     fontWeight: "900",
   },
 
@@ -544,9 +560,9 @@ const ProductivityView: React.FC = () => {
                 <Legend
                   verticalAlign="top"
                   align="right"
-                  wrapperStyle={chartTheme.legend.style}
-                  iconType={chartTheme.legend.iconType}
-                  iconSize={chartTheme.legend.iconSize}
+                  wrapperStyle={chartTheme.modal_legend.style}
+                  iconType={chartTheme.modal_legend.iconType}
+                  iconSize={chartTheme.modal_legend.iconSize}
                 />
                 <Bar
                   dataKey="totalHours"
@@ -555,7 +571,7 @@ const ProductivityView: React.FC = () => {
                   radius={chartTheme.bar.radius}
                   opacity={chartTheme.bar.opacity}
                   label={{
-                    ...chartTheme.barLabel,
+                    ...chartTheme.modal_barLabel,
                     formatter: (value: number) =>
                       formatBarLabel(value, "number"),
                   }}
@@ -607,9 +623,9 @@ const ProductivityView: React.FC = () => {
                 <Legend
                   verticalAlign="top"
                   align="right"
-                  wrapperStyle={chartTheme.legend.style}
-                  iconType={chartTheme.legend.iconType}
-                  iconSize={chartTheme.legend.iconSize}
+                  wrapperStyle={chartTheme.modal_legend.style}
+                  iconType={chartTheme.modal_legend.iconType}
+                  iconSize={chartTheme.modal_legend.iconSize}
                 />
                 {membersList.map((member, index) => (
                   <Bar
@@ -620,7 +636,7 @@ const ProductivityView: React.FC = () => {
                     opacity={chartTheme.bar.opacity}
                     fill={generateAvatarColor(member).chartColor}
                     label={{
-                      ...chartTheme.barLabel,
+                      ...chartTheme.modal_barLabel,
                       formatter: (value: number) =>
                         formatBarLabel(value, "number"),
                     }}
@@ -674,9 +690,9 @@ const ProductivityView: React.FC = () => {
                 <Legend
                   verticalAlign="top"
                   align="right"
-                  wrapperStyle={chartTheme.legend.style}
-                  iconType={chartTheme.legend.iconType}
-                  iconSize={chartTheme.legend.iconSize}
+                  wrapperStyle={chartTheme.modal_legend.style}
+                  iconType={chartTheme.modal_legend.iconType}
+                  iconSize={chartTheme.modal_legend.iconSize}
                 />
                 {membersList.map((member, index) => (
                   <Bar
@@ -687,7 +703,7 @@ const ProductivityView: React.FC = () => {
                     opacity={chartTheme.bar.opacity}
                     fill={generateAvatarColor(member).chartColor}
                     label={{
-                      ...chartTheme.barLabel,
+                      ...chartTheme.modal_barLabel,
                       formatter: (value: number) =>
                         formatBarLabel(value, "integer"),
                     }}

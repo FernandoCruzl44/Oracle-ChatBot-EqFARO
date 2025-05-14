@@ -20,7 +20,7 @@ export function Header({ currentUser }: HeaderProps) {
           </span>
           {!isManager && currentUser.teamName && (
             <>
-              <span className="mx-2 font-medium">en</span>
+              <span className="mx-1 font-medium">en</span>
               <span className="font-medium text-stone-300">
                 {currentUser.teamName}
               </span>
