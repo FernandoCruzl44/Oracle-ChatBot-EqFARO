@@ -62,7 +62,7 @@ const shadowTasks = [
     rotation: 0,
   },
   {
-    title: "Integración con Jira",
+    title: "Integración con Telegram",
     tag: "Feature" as const,
     sprint: "Sprint 4",
     startDate: "05/07/2023",
@@ -70,7 +70,7 @@ const shadowTasks = [
     rotation: 0,
   },
   {
-    title: "Exportación a Excel",
+    title: "Graficas de Productividad",
     tag: "Feature" as const,
     sprint: "Sprint 5",
     startDate: "10/08/2023",
