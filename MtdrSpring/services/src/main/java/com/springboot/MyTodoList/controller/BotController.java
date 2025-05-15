@@ -11,7 +11,6 @@ import com.springboot.MyTodoList.model.Comment;
 import com.springboot.MyTodoList.model.Kpi;
 import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.service.AuthenticationService;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;

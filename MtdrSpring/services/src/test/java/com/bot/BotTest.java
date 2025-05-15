@@ -3,6 +3,7 @@ package com.bot;
 import org.telegram.telegrambots.meta.api.objects.User;
 import com.springboot.MyTodoList.controller.BotController;
 import com.springboot.MyTodoList.controller.GeminiController;
+import com.springboot.MyTodoList.model.Task;
 import com.springboot.MyTodoList.repository.*;
 import com.springboot.MyTodoList.service.AuthenticationService;
 import org.jdbi.v3.core.Jdbi;
@@ -15,7 +16,11 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -115,6 +120,73 @@ public class BotTest {
         verify(mockTaskRepository).findTasksAssignedToUser(TEST_APP_USER_ID);
         verify(botController, atLeast(1)).execute(any(SendMessage.class));
     }
+
+	@Test
+	void handleCallback_AddTaskCommand_WhenLoggedIn_ShouldPromptForTitle() throws Exception {
+		// simulate logged-in
+		setupLoggedInState();
+
+		// switch to callback path
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		// use the literal callback string
+		// TODO: set as public and use that instead
+		when(cq.getData()).thenReturn("addTaskTitle");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(2)).execute(cap.capture());
+
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(0).getText().contains("Por favor, escribe el título de la tarea"));
+		assertTrue(calls.get(1).getText().contains("Puedes cancelar esta accion"));
+	}
+
+	@Test
+	void handleCallback_ShowFloatingTasks_WhenLoggedIn_ShouldListTeamTasks() throws Exception {
+		setupLoggedInState();
+
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("showFloatingTasks");
+
+		// mock the database responses for the team
+		com.springboot.MyTodoList.model.User appUser = new com.springboot.MyTodoList.model.User();
+		appUser.setId(TEST_APP_USER_ID);
+		appUser.setTeamId(99L);
+		appUser.setTeamName("Team Rocket");
+		when(mockUserRepository.findById(TEST_APP_USER_ID)).thenReturn(Optional.of(appUser));
+
+		// Add tasks to return as part of the project
+		Task t1 = new Task(); t1.setId(1L); t1.setTitle("Alpha");
+		Task t2 = new Task(); t2.setId(2L); t2.setTitle("Beta");
+		when(mockTaskRepository.findTasksByTeamId(99L))
+			.thenReturn(Arrays.asList(t1, t2));
+
+		botController.onUpdateReceived(mockUpdate);
+
+		verify(mockTaskRepository).findTasksByTeamId(99L);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		// two sends: the list + the “volver” hint
+		verify(botController, times(2)).execute(cap.capture());
+
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(0).getText().contains("Todas las tareas en el equipo Team Rocket"));
+		assertNotNull(calls.get(0).getReplyMarkup(), "should include buttons for each task");
+		assertTrue(calls.get(1).getText().contains("Puedes volver con /tasks"));
+	}
 
     @Test
     void handleTextMessage_LogoutCommand_WhenLoggedIn_ShouldForgetChatIdAndResetState() throws Exception {
