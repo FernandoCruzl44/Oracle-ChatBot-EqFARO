@@ -32,96 +32,96 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class BotTest {
 
-    @Mock
-    private Jdbi mockJdbi;
-    @Mock
-    private UserRepository mockUserRepository;
-    @Mock
-    private TaskRepository mockTaskRepository;
-    @Mock
-    private CommentRepository mockCommentRepository;
-    @Mock
-    private SprintRepository mockSprintRepository;
-    @Mock
-    private KpiRepository mockKpiRepository;
-    @Mock
-    private AuthenticationService mockAuthService;
-    @Mock
-    private GeminiController mockGeminiController;
+	@Mock
+	private Jdbi mockJdbi;
+	@Mock
+	private UserRepository mockUserRepository;
+	@Mock
+	private TaskRepository mockTaskRepository;
+	@Mock
+	private CommentRepository mockCommentRepository;
+	@Mock
+	private SprintRepository mockSprintRepository;
+	@Mock
+	private KpiRepository mockKpiRepository;
+	@Mock
+	private AuthenticationService mockAuthService;
+	@Mock
+	private GeminiController mockGeminiController;
 
-    @Mock
-    private Update mockUpdate;
-    @Mock
-    private Message mockMessage;
-    @Mock
-    private Chat mockChat;
-    @Mock
-    private User mockTelegramUser;
+	@Mock
+	private Update mockUpdate;
+	@Mock
+	private Message mockMessage;
+	@Mock
+	private Chat mockChat;
+	@Mock
+	private User mockTelegramUser;
 
-    private BotController botController;
+	private BotController botController;
 
-    private static final String FAKE_TOKEN = "fake-token";
-    private static final String FAKE_USERNAME = "fake_bot";
-    private static final long TEST_CHAT_ID = 12345L;
-    private static final long TEST_TELEGRAM_USER_ID = 98765L;
-    private static final long TEST_APP_USER_ID = 1L;
-    private static final String TEST_USER_NAME = "Test User";
+	private static final String FAKE_TOKEN = "fake-token";
+	private static final String FAKE_USERNAME = "fake_bot";
+	private static final long TEST_CHAT_ID = 12345L;
+	private static final long TEST_TELEGRAM_USER_ID = 98765L;
+	private static final long TEST_APP_USER_ID = 1L;
+	private static final String TEST_USER_NAME = "Test User";
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+	@BeforeEach
+	void setUp() {
+		MockitoAnnotations.openMocks(this);
 
-        when(mockJdbi.onDemand(UserRepository.class)).thenReturn(mockUserRepository);
-        when(mockJdbi.onDemand(TaskRepository.class)).thenReturn(mockTaskRepository);
-        when(mockJdbi.onDemand(CommentRepository.class)).thenReturn(mockCommentRepository);
-        when(mockJdbi.onDemand(SprintRepository.class)).thenReturn(mockSprintRepository);
-        when(mockJdbi.onDemand(KpiRepository.class)).thenReturn(mockKpiRepository);
+		when(mockJdbi.onDemand(UserRepository.class)).thenReturn(mockUserRepository);
+		when(mockJdbi.onDemand(TaskRepository.class)).thenReturn(mockTaskRepository);
+		when(mockJdbi.onDemand(CommentRepository.class)).thenReturn(mockCommentRepository);
+		when(mockJdbi.onDemand(SprintRepository.class)).thenReturn(mockSprintRepository);
+		when(mockJdbi.onDemand(KpiRepository.class)).thenReturn(mockKpiRepository);
 
-        botController = spy(new BotController(
-                FAKE_TOKEN,
-                FAKE_USERNAME,
-                mockJdbi,
-                mockAuthService,
-                mockGeminiController));
-        try {
-            doReturn(null).when(botController).execute(any(SendMessage.class));
-        } catch (Exception e) {
-            System.err.println("Warning: Could not stub execute(SendMessage): " + e.getMessage());
-        }
+		botController = spy(new BotController(
+				FAKE_TOKEN,
+				FAKE_USERNAME,
+				mockJdbi,
+				mockAuthService,
+				mockGeminiController));
+		try {
+			doReturn(null).when(botController).execute(any(SendMessage.class));
+		} catch (Exception e) {
+			System.err.println("Warning: Could not stub execute(SendMessage): " + e.getMessage());
+		}
 
-        when(mockUpdate.hasMessage()).thenReturn(true);
-        when(mockUpdate.getMessage()).thenReturn(mockMessage);
-        when(mockUpdate.hasCallbackQuery()).thenReturn(false);
-        when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
-        when(mockMessage.getChat()).thenReturn(mockChat);
-        when(mockChat.getId()).thenReturn(TEST_CHAT_ID);
-        when(mockMessage.getFrom()).thenReturn(mockTelegramUser);
-        when(mockTelegramUser.getId()).thenReturn(TEST_TELEGRAM_USER_ID);
-        when(mockMessage.hasText()).thenReturn(true);
-        when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.empty());
-    }
+		when(mockUpdate.hasMessage()).thenReturn(true);
+		when(mockUpdate.getMessage()).thenReturn(mockMessage);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(false);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(mockMessage.getChat()).thenReturn(mockChat);
+		when(mockChat.getId()).thenReturn(TEST_CHAT_ID);
+		when(mockMessage.getFrom()).thenReturn(mockTelegramUser);
+		when(mockTelegramUser.getId()).thenReturn(TEST_TELEGRAM_USER_ID);
+		when(mockMessage.hasText()).thenReturn(true);
+		when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.empty());
+	}
 
-    private void setupLoggedInState() {
-        com.springboot.MyTodoList.model.User loggedInAppUser = new com.springboot.MyTodoList.model.User();
-        loggedInAppUser.setId(TEST_APP_USER_ID);
-        loggedInAppUser.setName(TEST_USER_NAME);
-        when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.of(loggedInAppUser));
-    }
+	private void setupLoggedInState() {
+		com.springboot.MyTodoList.model.User loggedInAppUser = new com.springboot.MyTodoList.model.User();
+		loggedInAppUser.setId(TEST_APP_USER_ID);
+		loggedInAppUser.setName(TEST_USER_NAME);
+		when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.of(loggedInAppUser));
+	}
 
-    @Test
-    void handleTextMessage_StartCommand_WhenLoggedIn_ShouldListTasks() throws Exception {
-        // Este test verifica que cuando un usuario está logueado y envía el comando
-        // /start,
-        // se recuperan y se listan sus tareas asignadas.
-        setupLoggedInState();
-        when(mockMessage.getText()).thenReturn("/start");
+	@Test
+	void handleTextMessage_StartCommand_WhenLoggedIn_ShouldListTasks() throws Exception {
+		// Este test verifica que cuando un usuario está logueado y envía el comando
+		// /start,
+		// se recuperan y se listan sus tareas asignadas.
+		setupLoggedInState();
+		when(mockMessage.getText()).thenReturn("/start");
 
-        botController.onUpdateReceived(mockUpdate);
+		botController.onUpdateReceived(mockUpdate);
 
-        verify(mockUserRepository).findByChatId(TEST_CHAT_ID);
-        verify(mockTaskRepository).findTasksAssignedToUser(TEST_APP_USER_ID);
-        verify(botController, atLeast(1)).execute(any(SendMessage.class));
-    }
+		verify(mockUserRepository).findByChatId(TEST_CHAT_ID);
+		verify(mockTaskRepository).findTasksAssignedToUser(TEST_APP_USER_ID);
+		verify(botController, atLeast(1)).execute(any(SendMessage.class));
+	}
 
 	@Test
 	void handleCallback_AddTaskCommand_WhenLoggedIn_ShouldPromptForTitle() throws Exception {
@@ -171,10 +171,14 @@ public class BotTest {
 		when(mockUserRepository.findById(TEST_APP_USER_ID)).thenReturn(Optional.of(appUser));
 
 		// Add tasks to return as part of the project
-		Task t1 = new Task(); t1.setId(1L); t1.setTitle("Alpha");
-		Task t2 = new Task(); t2.setId(2L); t2.setTitle("Beta");
+		Task t1 = new Task();
+		t1.setId(1L);
+		t1.setTitle("Alpha");
+		Task t2 = new Task();
+		t2.setId(2L);
+		t2.setTitle("Beta");
 		when(mockTaskRepository.findTasksByTeamId(99L))
-			.thenReturn(Arrays.asList(t1, t2));
+				.thenReturn(Arrays.asList(t1, t2));
 
 		botController.onUpdateReceived(mockUpdate);
 
@@ -190,36 +194,36 @@ public class BotTest {
 		assertTrue(calls.get(1).getText().contains("Puedes volver con /tasks"));
 	}
 
-    @Test
-    void handleTextMessage_LogoutCommand_WhenLoggedIn_ShouldForgetChatIdAndResetState() throws Exception {
-        // Este test verifica que cuando un usuario está logueado y envía el comando
-        // /logout,
-        // se elimina su chatId de la base de datos y se restablece el estado de la
-        // aplicación,
-        // impidiendo que se listen tareas hasta que vuelva a iniciar sesión.
-        setupLoggedInState();
-        when(mockMessage.getText()).thenReturn("/logout");
-        ArgumentCaptor<SendMessage> messageCaptor = ArgumentCaptor.forClass(SendMessage.class);
+	@Test
+	void handleTextMessage_LogoutCommand_WhenLoggedIn_ShouldForgetChatIdAndResetState() throws Exception {
+		// Este test verifica que cuando un usuario está logueado y envía el comando
+		// /logout,
+		// se elimina su chatId de la base de datos y se restablece el estado de la
+		// aplicación,
+		// impidiendo que se listen tareas hasta que vuelva a iniciar sesión.
+		setupLoggedInState();
+		when(mockMessage.getText()).thenReturn("/logout");
+		ArgumentCaptor<SendMessage> messageCaptor = ArgumentCaptor.forClass(SendMessage.class);
 
-        botController.onUpdateReceived(mockUpdate);
+		botController.onUpdateReceived(mockUpdate);
 
-        verify(mockUserRepository).forgetChatId(TEST_CHAT_ID);
-        verify(botController).execute(messageCaptor.capture());
-        assertTrue(messageCaptor.getValue().getText().contains("Terminando sesión"));
+		verify(mockUserRepository).forgetChatId(TEST_CHAT_ID);
+		verify(botController).execute(messageCaptor.capture());
+		assertTrue(messageCaptor.getValue().getText().contains("Terminando sesión"));
 
-        reset(mockUserRepository, mockTaskRepository);
-        when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.empty());
-        when(mockJdbi.onDemand(UserRepository.class)).thenReturn(mockUserRepository);
-        when(mockMessage.getText()).thenReturn("/tasks");
+		reset(mockUserRepository, mockTaskRepository);
+		when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.empty());
+		when(mockJdbi.onDemand(UserRepository.class)).thenReturn(mockUserRepository);
+		when(mockMessage.getText()).thenReturn("/tasks");
 
-        botController.onUpdateReceived(mockUpdate);
+		botController.onUpdateReceived(mockUpdate);
 
-        verify(mockTaskRepository, never()).findTasksAssignedToUser(anyLong());
-        verify(botController, times(2)).execute(messageCaptor.capture());
-        assertTrue(messageCaptor.getValue().getText().contains("No hay sesión iniciada"));
-    }
+		verify(mockTaskRepository, never()).findTasksAssignedToUser(anyLong());
+		verify(botController, times(2)).execute(messageCaptor.capture());
+		assertTrue(messageCaptor.getValue().getText().contains("No hay sesión iniciada"));
+	}
 
-	 @Test
+	@Test
 	void handleText_WhoAmI_WhenLoggedIn_ShouldReturnSession() throws Exception {
 		setupLoggedInState();
 		when(mockMessage.getText()).thenReturn("/whoami");
@@ -254,14 +258,14 @@ public class BotTest {
 		appUser.setName(TEST_USER_NAME);
 		appUser.setTeamId(55L);
 		when(mockUserRepository.findById(TEST_APP_USER_ID))
-			.thenReturn(Optional.of(appUser));
+				.thenReturn(Optional.of(appUser));
 
 		// stub one sprint
 		Sprint spr = new Sprint();
 		spr.setId(10L);
 		spr.setName("Sprint10");
 		when(mockSprintRepository.findByTeamId(55L))
-			.thenReturn(List.of(spr));
+				.thenReturn(List.of(spr));
 
 		// stub one KPI
 		Kpi k1 = new Kpi();
@@ -269,7 +273,7 @@ public class BotTest {
 		k1.setCompletedTasks(3);
 		k1.setTotalActualHours(12.5);
 		when(mockKpiRepository.getCompletionRateByMemberAndSprint(10L))
-			.thenReturn(List.of(k1));
+				.thenReturn(List.of(k1));
 
 		botController.onUpdateReceived(mockUpdate);
 
@@ -318,7 +322,7 @@ public class BotTest {
 		t.setActualHours(1.0);
 		when(mockTaskRepository.findById(5L)).thenReturn(Optional.of(t));
 		when(mockTaskRepository.findAssigneesByTaskId(5L))
-			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+				.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
 
 		botController.onUpdateReceived(mockUpdate);
 
@@ -326,7 +330,8 @@ public class BotTest {
 		verify(botController, times(3)).execute(cap.capture());
 		List<SendMessage> calls = cap.getAllValues();
 		assertTrue(calls.get(0).getText().contains("Tarea: T5"));
-		// Se hacen tres llamadas en el fondo, la ultima es la de volver, me imagino que la segunda es el markup?
+		// Se hacen tres llamadas en el fondo, la ultima es la de volver, me imagino que
+		// la segunda es el markup?
 		assertTrue(calls.get(2).getText().contains("Puedes volver con /tasks"));
 	}
 
@@ -343,9 +348,9 @@ public class BotTest {
 		when(cq1.getData()).thenReturn("task_5");
 		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
 		when(mockTaskRepository.findById(5L))
-			.thenReturn(Optional.of(new Task()));
+				.thenReturn(Optional.of(new Task()));
 		when(mockTaskRepository.findAssigneesByTaskId(5L))
-			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+				.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
 		botController.onUpdateReceived(mockUpdate);
 
 		reset(botController);
@@ -361,7 +366,7 @@ public class BotTest {
 		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
 		verify(botController, times(2)).execute(cap.capture());
 		assertTrue(cap.getValue().getText()
-				   .contains("Selecciona el nuevo estado para la tarea"));
+				.contains("Selecciona el nuevo estado para la tarea"));
 	}
 
 	@Test
@@ -377,9 +382,9 @@ public class BotTest {
 		when(cq1.getData()).thenReturn("task_7");
 		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
 		when(mockTaskRepository.findById(7L))
-			.thenReturn(Optional.of(new Task()));
+				.thenReturn(Optional.of(new Task()));
 		when(mockTaskRepository.findAssigneesByTaskId(7L))
-			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+				.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
 		botController.onUpdateReceived(mockUpdate);
 
 		reset(botController);
@@ -396,9 +401,9 @@ public class BotTest {
 		verify(botController, times(2)).execute(cap.capture());
 		List<SendMessage> calls = cap.getAllValues();
 		assertTrue(calls.get(0).getText()
-				   .contains("Por favor, escribe las horas reales"));
+				.contains("Por favor, escribe las horas reales"));
 		assertTrue(calls.get(1).getText()
-				   .contains("Puedes cancelar esta accion"));
+				.contains("Puedes cancelar esta accion"));
 	}
 
 	@Test
@@ -407,14 +412,14 @@ public class BotTest {
 
 		// Directly access and set the state
 		BotController.UserState state = botController.userStates.computeIfAbsent(
-																				 TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+				TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
 		state.loggedInUserId = TEST_APP_USER_ID;
 		state.selectedTaskId = 7L;
 		state.currentAction = "ADDING_TASK_REAL_TIME";
 
 		when(mockMessage.getText()).thenReturn("3.5");
 		when(mockTaskRepository.findTasksAssignedToUser(TEST_APP_USER_ID))
-			.thenReturn(Collections.emptyList());
+				.thenReturn(Collections.emptyList());
 
 		botController.onUpdateReceived(mockUpdate);
 
@@ -423,9 +428,8 @@ public class BotTest {
 		verify(botController, times(3)).execute(cap.capture());
 
 		assertTrue(cap.getAllValues().get(0).getText()
-				   .contains("Horas reales actualizadas"));
+				.contains("Horas reales actualizadas"));
 	}
-
 
 	@Test
 	void handleCallback_AddCommentPrompt_WhenLoggedIn_ShouldRequestContent() throws Exception {
@@ -440,9 +444,9 @@ public class BotTest {
 		when(cq1.getData()).thenReturn("task_9");
 		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
 		when(mockTaskRepository.findById(9L))
-			.thenReturn(Optional.of(new Task()));
+				.thenReturn(Optional.of(new Task()));
 		when(mockTaskRepository.findAssigneesByTaskId(9L))
-			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+				.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
 		botController.onUpdateReceived(mockUpdate);
 
 		reset(botController);
@@ -459,16 +463,16 @@ public class BotTest {
 		verify(botController, times(2)).execute(cap.capture());
 		List<SendMessage> calls = cap.getAllValues();
 		assertTrue(calls.get(0).getText()
-				   .contains("Por favor, escribe tu comentario ahora"));
+				.contains("Por favor, escribe tu comentario ahora"));
 	}
-	
+
 	@Test
 	void handleText_AddCommentInput_ShouldInsertAndDetail() throws Exception {
 		setupLoggedInState();
 
 		// Directly access and set the state
 		BotController.UserState state = botController.userStates.computeIfAbsent(
-																				 TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+				TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
 		state.loggedInUserId = TEST_APP_USER_ID;
 		state.selectedTaskId = 9L;
 		state.currentAction = "ADDING_COMMENT";
@@ -488,7 +492,7 @@ public class BotTest {
 		verify(botController, times(2)).execute(cap.capture());
 
 		assertTrue(cap.getAllValues().get(0).getText()
-				   .contains("Comentario agregado correctamente"));
+				.contains("Comentario agregado correctamente"));
 	}
 
 }
