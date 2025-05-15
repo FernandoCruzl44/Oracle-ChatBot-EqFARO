@@ -2,8 +2,9 @@ package com.bot;
 
 import org.telegram.telegrambots.meta.api.objects.User;
 import com.springboot.MyTodoList.controller.BotController;
+import com.springboot.MyTodoList.controller.BotController.TaskStatus;
 import com.springboot.MyTodoList.controller.GeminiController;
-import com.springboot.MyTodoList.model.Task;
+import com.springboot.MyTodoList.model.*;
 import com.springboot.MyTodoList.repository.*;
 import com.springboot.MyTodoList.service.AuthenticationService;
 import org.jdbi.v3.core.Jdbi;
@@ -20,6 +21,7 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -216,6 +218,279 @@ public class BotTest {
         verify(botController, times(2)).execute(messageCaptor.capture());
         assertTrue(messageCaptor.getValue().getText().contains("No hay sesión iniciada"));
     }
+
+	 @Test
+	void handleText_WhoAmI_WhenLoggedIn_ShouldReturnSession() throws Exception {
+		setupLoggedInState();
+		when(mockMessage.getText()).thenReturn("/whoami");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Sesión de " + TEST_USER_NAME));
+	}
+
+	@Test
+	void handleText_WhoAmI_WhenNotLoggedIn_ShouldPromptLogin() throws Exception {
+		when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.empty());
+		when(mockMessage.getText()).thenReturn("/whoami");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("No has iniciado sesión"));
+	}
+
+	@Test
+	void handleText_Kpis_WhenLoggedIn_ShouldShowKpis() throws Exception {
+		setupLoggedInState();
+		when(mockMessage.getText()).thenReturn("/kpis");
+
+		// stub user → team
+		com.springboot.MyTodoList.model.User appUser = new com.springboot.MyTodoList.model.User();
+		appUser.setId(TEST_APP_USER_ID);
+		appUser.setName(TEST_USER_NAME);
+		appUser.setTeamId(55L);
+		when(mockUserRepository.findById(TEST_APP_USER_ID))
+			.thenReturn(Optional.of(appUser));
+
+		// stub one sprint
+		Sprint spr = new Sprint();
+		spr.setId(10L);
+		spr.setName("Sprint10");
+		when(mockSprintRepository.findByTeamId(55L))
+			.thenReturn(List.of(spr));
+
+		// stub one KPI
+		Kpi k1 = new Kpi();
+		k1.setMemberName("Alice");
+		k1.setCompletedTasks(3);
+		k1.setTotalActualHours(12.5);
+		when(mockKpiRepository.getCompletionRateByMemberAndSprint(10L))
+			.thenReturn(List.of(k1));
+
+		botController.onUpdateReceived(mockUpdate);
+
+		// first → login confirmation, second → Evaluando sprint, third → volver hint
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(3)).execute(cap.capture());
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(1).getText().contains("Evaluando mas reciente sprint: Sprint10"));
+		assertTrue(calls.get(2).getText().contains("Puedes volver con /tasks"));
+	}
+
+	@Test
+	void handleText_Kpis_WhenNotLoggedIn_ShouldPromptLogin() throws Exception {
+		when(mockUserRepository.findByChatId(TEST_CHAT_ID)).thenReturn(Optional.empty());
+		when(mockMessage.getText()).thenReturn("/kpis");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("No hay sesión iniciada"));
+	}
+
+	@Test
+	void handleCallback_ShowTaskDetails_WhenLoggedIn_ShouldDisplayInfo() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("task_5");
+
+		// stub Task
+		Task t = new Task();
+		t.setId(5L);
+		t.setTitle("T5");
+		t.setDescription("Desc");
+		t.setStatus(TaskStatus.BACKLOG.getDisplayName());
+		t.setSprintId(null);
+		t.setStartDate("2025-01-01");
+		t.setEndDate("2025-01-02");
+		t.setEstimatedHours(2.0);
+		t.setActualHours(1.0);
+		when(mockTaskRepository.findById(5L)).thenReturn(Optional.of(t));
+		when(mockTaskRepository.findAssigneesByTaskId(5L))
+			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(3)).execute(cap.capture());
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(0).getText().contains("Tarea: T5"));
+		// Se hacen tres llamadas en el fondo, la ultima es la de volver, me imagino que la segunda es el markup?
+		assertTrue(calls.get(2).getText().contains("Puedes volver con /tasks"));
+	}
+
+	@Test
+	void handleCallback_ChangeStatusPrompt_WhenLoggedIn_ShouldShowOptions() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		// 1) select the task
+		CallbackQuery cq1 = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq1);
+		when(cq1.getMessage()).thenReturn(mockMessage);
+		when(cq1.getData()).thenReturn("task_5");
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(mockTaskRepository.findById(5L))
+			.thenReturn(Optional.of(new Task()));
+		when(mockTaskRepository.findAssigneesByTaskId(5L))
+			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+		botController.onUpdateReceived(mockUpdate);
+
+		reset(botController);
+
+		// 2) click “change status”
+		CallbackQuery cq2 = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq2);
+		when(cq2.getMessage()).thenReturn(mockMessage);
+		when(cq2.getData()).thenReturn("change_status");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(2)).execute(cap.capture());
+		assertTrue(cap.getValue().getText()
+				   .contains("Selecciona el nuevo estado para la tarea"));
+	}
+
+	@Test
+	void handleCallback_ChangeRealHoursPrompt_WhenLoggedIn_ShouldRequestHours() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		// stub state.selectedTaskId via first callback
+		CallbackQuery cq1 = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq1);
+		when(cq1.getMessage()).thenReturn(mockMessage);
+		when(cq1.getData()).thenReturn("task_7");
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(mockTaskRepository.findById(7L))
+			.thenReturn(Optional.of(new Task()));
+		when(mockTaskRepository.findAssigneesByTaskId(7L))
+			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+		botController.onUpdateReceived(mockUpdate);
+
+		reset(botController);
+
+		// now click “change real hours”
+		CallbackQuery cq2 = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq2);
+		when(cq2.getMessage()).thenReturn(mockMessage);
+		when(cq2.getData()).thenReturn("real_hours");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(2)).execute(cap.capture());
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(0).getText()
+				   .contains("Por favor, escribe las horas reales"));
+		assertTrue(calls.get(1).getText()
+				   .contains("Puedes cancelar esta accion"));
+	}
+
+	@Test
+	void handleText_ChangeRealHoursInput_ShouldUpdateAndList() throws Exception {
+		setupLoggedInState();
+
+		// Directly access and set the state
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+																				 TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = 7L;
+		state.currentAction = "ADDING_TASK_REAL_TIME";
+
+		when(mockMessage.getText()).thenReturn("3.5");
+		when(mockTaskRepository.findTasksAssignedToUser(TEST_APP_USER_ID))
+			.thenReturn(Collections.emptyList());
+
+		botController.onUpdateReceived(mockUpdate);
+
+		verify(mockTaskRepository).updateRealHours(7L, 3.5);
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(3)).execute(cap.capture());
+
+		assertTrue(cap.getAllValues().get(0).getText()
+				   .contains("Horas reales actualizadas"));
+	}
+
+
+	@Test
+	void handleCallback_AddCommentPrompt_WhenLoggedIn_ShouldRequestContent() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		// stub already-selected task
+		CallbackQuery cq1 = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq1);
+		when(cq1.getMessage()).thenReturn(mockMessage);
+		when(cq1.getData()).thenReturn("task_9");
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(mockTaskRepository.findById(9L))
+			.thenReturn(Optional.of(new Task()));
+		when(mockTaskRepository.findAssigneesByTaskId(9L))
+			.thenReturn(List.of(new com.springboot.MyTodoList.model.User()));
+		botController.onUpdateReceived(mockUpdate);
+
+		reset(botController);
+
+		// now click “add comment”
+		CallbackQuery cq2 = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq2);
+		when(cq2.getMessage()).thenReturn(mockMessage);
+		when(cq2.getData()).thenReturn("addComment");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(2)).execute(cap.capture());
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(0).getText()
+				   .contains("Por favor, escribe tu comentario ahora"));
+	}
+	
+	@Test
+	void handleText_AddCommentInput_ShouldInsertAndDetail() throws Exception {
+		setupLoggedInState();
+
+		// Directly access and set the state
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+																				 TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = 9L;
+		state.currentAction = "ADDING_COMMENT";
+
+		when(mockMessage.getText()).thenReturn("Looks great!");
+
+		com.springboot.MyTodoList.model.User u = new com.springboot.MyTodoList.model.User();
+		u.setName("Tester");
+		when(mockUserRepository.findById(TEST_APP_USER_ID)).thenReturn(Optional.of(u));
+		when(mockTaskRepository.findById(9L)).thenReturn(Optional.of(new Task()));
+		when(mockTaskRepository.findAssigneesByTaskId(9L)).thenReturn(List.of(u));
+
+		botController.onUpdateReceived(mockUpdate);
+
+		verify(mockCommentRepository).insert(any());
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(2)).execute(cap.capture());
+
+		assertTrue(cap.getAllValues().get(0).getText()
+				   .contains("Comentario agregado correctamente"));
+	}
+
 }
 
 // Conclusión: Estos tests aseguran que el bot maneja correctamente los comandos

@@ -68,7 +68,8 @@ public class BotController extends TelegramLongPollingBot {
 	private static final String SELF_ASSIGN_PREFIX = "selfAssign_";
 	private static final String GEMINI_DIVIDE_TASK = "gemini_divide_task";
 
-	private Map<Long, UserState> userStates = new ConcurrentHashMap<>();
+	// Public for unit tests
+	public Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
 	public BotController(String botToken,
 			String botUsername,
@@ -196,13 +197,13 @@ public class BotController extends TelegramLongPollingBot {
 		}
 	}
 
-	private static class UserState {
-		Long loggedInUserId;
-		String userName;
-		Long selectedTaskId;
-		String currentAction = "NORMAL";
-		Task NewTask;
-		String loginEmail;
+	public static class UserState {
+		public Long loggedInUserId;
+		public String userName;
+		public Long selectedTaskId;
+		public String currentAction = "NORMAL";
+		public Task NewTask;
+		public String loginEmail;
 
 		UserState() {
 			reset();
@@ -232,7 +233,7 @@ public class BotController extends TelegramLongPollingBot {
 		}
 	}
 
-	private UserState findUserOrNewState(long chatId) {
+	public UserState findUserOrNewState(long chatId) {
 		UserState newState = new UserState();
 		userRepository.findByChatId(chatId).ifPresent(user -> {
 			newState.loggedInUserId = user.getId();
