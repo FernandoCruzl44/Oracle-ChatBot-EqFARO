@@ -4,6 +4,7 @@ import type { ChangeEvent } from "react";
 import useTaskStore from "~/store";
 import type { KpiData } from "~/store/slices/productivitySlice";
 import type { Team, Sprint } from "~/types";
+import { generateAvatarColor } from "~/lib/utils";
 import {
   BarChart,
   Bar,
@@ -14,9 +15,90 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  Cell,
 } from "recharts";
 import { Card } from "~/components/Card";
 import { Select } from "~/components/Select";
+
+const chartTheme = {
+  chart: {
+    margin: { top: -5, right: 0, left: 0, bottom: -5 },
+    modalMargin: { top: 0, right: 30, left: 30, bottom: 20 },
+  },
+
+  tooltip: {
+    contentStyle: {
+      backgroundColor: "rgba(30, 27, 25, 1)",
+      borderColor: "rgba(74, 70, 66, 0.8)",
+      color: "#e2e8f0",
+      borderRadius: "0.375rem",
+      padding: "8px 12px",
+      fontSize: "0.9rem",
+      fontWeight: "600",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+    },
+    labelStyle: {
+      fontWeight: "bold",
+      marginBottom: "4px",
+      color: "#f8fafc",
+    },
+    cursor: {
+      fill: "rgba(200, 200, 200, 0.1)",
+    },
+  },
+
+  axis: {
+    tick: {
+      fontSize: 14,
+      fill: "#ffffff",
+    },
+    label: {
+      fill: "#ffffff",
+      fontSize: 14,
+    },
+  },
+
+  grid: {
+    stroke: "#646464",
+    strokeDasharray: "3 3",
+  },
+
+  legend: {
+    style: {
+      fontSize: "1rem",
+      color: "#dfe5ee",
+      paddingBottom: "5px",
+    },
+  },
+
+  modal_legend: {
+    style: {
+      fontSize: "1.15rem",
+      color: "#dfe5ee",
+      paddingBottom: "5px",
+    },
+    iconType: "circle" as const,
+    iconSize: 12,
+  },
+
+  barLabel: {
+    position: "insideBottom" as const,
+    fill: "#0000008f",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  modal_barLabel: {
+    position: "insideBottom" as const,
+    fill: "#0000008f",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
+  bar: {
+    radius: [5, 5, 0, 0] as [number, number, number, number],
+    opacity: 1,
+  },
+};
 
 const OldProductivityView: React.FC = () => {
   const kpiData = useTaskStore((state) => state.kpiData);
@@ -174,36 +256,45 @@ const OldProductivityView: React.FC = () => {
     })),
   ];
 
-  const tooltipContentStyle = {
-    backgroundColor: "rgba(30, 27, 25, 0.9)",
-    borderColor: "rgba(74, 70, 66, 0.8)",
-    color: "#e2e8f0",
-    borderRadius: "0.375rem",
-    padding: "8px 12px",
-    fontSize: "0.75rem",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+  const formatBarLabel = (value: number, type: "number" | "integer") => {
+    if (value <= 0) return "";
+    return type === "integer" ? value.toString() : value.toFixed(1);
   };
 
-  const tooltipLabelStyle = {
-    fontWeight: "bold",
-    marginBottom: "4px",
-    color: "#f8fafc",
-  };
+  const renderAxisLabel = (
+    value: string,
+    angle: number,
+    position: "insideLeft" | "bottom",
+  ) => ({
+    value,
+    angle,
+    position,
+    style: chartTheme.axis.label,
+  });
 
-  const axisTickStyle = {
-    fontSize: 14,
-    fill: "#ffffff",
-  };
-
-  const gridStrokeColor = "#646464";
-  const legendStyle = {
-    fontSize: "0.75rem",
-    color: "#a0aec0",
+  const getBarColor = (dataKey: string, name: string) => {
+    if (statsViewMode !== "member") {
+      // Use fixed colors in sprint view
+      switch (dataKey) {
+        case "ActualHours":
+          return "#b8f0da";
+        case "EstimationRatio":
+          return "#e4d2a4";
+        case "CompletedTasks":
+          return "#a1bfe4";
+        case "AverageActualTime":
+          return "#f0bfbf";
+        default:
+          return "#aaaaaa";
+      }
+    }
+    // Use dynamic colors based on member name in member view
+    return generateAvatarColor(name).chartColor;
   };
 
   return (
     <div
-      className="h-[calc(100%-30px)] bg-[#181614]"
+      className="h-full bg-[#181614]"
       style={{
         backgroundImage:
           "url(https://static.oracle.com/cdn/apex/20.2.0.00.20/themes/theme_42/1.6/images/rw/textures/texture-13.png)",
@@ -340,32 +431,61 @@ const OldProductivityView: React.FC = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                          margin={chartTheme.chart.margin}
                         >
                           <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
+                            strokeDasharray={chartTheme.grid.strokeDasharray}
+                            stroke={chartTheme.grid.stroke}
                           />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis tick={axisTickStyle} />
+                          <XAxis dataKey="name" tick={chartTheme.axis.tick} />
+                          <YAxis tick={chartTheme.axis.tick} />
                           <Tooltip
-                            contentStyle={tooltipContentStyle}
-                            labelStyle={tooltipLabelStyle}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                const value = payload[0].value;
+                                const entityLabel =
+                                  statsViewMode === "sprint"
+                                    ? "Sprint"
+                                    : "Usuario";
+                                return (
+                                  <div
+                                    style={chartTheme.tooltip.contentStyle}
+                                    className="text-sm"
+                                  >
+                                    <p
+                                      style={chartTheme.tooltip.labelStyle}
+                                    >{`${entityLabel}: ${label}`}</p>
+                                    <p>{`Horas Reales: ${
+                                      typeof value === "number"
+                                        ? value.toFixed(1)
+                                        : "N/A"
+                                    }h`}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                            cursor={chartTheme.tooltip.cursor}
                           />
-                          <Legend wrapperStyle={legendStyle} />
-                          {/* <Bar
-                            dataKey="EstimatedHours"
-                            fill="#a78bfa"
-                            name="Estimadas"
-                            unit="h"
-                          /> */}
                           <Bar
                             dataKey="ActualHours"
-                            fill="#6ee7b7"
                             name="Reales"
                             unit="h"
-                          />
+                            radius={chartTheme.bar.radius}
+                            opacity={chartTheme.bar.opacity}
+                            label={{
+                              ...chartTheme.barLabel,
+                              formatter: (value: number) =>
+                                formatBarLabel(value, "number"),
+                            }}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={getBarColor("ActualHours", entry.name)}
+                              />
+                            ))}
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -379,14 +499,17 @@ const OldProductivityView: React.FC = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                          margin={chartTheme.chart.margin}
                         >
                           <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
+                            strokeDasharray={chartTheme.grid.strokeDasharray}
+                            stroke={chartTheme.grid.stroke}
                           />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis domain={[0, "auto"]} tick={axisTickStyle} />
+                          <XAxis dataKey="name" tick={chartTheme.axis.tick} />
+                          <YAxis
+                            domain={[0, "auto"]}
+                            tick={chartTheme.axis.tick}
+                          />
                           <ReferenceLine
                             y={1}
                             stroke="#e53e3e"
@@ -411,11 +534,11 @@ const OldProductivityView: React.FC = () => {
                                     : "Usuario";
                                 return (
                                   <div
-                                    style={tooltipContentStyle}
+                                    style={chartTheme.tooltip.contentStyle}
                                     className="text-sm"
                                   >
                                     <p
-                                      style={tooltipLabelStyle}
+                                      style={chartTheme.tooltip.labelStyle}
                                     >{`${entityLabel}: ${label}`}</p>
                                     <p>{`Ratio: ${
                                       ratio !== null ? ratio.toFixed(2) : "N/A"
@@ -426,14 +549,29 @@ const OldProductivityView: React.FC = () => {
                               }
                               return null;
                             }}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                            cursor={chartTheme.tooltip.cursor}
                           />
-                          <Legend wrapperStyle={legendStyle} />
                           <Bar
                             dataKey="EstimationRatio"
-                            fill="#fbbf24"
                             name="Ratio Real/Est."
-                          />
+                            radius={chartTheme.bar.radius}
+                            opacity={chartTheme.bar.opacity}
+                            label={{
+                              ...chartTheme.barLabel,
+                              formatter: (value: number) =>
+                                formatBarLabel(value, "number"),
+                            }}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={getBarColor(
+                                  "EstimationRatio",
+                                  entry.name,
+                                )}
+                              />
+                            ))}
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -451,25 +589,59 @@ const OldProductivityView: React.FC = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                          margin={chartTheme.chart.margin}
                         >
                           <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
+                            strokeDasharray={chartTheme.grid.strokeDasharray}
+                            stroke={chartTheme.grid.stroke}
                           />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis allowDecimals={false} tick={axisTickStyle} />
+                          <XAxis dataKey="name" tick={chartTheme.axis.tick} />
+                          <YAxis
+                            allowDecimals={false}
+                            tick={chartTheme.axis.tick}
+                          />
                           <Tooltip
-                            contentStyle={tooltipContentStyle}
-                            labelStyle={tooltipLabelStyle}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                const tasks = payload[0].value;
+                                const entityLabel =
+                                  statsViewMode === "sprint"
+                                    ? "Sprint"
+                                    : "Usuario";
+                                return (
+                                  <div
+                                    style={chartTheme.tooltip.contentStyle}
+                                    className="text-sm"
+                                  >
+                                    <p
+                                      style={chartTheme.tooltip.labelStyle}
+                                    >{`${entityLabel}: ${label}`}</p>
+                                    <p>{`Tareas Completadas: ${tasks}`}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                            cursor={chartTheme.tooltip.cursor}
                           />
-                          <Legend wrapperStyle={legendStyle} />
                           <Bar
                             dataKey="CompletedTasks"
-                            fill="#60a5fa"
                             name="Tareas Completadas"
-                          />
+                            radius={chartTheme.bar.radius}
+                            opacity={chartTheme.bar.opacity}
+                            label={{
+                              ...chartTheme.barLabel,
+                              formatter: (value: number) =>
+                                formatBarLabel(value, "integer"),
+                            }}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={getBarColor("CompletedTasks", entry.name)}
+                              />
+                            ))}
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -483,34 +655,64 @@ const OldProductivityView: React.FC = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                          margin={chartTheme.chart.margin}
                         >
                           <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
+                            strokeDasharray={chartTheme.grid.strokeDasharray}
+                            stroke={chartTheme.grid.stroke}
                           />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis unit="h" tick={axisTickStyle} />
+                          <XAxis dataKey="name" tick={chartTheme.axis.tick} />
+                          <YAxis unit="h" tick={chartTheme.axis.tick} />
                           <Tooltip
-                            formatter={(value: any) =>
-                              typeof value === "number"
-                                ? `${value.toFixed(1)}h`
-                                : "N/A"
-                            }
-                            labelFormatter={(label: string) =>
-                              `${statsViewMode === "sprint" ? "Sprint" : "Usuario"}: ${label}`
-                            }
-                            contentStyle={tooltipContentStyle}
-                            labelStyle={tooltipLabelStyle}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                const value = payload[0].value;
+                                const entityLabel =
+                                  statsViewMode === "sprint"
+                                    ? "Sprint"
+                                    : "Usuario";
+                                return (
+                                  <div
+                                    style={chartTheme.tooltip.contentStyle}
+                                    className="text-sm"
+                                  >
+                                    <p
+                                      style={chartTheme.tooltip.labelStyle}
+                                    >{`${entityLabel}: ${label}`}</p>
+                                    <p>{`Tiempo Promedio: ${
+                                      typeof value === "number"
+                                        ? value.toFixed(1)
+                                        : "N/A"
+                                    }h`}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                            cursor={chartTheme.tooltip.cursor}
                           />
-                          <Legend wrapperStyle={legendStyle} />
                           <Bar
                             dataKey="AverageActualTime"
-                            fill="#f87171"
                             name="Tiempo Prom. / Tarea"
                             unit="h"
-                          />
+                            radius={chartTheme.bar.radius}
+                            opacity={chartTheme.bar.opacity}
+                            label={{
+                              ...chartTheme.barLabel,
+                              formatter: (value: number) =>
+                                formatBarLabel(value, "number"),
+                            }}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={getBarColor(
+                                  "AverageActualTime",
+                                  entry.name,
+                                )}
+                              />
+                            ))}
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

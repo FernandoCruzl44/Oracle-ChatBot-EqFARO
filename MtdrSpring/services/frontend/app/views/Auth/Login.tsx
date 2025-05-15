@@ -221,7 +221,7 @@ export default function LoginView() {
           <div className="border-oc-outline-light/60 border-b p-10">
             <div className="mb-6 flex flex-row items-center gap-4">
               <img src="/logo.png" alt="Logo" className="h-10 w-10" />
-              <h1 className="text-3xl font-bold text-white">Faro Tasks</h1>
+              <h1 className="text-3xl font-bold text-white">Faro Chatbot</h1>
             </div>
 
             <p className="text-base text-white/80">

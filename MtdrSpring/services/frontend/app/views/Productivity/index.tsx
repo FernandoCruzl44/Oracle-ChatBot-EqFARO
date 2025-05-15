@@ -50,7 +50,7 @@ const chartTheme = {
   axis: {
     tick: {
       fontSize: 14,
-      fill: "#a0aec0",
+      fill: "#ffffff",
     },
     label: {
       fill: "#ffffff",
@@ -283,7 +283,7 @@ const ProductivityView: React.FC = () => {
                     />
                     <Bar
                       dataKey="totalHours"
-                      fill="#aaaaaa"
+                      fill="#cecece"
                       radius={chartTheme.bar.radius}
                       name="Horas Trabajadas"
                       label={{
@@ -514,7 +514,7 @@ const ProductivityView: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="h-[calc(100%-60px)]">
+        <div className="h-[calc(100%-90px)]">
           <OldProductivityView />
         </div>
       )}
@@ -566,7 +566,7 @@ const ProductivityView: React.FC = () => {
                 />
                 <Bar
                   dataKey="totalHours"
-                  fill="#aaaaaa"
+                  fill="#cecece"
                   name="Horas trabajadas"
                   radius={chartTheme.bar.radius}
                   opacity={chartTheme.bar.opacity}
