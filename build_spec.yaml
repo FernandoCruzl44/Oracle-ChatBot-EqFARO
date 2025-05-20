@@ -1,0 +1,219 @@
+version: 0.1
+component: build
+timeoutInSeconds: 1800 # 30 minutes
+runAs: root
+shell: bash
+env:
+  variables:
+    # Set environment variables used in the build
+    REGISTRY: "mx-queretaro-1.ocir.io"
+    NAMESPACE: "axco8elk7e3y"
+    RUN_NAME: "faro"
+    IMAGE_NAME: "oraclechatbot"
+    CONTAINER_PORT: "8080"
+    CONTAINER_INSTANCE_DISPLAY_NAME: "auth-wip"
+    SUBNET_OCID: "ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaaopics37peozj52bp7zdal2bp5bqooqmyahi36gsilqwfkbgegsua"
+    LOAD_BALANCER_OCID: "ocid1.loadbalancer.oc1.mx-queretaro-1.aaaaaaaafbcrdf64gyvvbmrfa4shnch56vkib5cqwyrckn5i4sii4tcqlhda"
+    BACKEND_SET_NAME: "bs_lb_2025-0408-2101"
+
+steps:
+  - type: Command
+    name: "Install dependencies"
+    command: |
+      # Install required tools
+      apt-get update
+      apt-get install -y curl jq openssl
+
+  - type: Command
+    name: "Build application"
+    command: |
+      cd ${OCI_PRIMARY_SOURCE_DIR}
+      # Remove previous build if exists
+      rm -rf target
+      # Build using Maven
+      mvn verify
+
+  - type: Command
+    name: "Build Docker image"
+    command: |
+      cd ${OCI_PRIMARY_SOURCE_DIR}
+      # Create timestamp tag
+      TAG=$(date +%s-auth-wip)
+      echo "Building with tag $TAG"
+
+      # Build Docker image
+      docker buildx build --platform linux/amd64 --provenance=false -f Dockerfile -t ${REGISTRY}/${NAMESPACE}/${RUN_NAME}/${IMAGE_NAME}:${TAG} .
+
+      # Save tag for later steps
+      echo "TAG=$TAG" >> $OCI_ENV_VARS_FILE
+
+  - type: Command
+    name: "Push Docker image to registry"
+    command: |
+      # Source variables from the previous step
+      source $OCI_ENV_VARS_FILE
+      FULL_IMAGE_PATH=${REGISTRY}/${NAMESPACE}/${RUN_NAME}/${IMAGE_NAME}:${TAG}
+
+      # Check and create repository if needed
+      REPO_PATH="${RUN_NAME}/${IMAGE_NAME}"
+
+      echo "Creating repository if it doesn't exist: $REPO_PATH"
+      oci artifacts container repository create \
+        --compartment-id ${OCI_COMPARTMENT_ID} \
+        --display-name "$REPO_PATH" \
+        --is-public true || echo "Repository might already exist"
+
+      # Push image
+      echo "Pushing image to OCI registry: $FULL_IMAGE_PATH"
+      docker push $FULL_IMAGE_PATH
+
+      # Save full image path for later steps
+      echo "FULL_IMAGE_PATH=$FULL_IMAGE_PATH" >> $OCI_ENV_VARS_FILE
+
+  - type: Command
+    name: "Update container instance and load balancer"
+    command: |
+      # Source variables
+      source $OCI_ENV_VARS_FILE
+
+      # Find existing container instance
+      echo "Searching for existing container instance named '${CONTAINER_INSTANCE_DISPLAY_NAME}'..."
+      CONTAINER_LIST_RESULT=$(oci container-instances container-instance list \
+        --compartment-id ${OCI_COMPARTMENT_ID} \
+        --display-name "${CONTAINER_INSTANCE_DISPLAY_NAME}" \
+        --lifecycle-state "ACTIVE")
+
+      OLD_CONTAINER_INSTANCE_OCID=$(echo "$CONTAINER_LIST_RESULT" | jq -r '.data.items[0].id // ""')
+
+      # Delete existing container instance if found
+      if [ -n "$OLD_CONTAINER_INSTANCE_OCID" ] && [ "$OLD_CONTAINER_INSTANCE_OCID" != "null" ]; then
+        echo "Deleting old container instance $OLD_CONTAINER_INSTANCE_OCID..."
+        oci container-instances container-instance delete --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" --force
+        
+        # Wait for deletion to complete
+        echo "Waiting for old instance to be deleted..."
+        while true; do
+          if ! oci container-instances container-instance get --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" > /dev/null 2>&1; then
+            echo "Old instance successfully deleted or confirmed gone."
+            break
+          fi
+          sleep 15
+        done
+      fi
+
+      # Create JSON configuration for new container instance
+      echo "Creating new container instance with image $FULL_IMAGE_PATH..."
+
+      SHAPE_CONFIG_JSON='{
+        "memoryInGBs": 4.0,
+        "ocpus": 1.0
+      }'
+
+      CONTAINERS_JSON="[
+        {
+          \"displayName\": \"oracle-chatbot-container\",
+          \"imageUrl\": \"$FULL_IMAGE_PATH\",
+          \"ports\": [
+            {
+              \"port\": $CONTAINER_PORT,
+              \"protocol\": \"TCP\"
+            }
+          ]
+        }
+      ]"
+
+      VNICS_JSON="[
+        {
+          \"displayName\": \"primary-vnic\",
+          \"subnetId\": \"$SUBNET_OCID\",
+          \"isPublicIpAssigned\": true
+        }
+      ]"
+
+      # Create new container instance
+      CREATE_OUTPUT=$(oci container-instances container-instance create \
+        --compartment-id ${OCI_COMPARTMENT_ID} \
+        --availability-domain "fmAa:MX-QUERETARO-1-AD-1" \
+        --shape "CI.Standard.E4.Flex" \
+        --shape-config "$SHAPE_CONFIG_JSON" \
+        --display-name "$CONTAINER_INSTANCE_DISPLAY_NAME" \
+        --containers "$CONTAINERS_JSON" \
+        --vnics "$VNICS_JSON")
+
+      NEW_CONTAINER_INSTANCE_OCID=$(echo "$CREATE_OUTPUT" | jq -r '.data.id // ""')
+
+      echo "New container instance creation initiated: $NEW_CONTAINER_INSTANCE_OCID"
+
+      # Wait for container instance to become active
+      echo "Waiting for container instance to become ACTIVE..."
+      MAX_WAIT_ITERATIONS=30
+      WAIT_ITERATIONS=0
+      LIFECYCLE_STATE=""
+
+      while [ "$LIFECYCLE_STATE" != "ACTIVE" ] && [ $WAIT_ITERATIONS -lt $MAX_WAIT_ITERATIONS ]; do
+        WAIT_ITERATIONS=$((WAIT_ITERATIONS + 1))
+        
+        GET_STATE_OUTPUT=$(oci container-instances container-instance get \
+          --container-instance-id "$NEW_CONTAINER_INSTANCE_OCID")
+        
+        LIFECYCLE_STATE=$(echo "$GET_STATE_OUTPUT" | jq -r '.data."lifecycle-state" // ""')
+        echo "Current container instance state: $LIFECYCLE_STATE"
+        
+        if [ "$LIFECYCLE_STATE" != "ACTIVE" ] && [ $WAIT_ITERATIONS -lt $MAX_WAIT_ITERATIONS ]; then
+          sleep 10
+        fi
+      done
+
+      # Get IP address for the new container instance
+      echo "Fetching IP address for new instance..."
+      sleep 5  # Small delay to ensure IP assignment is complete
+
+      GET_IP_OUTPUT=$(oci container-instances container-instance get --container-instance-id "$NEW_CONTAINER_INSTANCE_OCID")
+      VNIC_ID=$(echo "$GET_IP_OUTPUT" | jq -r '.data.vnics[0]."vnic-id" // ""')
+
+      VNIC_DETAILS=$(oci network vnic get --vnic-id "$VNIC_ID")
+      NEW_IP_ADDRESS=$(echo "$VNIC_DETAILS" | jq -r '.data."private-ip" // ""')
+
+      echo "Retrieved private IP address: $NEW_IP_ADDRESS"
+
+      # Update load balancer backend set
+      echo "Updating Load Balancer to use IP $NEW_IP_ADDRESS:$CONTAINER_PORT..."
+
+      # Get current backend set configuration
+      BACKEND_SET_DETAILS=$(oci lb backend-set get \
+        --load-balancer-id "$LOAD_BALANCER_OCID" \
+        --backend-set-name "$BACKEND_SET_NAME")
+
+      # Extract health checker details
+      HEALTH_CHECKER_JSON=$(echo "$BACKEND_SET_DETAILS" | jq -r '.data["health-checker"]')
+      HEALTH_CHECKER_PROTOCOL=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.protocol')
+      HEALTH_CHECKER_PORT=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.port')
+      HEALTH_CHECKER_RETRIES=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.retries')
+      HEALTH_CHECKER_TIMEOUT=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."timeout-in-millis"')
+      HEALTH_CHECKER_INTERVAL=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."interval-in-millis"')
+      HEALTH_CHECKER_URL_PATH=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."url-path"')
+      POLICY=$(echo "$BACKEND_SET_DETAILS" | jq -r '.data.policy')
+
+      # Create backends JSON
+      BACKENDS_JSON="[{\"ipAddress\": \"$NEW_IP_ADDRESS\", \"port\": $CONTAINER_PORT, \"weight\": 1}]"
+
+      # Update backend set
+      oci lb backend-set update \
+        --load-balancer-id "$LOAD_BALANCER_OCID" \
+        --backend-set-name "$BACKEND_SET_NAME" \
+        --backends "$BACKENDS_JSON" \
+        --policy "$POLICY" \
+        --health-checker-protocol "$HEALTH_CHECKER_PROTOCOL" \
+        --health-checker-port "$HEALTH_CHECKER_PORT" \
+        --health-checker-retries "$HEALTH_CHECKER_RETRIES" \
+        --health-checker-timeout-in-ms "$HEALTH_CHECKER_TIMEOUT" \
+        --health-checker-interval-in-ms "$HEALTH_CHECKER_INTERVAL" \
+        --health-checker-url-path "$HEALTH_CHECKER_URL_PATH" \
+        --force
+
+      echo "Build and deployment completed successfully!"
+
+outputArtifacts:
+  - name: app_deployment_info
+    type: BINARY
+    location: ${OCI_WORKSPACE_DIR}/deployment_info.txt
