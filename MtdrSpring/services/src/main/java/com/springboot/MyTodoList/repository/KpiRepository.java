@@ -4,6 +4,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 
 import com.springboot.MyTodoList.model.Kpi;
 
@@ -11,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+@RegisterBeanMapper(Kpi.class)
 public interface KpiRepository {
 
     // KPI 1: Tareas completadas por miembro
@@ -24,7 +26,7 @@ public interface KpiRepository {
             "JOIN " +
             "    TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
             "WHERE " +
-            "    t.STATUS = 'Completada' " +
+            "    t.STATUS IN ('Completada', 'DONE') " +
             "GROUP BY " +
             "    u.NAME " +
             "ORDER BY " +
@@ -42,7 +44,7 @@ public interface KpiRepository {
             "JOIN " +
             "    TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
             "WHERE " +
-            "    t.STATUS = 'Completada' " +
+            "    t.STATUS IN ('Completada', 'DONE') " +
             "    AND u.TEAM_ID = :teamId " +
             "GROUP BY " +
             "    u.NAME " +
@@ -153,9 +155,6 @@ public interface KpiRepository {
             "    MEMBER_NAME")
     List<Kpi> getCompletionRateByMemberAndSprint(@Bind("sprintId") Long sprintId);
 
-
-	// Ahora por sprint
-
     // KPI 1: Completed tasks per sprint
     @SqlQuery(
         "SELECT \n" +
@@ -185,7 +184,7 @@ public interface KpiRepository {
     @SqlQuery(
         "SELECT \n" +
         "  s.NAME AS MEMBER_NAME, \n" +
-        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, \n" +
         "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
         "FROM TODOUSER.SPRINTS s \n" +
         "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
@@ -198,7 +197,7 @@ public interface KpiRepository {
     @SqlQuery(
         "SELECT \n" +
         "  s.NAME AS MEMBER_NAME, \n" +
-        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, \n" +
         "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
         "FROM TODOUSER.SPRINTS s \n" +
         "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
@@ -219,7 +218,7 @@ public interface KpiRepository {
         "         ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) \n" +
         "    END, 2\n" +
         "  ) AS COMPLETION_RATE_PERCENT, \n" +
-        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, \n" +
         "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
         "FROM TODOUSER.SPRINTS s \n" +
         "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
@@ -239,7 +238,7 @@ public interface KpiRepository {
         "         ELSE COUNT(CASE WHEN t.STATUS IN ('Completada', 'DONE') THEN 1 END) * 100.0 / COUNT(t.ID) \n" +
         "    END, 2\n" +
         "  ) AS COMPLETION_RATE_PERCENT, \n" +
-        "  SUM(t.ACTUAL_HOURS)   AS TOTAL_ACTUAL_HOURS, \n" +
+        "  SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS, \n" +
         "  SUM(t.ESTIMATED_HOURS) AS TOTAL_ESTIMATED_HOURS \n" +
         "FROM TODOUSER.SPRINTS s \n" +
         "LEFT JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID \n" +
@@ -249,6 +248,132 @@ public interface KpiRepository {
     )
     List<Kpi> getCompletionRateBySprintAndTeam(@Bind("teamId") Long teamId);
 
+    // Sprint Performance - Hours worked per sprint and member
+    @SqlQuery("SELECT " +
+            "    s.NAME AS SPRINT_NAME, " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS " +
+            "FROM TODOUSER.SPRINTS s " +
+            "JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.USERS u ON u.ID = ta.USER_ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "GROUP BY s.NAME, u.NAME, s.START_DATE " +
+            "ORDER BY s.START_DATE, u.NAME")
+    List<Kpi> getHoursPerSprintAndMemberAllTeams();
+
+    @SqlQuery("SELECT " +
+            "    s.NAME AS SPRINT_NAME, " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS " +
+            "FROM TODOUSER.SPRINTS s " +
+            "JOIN TODOUSER.TASKS t ON t.SPRINT_ID = s.ID " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.USERS u ON u.ID = ta.USER_ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "AND u.TEAM_ID = :teamId " +
+            "GROUP BY s.NAME, u.NAME, s.START_DATE " +
+            "ORDER BY s.START_DATE, u.NAME")
+    List<Kpi> getHoursPerSprintAndMember(@Bind("teamId") Long teamId);
+
+    // Developer Performance - Hours per sprint per developer
+    @SqlQuery("SELECT " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    s.NAME AS SPRINT_NAME, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS " +
+            "FROM TODOUSER.USERS u " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON u.ID = ta.USER_ID " +
+            "JOIN TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.SPRINTS s ON t.SPRINT_ID = s.ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "GROUP BY u.NAME, s.NAME, s.START_DATE " +
+            "ORDER BY u.NAME, s.START_DATE")
+    List<Kpi> getDeveloperHoursPerSprintAllTeams();
+
+    @SqlQuery("SELECT " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    s.NAME AS SPRINT_NAME, " +
+            "    SUM(t.ACTUAL_HOURS) AS TOTAL_ACTUAL_HOURS " +
+            "FROM TODOUSER.USERS u " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON u.ID = ta.USER_ID " +
+            "JOIN TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.SPRINTS s ON t.SPRINT_ID = s.ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "AND u.TEAM_ID = :teamId " +
+            "GROUP BY u.NAME, s.NAME, s.START_DATE " +
+            "ORDER BY u.NAME, s.START_DATE")
+    List<Kpi> getDeveloperHoursPerSprint(@Bind("teamId") Long teamId);
+
+    // Developer Performance - Tasks per sprint per developer
+    @SqlQuery("SELECT " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    s.NAME AS SPRINT_NAME, " +
+            "    COUNT(t.ID) AS COMPLETED_TASKS " +
+            "FROM TODOUSER.USERS u " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON u.ID = ta.USER_ID " +
+            "JOIN TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.SPRINTS s ON t.SPRINT_ID = s.ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "GROUP BY u.NAME, s.NAME, s.START_DATE " +
+            "ORDER BY u.NAME, s.START_DATE")
+    List<Kpi> getDeveloperTasksPerSprintAllTeams();
+
+    @SqlQuery("SELECT " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    s.NAME AS SPRINT_NAME, " +
+            "    COUNT(t.ID) AS COMPLETED_TASKS " +
+            "FROM TODOUSER.USERS u " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON u.ID = ta.USER_ID " +
+            "JOIN TODOUSER.TASKS t ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.SPRINTS s ON t.SPRINT_ID = s.ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "AND u.TEAM_ID = :teamId " +
+            "GROUP BY u.NAME, s.NAME, s.START_DATE " +
+            "ORDER BY u.NAME, s.START_DATE")
+    List<Kpi> getDeveloperTasksPerSprint(@Bind("teamId") Long teamId);
+
+    // Last Sprint Report - Tasks by developer
+    @SqlQuery("WITH LastSprint AS ( " +
+            "    SELECT ID, NAME " +
+            "    FROM TODOUSER.SPRINTS " +
+            "    WHERE STATUS = 'COMPLETED' " +
+            "    ORDER BY END_DATE DESC " +
+            "    FETCH FIRST 1 ROW ONLY " +
+            ") " +
+            "SELECT " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    t.TITLE AS TASK_TITLE, " +
+            "    t.DESCRIPTION AS TASK_DESCRIPTION, " +
+            "    t.ACTUAL_HOURS AS TOTAL_ACTUAL_HOURS, " +
+            "    t.ESTIMATED_HOURS AS TOTAL_ESTIMATED_HOURS, " +
+            "    t.STATUS AS TASK_STATUS " +
+            "FROM LastSprint ls " +
+            "JOIN TODOUSER.TASKS t ON t.SPRINT_ID = ls.ID " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.USERS u ON u.ID = ta.USER_ID " +
+            "WHERE t.STATUS IN ('Completada', 'DONE') " +
+            "AND (:teamId IS NULL OR u.TEAM_ID = :teamId) " +
+            "ORDER BY u.NAME, t.TITLE")
+    List<Kpi> getLastSprintTasksByDeveloper(@Bind("teamId") Long teamId);
+
+    // Specific Sprint Tasks - Get tasks for a specific sprint
+    @SqlQuery("SELECT " +
+            "    u.NAME AS MEMBER_NAME, " +
+            "    t.TITLE AS TASK_TITLE, " +
+            "    t.DESCRIPTION AS TASK_DESCRIPTION, " +
+            "    t.ACTUAL_HOURS AS TOTAL_ACTUAL_HOURS, " +
+            "    t.ESTIMATED_HOURS AS TOTAL_ESTIMATED_HOURS, " +
+            "    t.STATUS AS TASK_STATUS, " +
+            "    t.SPRINT_ID AS SPRINT_ID " +
+            "FROM TODOUSER.TASKS t " +
+            "JOIN TODOUSER.TASK_ASSIGNEE ta ON ta.TASK_ID = t.ID " +
+            "JOIN TODOUSER.USERS u ON u.ID = ta.USER_ID " +
+            "WHERE t.SPRINT_ID = :sprintId " +
+            "AND t.STATUS IN ('Completada', 'DONE') " +
+            "AND (:teamId IS NULL OR u.TEAM_ID = :teamId) " +
+            "ORDER BY u.NAME, t.TITLE")
+    List<Kpi> getSprintTasksByDeveloper(@Bind("sprintId") Long sprintId, @Bind("teamId") Long teamId);
+
     // RowMapper para mapear los resultados de las consultas a objetos Kpi
     class KpiMapper implements RowMapper<Kpi> {
         @Override
@@ -257,6 +382,30 @@ public interface KpiRepository {
             kpi.setMemberName(rs.getString("MEMBER_NAME"));
 
             // Manejar los diferentes resultados de columnas dependiendo de la consulta
+            try {
+                kpi.setSprintName(rs.getString("SPRINT_NAME"));
+            } catch (SQLException e) {
+                // Si la columna no existe, ignorar
+            }
+
+            try {
+                kpi.setTaskTitle(rs.getString("TASK_TITLE"));
+            } catch (SQLException e) {
+                // Si la columna no existe, ignorar
+            }
+
+            try {
+                kpi.setTaskDescription(rs.getString("TASK_DESCRIPTION"));
+            } catch (SQLException e) {
+                // Si la columna no existe, ignorar
+            }
+
+            try {
+                kpi.setTaskStatus(rs.getString("TASK_STATUS"));
+            } catch (SQLException e) {
+                // Si la columna no existe, ignorar
+            }
+
             try {
                 kpi.setCompletedTasks(rs.getInt("COMPLETED_TASKS"));
             } catch (SQLException e) {

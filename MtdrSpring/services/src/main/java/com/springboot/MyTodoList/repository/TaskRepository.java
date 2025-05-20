@@ -22,14 +22,14 @@ public interface TaskRepository {
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + 
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "WHERE t.id = :id")
         Optional<Task> findById(@Bind("id") Long id);
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + 
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "WHERE (:teamId IS NULL OR t.team_id = :teamId) " +
                         "AND (:status IS NULL OR t.status = :status) " +
@@ -51,14 +51,12 @@ public interface TaskRepository {
                         "WHERE ta.task_id = :taskId")
         List<User> findAssigneesByTaskId(@Bind("taskId") Long taskId);
 
-        // Updated INSERT statement to include estimated_hours and actual_hours
         @SqlUpdate("INSERT INTO tasks (title, description, tag, status, start_date, end_date, created_by_id, team_id, sprint_id, estimated_hours, actual_hours) "
                         +
                         "VALUES (:title, :description, :tag, :status, :startDate, :endDate, :creatorId, :teamId, :sprintId, :estimatedHours, :actualHours)")
         @GetGeneratedKeys("id")
         Long insert(@BindBean Task task);
 
-        // Updated UPDATE statement to include estimated_hours and actual_hours
         @SqlUpdate("UPDATE tasks SET title = :title, description = :description, " +
                         "tag = :tag, status = :status, start_date = :startDate, " +
                         "end_date = :endDate, team_id = :teamId, sprint_id = :sprintId, " +
@@ -77,7 +75,7 @@ public interface TaskRepository {
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
+                        "LEFT JOIN users u ON t.created_by_id = u.id " +
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "JOIN task_assignee ta ON t.id = ta.task_id " +
                         "WHERE ta.user_id = :userId " +
@@ -86,7 +84,7 @@ public interface TaskRepository {
 
         @SqlQuery("SELECT t.*, u.name as creator_name, tm.name as team_name " +
                         "FROM tasks t " +
-                        "LEFT JOIN users u ON t.created_by_id = u.id " + // Changed JOIN to LEFT JOIN for creator
+                        "LEFT JOIN users u ON t.created_by_id = u.id " + 
                         "LEFT JOIN teams tm ON t.team_id = tm.id " +
                         "WHERE t.team_id = :teamId " +
                         "ORDER BY t.id")
@@ -129,10 +127,8 @@ public interface TaskRepository {
                         task.setEndDate(rs.getString("end_date"));
                         task.setCreatorId(rs.getLong("created_by_id"));
                         task.setCreatorName(rs.getString("creator_name"));
-                        // Correctly maps sprint_id, handling NULLs
                         task.setSprintId(rs.getObject("sprint_id", Long.class));
 
-                        // Add mapping for estimated_hours and actual_hours
                         Double estimatedHours = rs.getObject("estimated_hours", Double.class);
                         task.setEstimatedHours(estimatedHours);
 

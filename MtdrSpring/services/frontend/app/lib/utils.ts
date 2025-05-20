@@ -34,11 +34,18 @@ export function getSprintName(
 
 export const generateAvatarColor = (
   name?: string | null,
-): { backgroundColor: string; color: string } => {
+): {
+  backgroundColor: string;
+  color: string;
+  chartColor: string;
+  tableColor: string;
+} => {
   if (!name) {
     return {
       backgroundColor: `hsl(0, 0%, 80%)`,
       color: `hsl(0, 0%, 30%)`,
+      chartColor: `hsl(0, 0%, 80%)`,
+      tableColor: `hsla(0, 0%, 80%, 0.100)`,
     };
   }
   const hash = name.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -47,5 +54,7 @@ export const generateAvatarColor = (
   return {
     backgroundColor: `hsl(${hue}, 60%, 80%)`,
     color: `hsl(${hue}, 50%, 30%)`,
+    chartColor: `hsl(${hue}, 38%, 60%)`,
+    tableColor: `hsla(${hue}, 50%, 80%, 1)`,
   };
 };

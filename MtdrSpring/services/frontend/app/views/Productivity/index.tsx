@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
 import useTaskStore from "~/store";
-import type { KpiData } from "~/store/slices/productivitySlice";
-import type { Team, Sprint } from "~/types";
+import { generateAvatarColor } from "~/lib/utils";
 import {
   BarChart,
   Bar,
@@ -13,188 +12,179 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
-import { Card } from "~/components/Card";
 import { Select } from "~/components/Select";
+import { useSprintPerformance } from "./hooks/useSprintPerformance";
+import { useDeveloperSprints } from "./hooks/useDeveloperSprints";
+import { useLastSprint } from "./hooks/useLastSprint";
+import OldProductivityView from "./old";
+import { Modal } from "~/components/Modal";
+
+const chartTheme = {
+  chart: {
+    margin: { top: -5, right: 0, left: 0, bottom: -15 },
+    modalMargin: { top: 0, right: 30, left: 30, bottom: 20 },
+  },
+
+  tooltip: {
+    contentStyle: {
+      backgroundColor: "rgba(30, 27, 25, 1)",
+      borderColor: "rgba(74, 70, 66, 0.8)",
+      color: "#e2e8f0",
+      borderRadius: "0.375rem",
+      padding: "8px 12px",
+      fontSize: "0.9rem",
+      fontWeight: "600",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+    },
+    labelStyle: {
+      fontWeight: "bold",
+      marginBottom: "4px",
+      color: "#f8fafc",
+    },
+    cursor: {
+      fill: "rgba(200, 200, 200, 0.1)",
+    },
+  },
+
+  axis: {
+    tick: {
+      fontSize: 14,
+      fill: "#ffffff",
+    },
+    label: {
+      fill: "#ffffff",
+      fontSize: 14,
+    },
+  },
+
+  grid: {
+    stroke: "#646464",
+    strokeDasharray: "3 3",
+  },
+
+  legend: {
+    style: {
+      fontSize: "1rem",
+      color: "#dfe5ee",
+      paddingBottom: "5px",
+    },
+    iconType: "circle" as const,
+    iconSize: 10,
+  },
+
+  modal_legend: {
+    style: {
+      fontSize: "1.15rem",
+      color: "#dfe5ee",
+      paddingBottom: "5px",
+    },
+    iconType: "circle" as const,
+    iconSize: 12,
+  },
+
+  barLabel: {
+    position: "insideBottom" as const,
+    fill: "#0000008f",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  modal_barLabel: {
+    position: "insideBottom" as const,
+    fill: "#0000008f",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
+  bar: {
+    radius: [5, 5, 0, 0] as [number, number, number, number],
+    opacity: 1,
+  },
+};
 
 const ProductivityView: React.FC = () => {
-  const kpiData = useTaskStore((state) => state.kpiData);
-  const isLoadingKpi = useTaskStore((state) => state.isLoadingKpi);
-  const error = useTaskStore((state) => state.error);
-  const fetchKpiData = useTaskStore((state) => state.fetchKpiData);
-  const teams = useTaskStore((state) => state.teams);
+  const [activeTab, setActiveTab] = useState<"new" | "old">("new");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const sprints = useTaskStore((state) => state.sprints);
-  const currentUser = useTaskStore((state) => state.currentUser);
-  const statsViewMode = useTaskStore((state) => state.statsViewMode);
-  const toggleStatsViewMode = useTaskStore(
-    (state) => state.toggleStatsViewMode,
+  const [selectedSprintId, setSelectedSprintId] = useState<string | number>(
+    sprints.reduce((newest, current) => {
+      const newestDate = new Date(newest.startDate);
+      const currentDate = new Date(current.startDate);
+      return currentDate > newestDate ? current : newest;
+    }, sprints[0])?.id || "",
   );
+  const sprintPerformance = useSprintPerformance("all");
+  const developerSprints = useDeveloperSprints("all");
+  const lastSprintData = useLastSprint(selectedSprintId);
   const initializeData = useTaskStore((state) => state.initializeData);
-  const fetchTeams = useTaskStore((state) => state.fetchTeams);
 
-  useEffect(() => {
-    if (currentUser && teams.length === 0) {
-      if (currentUser.role === "manager") {
-        fetchTeams();
-      } else {
-        fetchTeams();
-      }
-    }
-  }, [currentUser, teams.length, fetchTeams]);
-
+  // Initialize data on mount
   useEffect(() => {
     initializeData();
   }, [initializeData]);
 
-  const [selectedTeamId, setSelectedTeamId] = useState<string | number>("all");
-  const [selectedSprintId, setSelectedSprintId] = useState<string | number>(
-    "all",
-  );
-
-  const isManager = currentUser?.role === "manager";
-  const userTeamId = currentUser?.teamId || null;
-
-  // Filter available teams *before* using it in useEffect
-  const availableTeams = isManager
-    ? teams
-    : teams.filter((team) => team.id === userTeamId);
-
-  // Default team selection logic
+  // Effect to update selectedSprintId when sprints change
   useEffect(() => {
-    if (!isManager && userTeamId) {
-      setSelectedTeamId(userTeamId);
-    } else if (
-      isManager &&
-      statsViewMode === "sprint" &&
-      selectedTeamId === "all"
-    ) {
-      // If manager is in sprint view and 'all' is selected, default to the first available team
-      if (availableTeams.length > 0) {
-        // Ensure availableTeams has been populated before accessing its elements
-        setSelectedTeamId(availableTeams[0].id);
+    if (sprints.length > 0) {
+      const newestSprint = sprints.reduce((newest, current) => {
+        const newestDate = new Date(newest.startDate);
+        const currentDate = new Date(current.startDate);
+        return currentDate > newestDate ? current : newest;
+      }, sprints[0]);
+      setSelectedSprintId(newestSprint.id);
+    }
+  }, [sprints]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveModal(null);
       }
-    }
-    // If not manager and not in sprint view, 'all' is fine initially
-    // If manager and not in sprint view, 'all' is fine
-  }, [isManager, userTeamId, statsViewMode, availableTeams, teams]); // Added teams to dependencies
+    };
 
-  useEffect(() => {
-    const filters: {
-      teamId?: number;
-      sprintId?: number;
-      isTeamView?: boolean; // Corresponds to 'aggregated' in backend
-    } = {};
-    const teamIdNum = parseInt(String(selectedTeamId), 10);
-    const sprintIdNum = parseInt(String(selectedSprintId), 10);
-
-    // Prevent fetching in 'Por Sprints' view if no specific team is selected
-    if (statsViewMode === "sprint" && selectedTeamId === "all") {
-      // Clear data or do nothing, handled by conditional rendering below
-      // console.log("Select a team to view sprint data.");
-      return;
-    }
-
-    if (!isNaN(teamIdNum) && selectedTeamId !== "all") {
-      filters.teamId = teamIdNum;
-    }
-    if (!isNaN(sprintIdNum) && selectedSprintId !== "all") {
-      filters.sprintId = sprintIdNum;
-      // If filtering by a specific sprint, teamId might become redundant depending on API
-      // Keep teamId for now unless API requires removing it when sprintId is present
-      // delete filters.teamId;
-    }
-
-    // Set aggregation flag based on view mode
-    if (statsViewMode === "sprint") {
-      filters.isTeamView = true; // Request aggregated data (by sprint if teamId is present, by team otherwise)
-    }
-
-    fetchKpiData(filters);
-  }, [fetchKpiData, selectedTeamId, selectedSprintId, statsViewMode]);
-
-  const handleTeamChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setSelectedTeamId(value === "all" ? "all" : parseInt(value, 10));
-    setSelectedSprintId("all");
-  };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
 
   const handleSprintChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setSelectedSprintId(value === "all" ? "all" : parseInt(value, 10));
+    setSelectedSprintId(
+      e.target.value === "all" ? "all" : parseInt(e.target.value, 10),
+    );
   };
 
-  const chartData = kpiData.map((item: KpiData) => {
-    const actual = item.totalActualHours ?? 0;
-    const estimated = item.totalEstimatedHours ?? 0;
-    const completedTasks = item.completedTasks ?? 0;
-    // Ratio calculation: Horas Reales / Horas Estimadas
-    const ratio =
-      estimated > 0 ? actual / estimated : actual > 0 ? Infinity : 1;
-    const averageTime = completedTasks > 0 ? actual / completedTasks : null;
+  const allMembers = new Set<string>();
+  (sprintPerformance.isLoading
+    ? sprintPerformance.loadingData
+    : sprintPerformance.data
+  ).forEach((sprint) => {
+    Object.keys(sprint.memberHours).forEach((member) => allMembers.add(member));
+  });
+  const membersList = Array.from(allMembers);
 
-    // Determine name based on view mode
-    // The backend query aliases sprint name into memberName when aggregating by sprint,
-    // so we can consistently use memberName for the label.
-    const name = item.memberName || "Unknown"; // Use memberName as the primary source
+  const sprintPerformanceData = sprintPerformance.isLoading
+    ? sprintPerformance.loadingData
+    : sprintPerformance.data;
+  const developerSprintsData = developerSprints.isLoading
+    ? developerSprints.loadingData
+    : developerSprints.data;
+  const lastSprintTableData = lastSprintData.isLoading
+    ? lastSprintData.loadingData
+    : lastSprintData.data;
 
-    return {
-      name: name,
-      EstimatedHours: estimated,
-      ActualHours: actual,
-      CompletedTasks: completedTasks,
-      EstimationRatio: ratio === Infinity ? null : ratio,
-      AverageActualTime: averageTime,
-    };
+  const renderAxisLabel = (
+    value: string,
+    angle: number,
+    position: "insideLeft" | "bottom",
+  ) => ({
+    value,
+    angle,
+    position,
+    style: chartTheme.axis.label,
   });
 
-  // Filter available sprints based on the *currently selected* team
-  const availableSprints = sprints.filter((sprint: Sprint) => {
-    const currentTeamId =
-      typeof selectedTeamId === "string"
-        ? parseInt(selectedTeamId, 10)
-        : selectedTeamId;
-    return selectedTeamId === "all" || sprint.teamId === currentTeamId;
-  });
-
-  // Options for the Team Select dropdown
-  const teamSelectOptions = [
-    // Conditionally include "Todos los Equipos" only if NOT in 'sprint' view or if user is not a manager
-    // Update: Always remove "Todos los Equipos" when in 'sprint' view for managers
-    ...(statsViewMode !== "sprint" && isManager
-      ? [{ value: "all", label: "Todos los Equipos" }]
-      : []),
-    ...availableTeams.map((team: Team) => ({
-      value: String(team.id),
-      label: team.name,
-    })),
-  ];
-
-  const tooltipContentStyle = {
-    backgroundColor: "rgba(30, 27, 25, 0.9)",
-    borderColor: "rgba(74, 70, 66, 0.8)",
-    color: "#e2e8f0",
-    borderRadius: "0.375rem",
-    padding: "8px 12px",
-    fontSize: "0.75rem",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-  };
-
-  const tooltipLabelStyle = {
-    fontWeight: "bold",
-    marginBottom: "4px",
-    color: "#f8fafc",
-  };
-
-  const axisTickStyle = {
-    fontSize: 10,
-    fill: "#a0aec0",
-  };
-
-  const gridStrokeColor = "#4a5568";
-  const legendStyle = {
-    fontSize: "0.75rem",
-    color: "#a0aec0",
+  const formatBarLabel = (value: number, type: "number" | "integer") => {
+    if (value <= 0) return "";
+    return type === "integer" ? value.toString() : value.toFixed(1);
   };
 
   return (
@@ -206,325 +196,524 @@ const ProductivityView: React.FC = () => {
         backgroundRepeat: "repeat",
       }}
     >
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex flex-col overflow-hidden">
         <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-medium text-white">Productividad</h1>
           </div>
         </div>
 
-        <div className="flex items-center justify-between py-4 pt-6">
-          <div className="ml-[1px] flex items-center gap-3">
-            <div>
-              <label htmlFor="team-select" className="sr-only">
-                Filtrar por Equipo
-              </label>
-              <Select
-                id="team-select"
-                value={String(selectedTeamId)}
-                onChange={handleTeamChange}
-                className="bg-oc-primary outline-oc-outline-light/90 h-9 min-w-[180px]"
-                // Disable if user is not a manager and has a team assigned
-                disabled={!isManager && userTeamId !== null}
-                options={teamSelectOptions} // Use the dynamically generated options
-              />
-            </div>
-            {statsViewMode !== "sprint" && (
-              <div>
-                <label htmlFor="sprint-select" className="sr-only">
-                  Filtrar por Sprint
-                </label>
-                <Select
-                  id="sprint-select"
-                  value={String(selectedSprintId)}
-                  onChange={handleSprintChange}
-                  // Disable if no specific team is selected OR if the selected team has no sprints
-                  disabled={
-                    selectedTeamId === "all" || availableSprints.length === 0
-                  }
-                  className="bg-oc-primary outline-oc-outline-light/90 h-9 min-w-[180px]"
-                  options={[
-                    // Adjust label based on context
-                    {
-                      value: "all",
-                      label:
-                        selectedTeamId === "all"
-                          ? "Todos los Sprints (Equipo)"
-                          : "Todos los Sprints del Equipo",
-                    },
-                    ...availableSprints.map((sprint: Sprint) => ({
-                      value: String(sprint.id),
-                      label: `${sprint.name}`,
-                    })),
-                  ]}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* View Mode Toggle Buttons */}
-          <div className="flex items-center gap-2">
-            <div className="border-oc-outline-light flex flex-shrink-0 overflow-hidden rounded-lg border">
-              {/* Button for "Por Sprints" view */}
-              <button
-                onClick={toggleStatsViewMode}
-                className={`flex items-center p-2 text-sm 2xl:px-3 2xl:py-2 ${
-                  statsViewMode === "sprint"
-                    ? "bg-stone-700 text-white"
-                    : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
-                }`}
-                title="Vista por Sprints (Equipo)" // Updated title
-                aria-label="Vista por Sprints" // Updated aria-label
-              >
-                <i className="fa fa-calendar-alt 2xl:mr-2"></i>
-                <span className="hidden 2xl:inline">Por Sprints</span>{" "}
-                {/* Updated label */}
-              </button>
-              {/* Button for "Por Persona" view */}
-              <button
-                onClick={toggleStatsViewMode}
-                className={`flex items-center p-2 text-sm 2xl:px-3 2xl:py-2 ${
-                  statsViewMode === "member"
-                    ? "bg-stone-700 text-white"
-                    : "bg-oc-primary text-stone-400 hover:bg-black hover:text-white"
-                }`}
-                title="Vista por Persona (Individual)" // Updated title
-                aria-label="Vista por Persona" // Updated aria-label
-              >
-                <i className="fa fa-user 2xl:mr-2"></i>
-                <span className="hidden 2xl:inline">Por Persona</span>{" "}
-                {/* Updated label */}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-oc-primary border-oc-outline-light flex flex-1 flex-col overflow-hidden rounded-lg border text-sm">
-          <div className="flex-grow overflow-y-auto p-4">
-            {isLoadingKpi && (
-              <div className="flex h-64 items-center justify-center">
-                <p className="text-gray-400">Cargando datos de KPI...</p>
-              </div>
-            )}
-            {error && (
-              <div
-                className="relative m-4 rounded border border-red-700 bg-red-900/50 px-4 py-3 text-red-300"
-                role="alert"
-              >
-                <strong className="font-bold">Error:</strong>
-                <span className="block sm:inline"> {error}</span>
-              </div>
-            )}
-
-            {/* Conditional Rendering: Prompt or Charts */}
-            {!isLoadingKpi &&
-              !error &&
-              statsViewMode === "sprint" &&
-              selectedTeamId === "all" && (
-                <div className="flex h-64 items-center justify-center">
-                  <p className="text-gray-400">
-                    Por favor, seleccione un equipo para ver las estadísticas
-                    por sprints.
-                  </p>
-                </div>
-              )}
-
-            {/* Show charts only if not loading, no error, and (not in sprint view OR a team is selected) */}
-            {!isLoadingKpi &&
-              !error &&
-              !(statsViewMode === "sprint" && selectedTeamId === "all") && (
-                <div className="grid h-full grid-cols-2 grid-rows-2 gap-4">
-                  <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                    <h2 className="mb-3 text-base font-medium text-gray-300">
-                      Horas Reales
-                    </h2>
-                    <div className="flex-grow">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
-                          />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis tick={axisTickStyle} />
-                          <Tooltip
-                            contentStyle={tooltipContentStyle}
-                            labelStyle={tooltipLabelStyle}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                          />
-                          <Legend wrapperStyle={legendStyle} />
-                          {/* <Bar
-                            dataKey="EstimatedHours"
-                            fill="#a78bfa"
-                            name="Estimadas"
-                            unit="h"
-                          /> */}
-                          <Bar
-                            dataKey="ActualHours"
-                            fill="#6ee7b7"
-                            name="Reales"
-                            unit="h"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-
-                  <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                    <h2 className="mb-3 text-base font-medium text-gray-300">
-                      Horas Reales / Horas Estimadas {/* Updated Label */}
-                    </h2>
-                    <div className="flex-grow">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
-                          />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis domain={[0, "auto"]} tick={axisTickStyle} />
-                          <ReferenceLine
-                            y={1}
-                            stroke="#e53e3e"
-                            strokeDasharray="3 3"
-                            label={{
-                              value: "Objetivo",
-                              position: "insideTopRight",
-                              fill: "#e53e3e",
-                              fontSize: 10,
-                            }}
-                          />
-                          <Tooltip
-                            content={({ active, payload, label }) => {
-                              if (active && payload && payload.length) {
-                                const data = payload[0].payload;
-                                const ratio = data.EstimationRatio;
-                                const tasks = data.CompletedTasks;
-                                // Adjust tooltip label based on view mode
-                                const entityLabel =
-                                  statsViewMode === "sprint"
-                                    ? "Sprint"
-                                    : "Usuario";
-                                return (
-                                  <div
-                                    style={tooltipContentStyle}
-                                    className="text-sm"
-                                  >
-                                    <p
-                                      style={tooltipLabelStyle}
-                                    >{`${entityLabel}: ${label}`}</p>
-                                    <p>{`Ratio: ${
-                                      ratio !== null ? ratio.toFixed(2) : "N/A"
-                                    }`}</p>
-                                    <p className="opacity-80">{`(${tasks} tareas completadas)`}</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                          />
-                          <Legend wrapperStyle={legendStyle} />
-                          <Bar
-                            dataKey="EstimationRatio"
-                            fill="#fbbf24"
-                            name="Ratio Real/Est."
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">
-                      Ratio &gt; 1 más largo que lo est. / &lt; 1 más rápido que
-                      lo est.
-                    </p>
-                  </Card>
-
-                  <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                    <h2 className="mb-3 text-base font-medium text-gray-300">
-                      Tareas Completadas
-                    </h2>
-                    <div className="flex-grow">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
-                          />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis allowDecimals={false} tick={axisTickStyle} />
-                          <Tooltip
-                            contentStyle={tooltipContentStyle}
-                            labelStyle={tooltipLabelStyle}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                          />
-                          <Legend wrapperStyle={legendStyle} />
-                          <Bar
-                            dataKey="CompletedTasks"
-                            fill="#60a5fa"
-                            name="Tareas Completadas"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-
-                  <Card className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-4 backdrop-blur-sm">
-                    <h2 className="mb-3 text-base font-medium text-gray-300">
-                      Tiempo Promedio por Tarea
-                    </h2>
-                    <div className="flex-grow">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={chartData}
-                          margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={gridStrokeColor}
-                          />
-                          <XAxis dataKey="name" tick={axisTickStyle} />
-                          <YAxis unit="h" tick={axisTickStyle} />
-                          <Tooltip
-                            formatter={(value: any) =>
-                              typeof value === "number"
-                                ? `${value.toFixed(1)}h`
-                                : "N/A"
-                            }
-                            labelFormatter={(label: string) =>
-                              `Usuario: ${label}`
-                            }
-                            contentStyle={tooltipContentStyle}
-                            labelStyle={tooltipLabelStyle}
-                            cursor={{ fill: "rgba(200, 200, 200, 0.1)" }}
-                          />
-                          <Legend wrapperStyle={legendStyle} />
-                          <Bar
-                            dataKey="AverageActualTime"
-                            fill="#f87171"
-                            name="Tiempo Prom. / Tarea"
-                            unit="h"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">
-                      Promedio de horas por tarea completada.
-                    </p>
-                  </Card>
-                </div>
-              )}
+        {/* Tabs */}
+        <div className="border-oc-outline-light/60 my-4 border-b">
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setActiveTab("new")}
+              className={`pb-2 text-sm font-medium transition-colors duration-150 ease-in-out ${
+                activeTab === "new"
+                  ? "border-b-2 border-white text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              KPIs Principales
+            </button>
+            <button
+              onClick={() => setActiveTab("old")}
+              className={`pb-2 text-sm font-medium transition-colors duration-150 ease-in-out ${
+                activeTab === "old"
+                  ? "border-b-2 border-white text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Otros
+            </button>
           </div>
         </div>
       </div>
+
+      {activeTab === "new" ? (
+        <div className="flex h-[calc(100%-90px)] gap-4">
+          <div className="flex w-2/3 flex-col gap-4">
+            <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-md font-medium text-gray-200">
+                  Horas Trabajadas por Sprint
+                </h2>
+                <button
+                  onClick={() => setActiveModal("hoursPerSprint")}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <i className="fa fa-expand"></i>
+                </button>
+              </div>
+              <div className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={sprintPerformanceData}
+                    margin={chartTheme.chart.margin}
+                  >
+                    <CartesianGrid
+                      strokeDasharray={chartTheme.grid.strokeDasharray}
+                      stroke={chartTheme.grid.stroke}
+                    />
+                    <XAxis
+                      dataKey="sprintName"
+                      tick={chartTheme.axis.tick}
+                      height={40}
+                      interval={0}
+                      textAnchor="middle"
+                      style={{
+                        fill: chartTheme.axis.label.fill,
+                      }}
+                    />
+                    <YAxis
+                      label={renderAxisLabel("Horas", -90, "insideLeft")}
+                      tick={chartTheme.axis.tick}
+                    />
+                    <Tooltip
+                      contentStyle={chartTheme.tooltip.contentStyle}
+                      labelStyle={chartTheme.tooltip.labelStyle}
+                      cursor={chartTheme.tooltip.cursor}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      wrapperStyle={chartTheme.legend.style}
+                      iconType={chartTheme.legend.iconType}
+                      iconSize={chartTheme.legend.iconSize}
+                    />
+                    <Bar
+                      dataKey="totalHours"
+                      fill="#cecece"
+                      radius={chartTheme.bar.radius}
+                      name="Horas Trabajadas"
+                      label={{
+                        ...chartTheme.barLabel,
+                        formatter: (value: number) =>
+                          formatBarLabel(value, "number"),
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-medium text-gray-200">
+                  Horas Trabajadas por Sprint y Usuario
+                </h2>
+                <button
+                  onClick={() => setActiveModal("hoursPerSprintUser")}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <i className="fa fa-expand"></i>
+                </button>
+              </div>
+              <div className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={sprintPerformanceData}
+                    margin={chartTheme.chart.margin}
+                  >
+                    <CartesianGrid
+                      strokeDasharray={chartTheme.grid.strokeDasharray}
+                      stroke={chartTheme.grid.stroke}
+                    />
+                    <XAxis
+                      dataKey="sprintName"
+                      tick={chartTheme.axis.tick}
+                      height={40}
+                      interval={0}
+                      textAnchor="middle"
+                      style={{
+                        fill: chartTheme.axis.label.fill,
+                      }}
+                    />
+                    <YAxis
+                      label={renderAxisLabel("Horas", -90, "insideLeft")}
+                      tick={chartTheme.axis.tick}
+                    />
+                    <Tooltip
+                      contentStyle={chartTheme.tooltip.contentStyle}
+                      labelStyle={chartTheme.tooltip.labelStyle}
+                      cursor={chartTheme.tooltip.cursor}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      wrapperStyle={chartTheme.legend.style}
+                      iconType={chartTheme.legend.iconType}
+                      iconSize={chartTheme.legend.iconSize}
+                    />
+                    {membersList.map((member, index) => (
+                      <Bar
+                        key={member}
+                        dataKey={(data) => data.memberHours[member] || 0}
+                        name={member}
+                        radius={chartTheme.bar.radius}
+                        fill={generateAvatarColor(member).chartColor}
+                        opacity={chartTheme.bar.opacity}
+                        label={{
+                          ...chartTheme.barLabel,
+                          formatter: (value: number) =>
+                            formatBarLabel(value, "number"),
+                        }}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-1/3 flex-col rounded-lg border p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-medium text-gray-200">
+                  Tareas Completadas por Developer por Sprint
+                </h2>
+                <button
+                  onClick={() => setActiveModal("tasksPerSprintUser")}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <i className="fa fa-expand"></i>
+                </button>
+              </div>
+              <div className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={developerSprintsData}
+                    margin={chartTheme.chart.margin}
+                  >
+                    <CartesianGrid
+                      strokeDasharray={chartTheme.grid.strokeDasharray}
+                      stroke={chartTheme.grid.stroke}
+                    />
+                    <XAxis
+                      dataKey="sprintName"
+                      tick={chartTheme.axis.tick}
+                      height={40}
+                      interval={0}
+                      textAnchor="middle"
+                      style={{
+                        fill: chartTheme.axis.label.fill,
+                      }}
+                    />
+                    <YAxis
+                      label={renderAxisLabel("Tareas", -90, "insideLeft")}
+                      tick={chartTheme.axis.tick}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={chartTheme.tooltip.contentStyle}
+                      labelStyle={chartTheme.tooltip.labelStyle}
+                      cursor={chartTheme.tooltip.cursor}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      wrapperStyle={chartTheme.legend.style}
+                      iconType={chartTheme.legend.iconType}
+                      iconSize={chartTheme.legend.iconSize}
+                    />
+                    {membersList.map((member, index) => (
+                      <Bar
+                        key={member}
+                        dataKey={(data) => data.memberTasks[member] || 0}
+                        name={member}
+                        radius={chartTheme.bar.radius}
+                        opacity={chartTheme.bar.opacity}
+                        fill={generateAvatarColor(member).chartColor}
+                        label={{
+                          ...chartTheme.barLabel,
+                          formatter: (value: number) =>
+                            formatBarLabel(value, "integer"),
+                        }}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-2/5">
+            <div className="bg-oc-primary/80 border-oc-outline-light/60 flex h-full flex-col rounded-lg border p-3 backdrop-blur-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-medium text-gray-200">
+                  Reporte de Sprint
+                </h2>
+                <Select
+                  value={String(selectedSprintId)}
+                  onChange={handleSprintChange}
+                  className="bg-oc-primary outline-oc-outline-light/90 h-9 min-w-[180px]"
+                  options={sprints.map((sprint) => ({
+                    value: String(sprint.id),
+                    label: sprint.name,
+                  }))}
+                />
+              </div>
+              <div className="flex-grow overflow-auto">
+                {lastSprintData.isLoading || sprints.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <p className="text-lg text-gray-400">Cargando datos...</p>
+                  </div>
+                ) : Object.keys(lastSprintTableData.developerTasks).length ===
+                  0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <p className="text-lg text-gray-400">
+                      No hay tareas para mostrar en este sprint.
+                    </p>
+                  </div>
+                ) : (
+                  <table className="w-full table-fixed border-separate border-spacing-x-2">
+                    <thead className="bg-oc-primary sticky top-0 z-10 text-left text-gray-300">
+                      <tr className="border-oc-outline-light/60 border-b">
+                        <th className="pb-2 text-base">Tarea</th>
+                        <th className="w-20 pb-2 text-base">Dev</th>
+                        <th className="w-15 pb-2 text-base">H. Est.</th>
+                        <th className="w-15 pb-2 text-base">H. Real</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(lastSprintTableData.developerTasks).map(
+                        ([developer, data]) =>
+                          data.tasks.map((task) => (
+                            <tr
+                              key={`${developer}-${task.taskTitle}`}
+                              className="border-oc-outline-light/60 border-b"
+                            >
+                              <td className="py-2">
+                                <div className="line-clamp-1 text-sm font-medium text-white">
+                                  {task.taskTitle}
+                                </div>
+                              </td>
+                              <td className="py-2 text-base text-gray-300">
+                                <span
+                                  style={{
+                                    backgroundColor: `${generateAvatarColor(developer).backgroundColor}`,
+                                    color: `${generateAvatarColor(developer).color}`,
+                                  }}
+                                  className="rounded-full px-2 py-0.5 text-sm font-bold"
+                                >
+                                  {developer}
+                                </span>
+                              </td>
+                              <td className="py-2 text-base font-bold text-gray-300">
+                                {task.totalEstimatedHours?.toFixed(1) || "N/A"}
+                              </td>
+                              <td className="py-2 text-base font-bold text-gray-300">
+                                {task.totalActualHours?.toFixed(1) || "N/A"}
+                              </td>
+                            </tr>
+                          )),
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="h-[calc(100%-90px)]">
+          <OldProductivityView />
+        </div>
+      )}
+
+      <Modal
+        isVisible={activeModal === "hoursPerSprint"}
+        onClose={() => setActiveModal(null)}
+        handleClose={() => setActiveModal(null)}
+        className="w-[90vw] max-w-[1200px] p-6"
+      >
+        <div className="flex h-full w-full flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="pt-5 pl-5 text-xl font-medium text-white">
+              Horas Trabajadas por Sprint
+            </h2>
+          </div>
+          <div className="h-[70vh] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={sprintPerformanceData}
+                margin={chartTheme.chart.modalMargin}
+              >
+                <CartesianGrid
+                  strokeDasharray={chartTheme.grid.strokeDasharray}
+                  stroke={chartTheme.grid.stroke}
+                />
+                <XAxis
+                  dataKey="sprintName"
+                  tick={chartTheme.axis.tick}
+                  height={40}
+                  interval={0}
+                  textAnchor="middle"
+                />
+                <YAxis
+                  label={renderAxisLabel("Horas", -90, "insideLeft")}
+                  tick={chartTheme.axis.tick}
+                />
+                <Tooltip
+                  contentStyle={chartTheme.tooltip.contentStyle}
+                  labelStyle={chartTheme.tooltip.labelStyle}
+                  cursor={chartTheme.tooltip.cursor}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={chartTheme.modal_legend.style}
+                  iconType={chartTheme.modal_legend.iconType}
+                  iconSize={chartTheme.modal_legend.iconSize}
+                />
+                <Bar
+                  dataKey="totalHours"
+                  fill="#cecece"
+                  name="Horas trabajadas"
+                  radius={chartTheme.bar.radius}
+                  opacity={chartTheme.bar.opacity}
+                  label={{
+                    ...chartTheme.modal_barLabel,
+                    formatter: (value: number) =>
+                      formatBarLabel(value, "number"),
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isVisible={activeModal === "hoursPerSprintUser"}
+        onClose={() => setActiveModal(null)}
+        handleClose={() => setActiveModal(null)}
+        className="w-[90vw] max-w-[1200px] p-6"
+      >
+        <div className="flex h-full w-full flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="pt-5 pl-5 text-xl font-medium text-white">
+              Horas Trabajadas por Sprint y Usuario
+            </h2>
+          </div>
+          <div className="h-[70vh] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={sprintPerformanceData}
+                margin={chartTheme.chart.modalMargin}
+              >
+                <CartesianGrid
+                  strokeDasharray={chartTheme.grid.strokeDasharray}
+                  stroke={chartTheme.grid.stroke}
+                />
+                <XAxis
+                  dataKey="sprintName"
+                  tick={chartTheme.axis.tick}
+                  height={40}
+                  interval={0}
+                  textAnchor="middle"
+                />
+                <YAxis
+                  label={renderAxisLabel("Horas", -90, "insideLeft")}
+                  tick={chartTheme.axis.tick}
+                />
+                <Tooltip
+                  contentStyle={chartTheme.tooltip.contentStyle}
+                  labelStyle={chartTheme.tooltip.labelStyle}
+                  cursor={chartTheme.tooltip.cursor}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={chartTheme.modal_legend.style}
+                  iconType={chartTheme.modal_legend.iconType}
+                  iconSize={chartTheme.modal_legend.iconSize}
+                />
+                {membersList.map((member, index) => (
+                  <Bar
+                    key={member}
+                    dataKey={(data) => data.memberHours[member] || 0}
+                    name={member}
+                    radius={chartTheme.bar.radius}
+                    opacity={chartTheme.bar.opacity}
+                    fill={generateAvatarColor(member).chartColor}
+                    label={{
+                      ...chartTheme.modal_barLabel,
+                      formatter: (value: number) =>
+                        formatBarLabel(value, "number"),
+                    }}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isVisible={activeModal === "tasksPerSprintUser"}
+        onClose={() => setActiveModal(null)}
+        handleClose={() => setActiveModal(null)}
+        className="w-[90vw] max-w-[1200px] p-6"
+      >
+        <div className="flex h-full w-full flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="pt-5 pl-5 text-xl font-medium text-white">
+              Tareas Completadas por Developer por Sprint
+            </h2>
+          </div>
+          <div className="h-[70vh] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={developerSprintsData}
+                margin={chartTheme.chart.modalMargin}
+              >
+                <CartesianGrid
+                  strokeDasharray={chartTheme.grid.strokeDasharray}
+                  stroke={chartTheme.grid.stroke}
+                />
+                <XAxis
+                  dataKey="sprintName"
+                  tick={chartTheme.axis.tick}
+                  height={40}
+                  interval={0}
+                  textAnchor="middle"
+                />
+                <YAxis
+                  label={renderAxisLabel("Tareas", -90, "insideLeft")}
+                  tick={chartTheme.axis.tick}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={chartTheme.tooltip.contentStyle}
+                  labelStyle={chartTheme.tooltip.labelStyle}
+                  cursor={chartTheme.tooltip.cursor}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={chartTheme.modal_legend.style}
+                  iconType={chartTheme.modal_legend.iconType}
+                  iconSize={chartTheme.modal_legend.iconSize}
+                />
+                {membersList.map((member, index) => (
+                  <Bar
+                    key={member}
+                    dataKey={(data) => data.memberTasks[member] || 0}
+                    name={member}
+                    radius={chartTheme.bar.radius}
+                    opacity={chartTheme.bar.opacity}
+                    fill={generateAvatarColor(member).chartColor}
+                    label={{
+                      ...chartTheme.modal_barLabel,
+                      formatter: (value: number) =>
+                        formatBarLabel(value, "integer"),
+                    }}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

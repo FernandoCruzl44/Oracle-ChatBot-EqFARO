@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans:
-    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   /* --color-oc-neutral: #efede9;
   --color-oc-primary: #f5f4f2;
@@ -12,7 +12,7 @@
   --color-oc-red: #c74634; */
 
   --color-oc-neutral: #110f0d;
-  --color-oc-primary: #1b1a18;
+  --color-oc-primary: #161513;
   --color-oc-brown: #dad6d3;
   --color-oc-amber: #ffb74d;
   --color-oc-outline-light: #444340;
