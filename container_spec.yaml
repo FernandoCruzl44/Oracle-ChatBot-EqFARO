@@ -1,0 +1,407 @@
+version: 0.1
+component: build
+timeoutInSeconds: 1800
+runAs: root
+shell: bash
+env:
+  variables:
+    # Container configuration
+    COMPARTMENT_OCID: "ocid1.compartment.oc1..aaaaaaaaxtitswqnld7pbe2jep4aegof5f44dz63enrnqe4ypfx4gt2tqbpa"
+    SUBNET_OCID: "ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaaopics37peozj52bp7zdal2bp5bqooqmyahi36gsilqwfkbgegsua"
+    CONTAINER_INSTANCE_DISPLAY_NAME: "auth-wip"
+    CONTAINER_PORT: "8080"
+
+    # Load balancer configuration
+    LOAD_BALANCER_OCID: "ocid1.loadbalancer.oc1.mx-queretaro-1.aaaaaaaafbcrdf64gyvvbmrfa4shnch56vkib5cqwyrckn5i4sii4tcqlhda"
+    BACKEND_SET_NAME: "bs_lb_2025-0408-2101"
+
+    # Registry configuration (read from build stage)
+    REGISTRY: "mx-queretaro-1.ocir.io"
+    NAMESPACE: "axco8elk7e3y"
+    RUN_NAME: "faro"
+    IMAGE_NAME: "oraclechatbot"
+
+steps:
+  - type: Command
+    name: "Install Tools"
+    command: |
+      yum install -y jq curl
+
+      # Create function to print JSON responses for debugging
+      cat > /tmp/print_json.sh << 'EOF'
+      print_json_response() {
+        local operation=$1
+        local content=$2
+        
+        echo "==== BEGIN JSON RESPONSE: $operation ===="
+        echo "$content" | jq '.' || echo "$content"
+        echo "==== END JSON RESPONSE: $operation ===="
+      }
+      EOF
+
+      source /tmp/print_json.sh
+
+      echo "Deployment tools installed"
+
+  - type: Command
+    name: "Find and Delete Existing Container Instance"
+    command: |
+      source /tmp/print_json.sh
+
+      echo "Searching for existing container instance named '$CONTAINER_INSTANCE_DISPLAY_NAME' in compartment $COMPARTMENT_OCID..."
+      CONTAINER_LIST_RESULT=$(oci container-instances container-instance list \
+          --compartment-id "$COMPARTMENT_OCID" \
+          --display-name "$CONTAINER_INSTANCE_DISPLAY_NAME" \
+          --lifecycle-state "ACTIVE" \
+          --output json)
+
+      print_json_response "Container Instance List" "$CONTAINER_LIST_RESULT"
+
+      OLD_CONTAINER_INSTANCE_OCID=$(echo "$CONTAINER_LIST_RESULT" | jq -r '.data.items[0].id // ""')
+
+      if [ -z "$OLD_CONTAINER_INSTANCE_OCID" ] || [ "$OLD_CONTAINER_INSTANCE_OCID" == "null" ]; then
+          echo "Warning: No ACTIVE container instance found with the name '$CONTAINER_INSTANCE_DISPLAY_NAME'. Proceeding to create a new one."
+          OLD_CONTAINER_INSTANCE_OCID="" # Ensure it's empty if not found
+      else
+          echo "Found existing instance OCID: $OLD_CONTAINER_INSTANCE_OCID"
+          
+          # Delete the old Container Instance
+          echo "Deleting old container instance $OLD_CONTAINER_INSTANCE_OCID..."
+          oci container-instances container-instance delete --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" --force || echo "Instance $OLD_CONTAINER_INSTANCE_OCID might already be deleted or deletion failed."
+
+          echo "Waiting for old instance $OLD_CONTAINER_INSTANCE_OCID to be fully deleted..."
+          MAX_DELETION_WAIT=20  # Maximum number of checks (5 minutes with 15-second intervals)
+          for ((i=1; i<=MAX_DELETION_WAIT; i++)); do
+              # Attempt to get the instance status. If it returns an error, the instance is gone.
+              if ! oci container-instances container-instance get --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" > /dev/null 2>&1; then
+                  echo "Old instance $OLD_CONTAINER_INSTANCE_OCID successfully deleted or confirmed gone."
+                  break
+              fi
+              
+              LIFECYCLE_STATE=$(oci container-instances container-instance get --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" --query "data.\"lifecycle-state\"" --raw-output 2>/dev/null || echo "TERMINATED")
+              echo "Old instance state: $LIFECYCLE_STATE"
+              
+              if [ "$LIFECYCLE_STATE" == "DELETED" ] || [ "$LIFECYCLE_STATE" == "TERMINATED" ]; then
+                  echo "Old instance $OLD_CONTAINER_INSTANCE_OCID successfully deleted."
+                  break
+              elif [ "$LIFECYCLE_STATE" == "DELETING" ] || [ "$LIFECYCLE_STATE" == "TERMINATING" ]; then
+                  echo "Waiting 15 seconds for deletion to complete (attempt $i/$MAX_DELETION_WAIT)..."
+                  sleep 15
+              else
+                  echo "Warning: Old instance $OLD_CONTAINER_INSTANCE_OCID in unexpected state '$LIFECYCLE_STATE' during deletion check."
+                  if [ $i -eq $MAX_DELETION_WAIT ]; then
+                      echo "Maximum wait time reached. Proceeding with caution."
+                  else
+                      sleep 15
+                  fi
+              fi
+              
+              # Exit loop if we've reached max attempts
+              if [ $i -eq $MAX_DELETION_WAIT ]; then
+                  echo "Warning: Reached maximum wait time for instance deletion. Proceeding anyway."
+              fi
+          done
+      fi
+
+      # Store results for next steps
+      echo "OLD_CONTAINER_INSTANCE_OCID=$OLD_CONTAINER_INSTANCE_OCID" > /tmp/deploy_vars
+
+  - type: Command
+    name: "Create New Container Instance"
+    command: |
+      source /tmp/print_json.sh
+      source /tmp/deploy_vars
+
+      # Get the latest image from the repository
+      echo "Getting image path from repository..."
+      FULL_IMAGE_PATH="${REGISTRY}/${NAMESPACE}/${RUN_NAME}/${IMAGE_NAME}:latest"
+      echo "Using image: $FULL_IMAGE_PATH"
+
+      # Create a new Container Instance
+      echo "Creating new container instance '$CONTAINER_INSTANCE_DISPLAY_NAME' with image $FULL_IMAGE_PATH..."
+
+      # Prepare JSON strings following Oracle CLI docs format
+      SHAPE_CONFIG_JSON='{
+        "memoryInGBs": 4.0,
+        "ocpus": 1.0
+      }'
+
+      CONTAINERS_JSON="[
+        {
+          \"displayName\": \"oracle-chatbot-container\",
+          \"imageUrl\": \"$FULL_IMAGE_PATH\",
+          \"ports\": [
+            {
+              \"port\": $CONTAINER_PORT,
+              \"protocol\": \"TCP\"
+            }
+          ]
+        }
+      ]"
+
+      VNICS_JSON="[
+        {
+          \"displayName\": \"primary-vnic\",
+          \"subnetId\": \"$SUBNET_OCID\",
+          \"isPublicIpAssigned\": true
+        }
+      ]"
+
+      # Create the container instance
+      echo "Starting container instance creation..."
+      CREATE_OUTPUT=$(oci container-instances container-instance create \
+          --compartment-id "$COMPARTMENT_OCID" \
+          --availability-domain "fmAa:MX-QUERETARO-1-AD-1" \
+          --shape "CI.Standard.E4.Flex" \
+          --shape-config "$SHAPE_CONFIG_JSON" \
+          --display-name "$CONTAINER_INSTANCE_DISPLAY_NAME" \
+          --containers "$CONTAINERS_JSON" \
+          --vnics "$VNICS_JSON" \
+          --output json)
+
+      # Print the create response and extract OCID
+      print_json_response "Container Instance Create" "$CREATE_OUTPUT"
+      NEW_CONTAINER_INSTANCE_OCID=$(echo "$CREATE_OUTPUT" | jq -r '.data.id // ""')
+
+      if [ -z "$NEW_CONTAINER_INSTANCE_OCID" ] || [ "$NEW_CONTAINER_INSTANCE_OCID" == "null" ]; then
+          echo "Error: Failed to create container instance or retrieve its OCID."
+          exit 1
+      fi
+
+      echo "Container instance creation initiated: $NEW_CONTAINER_INSTANCE_OCID"
+
+      # Wait for container instance to become ACTIVE
+      echo "Waiting for container instance to become ACTIVE..."
+      MAX_WAIT_ITERATIONS=30  # 5 minutes with 10 second intervals
+      WAIT_ITERATIONS=0
+      LIFECYCLE_STATE=""
+
+      while [ "$LIFECYCLE_STATE" != "ACTIVE" ] && [ $WAIT_ITERATIONS -lt $MAX_WAIT_ITERATIONS ]; do
+          WAIT_ITERATIONS=$((WAIT_ITERATIONS + 1))
+          echo "Checking container instance state (attempt $WAIT_ITERATIONS of $MAX_WAIT_ITERATIONS)..."
+          
+          GET_STATE_OUTPUT=$(oci container-instances container-instance get \
+              --container-instance-id "$NEW_CONTAINER_INSTANCE_OCID" \
+              --output json 2>/dev/null || echo '{"error": "Failed to get instance state"}')
+          
+          print_json_response "Container Instance Get State ($WAIT_ITERATIONS)" "$GET_STATE_OUTPUT"
+          LIFECYCLE_STATE=$(echo "$GET_STATE_OUTPUT" | jq -r '.data."lifecycle-state" // "ERROR"')
+          
+          echo "Current container instance state: $LIFECYCLE_STATE"
+          
+          if [ "$LIFECYCLE_STATE" == "FAILED" ]; then
+              echo "Container instance creation failed."
+              exit 1
+          fi
+          
+          if [ "$LIFECYCLE_STATE" != "ACTIVE" ] && [ $WAIT_ITERATIONS -lt $MAX_WAIT_ITERATIONS ]; then
+              echo "Waiting 10 seconds before checking again..."
+              sleep 10
+          fi
+      done
+
+      if [ "$LIFECYCLE_STATE" != "ACTIVE" ]; then
+          echo "Timeout waiting for container instance to become ACTIVE."
+          echo "Last known state: $LIFECYCLE_STATE"
+          exit 1
+      fi
+
+      echo "Successfully created new container instance: $NEW_CONTAINER_INSTANCE_OCID (State: ACTIVE)"
+
+      # Store the new container instance OCID for later steps
+      echo "NEW_CONTAINER_INSTANCE_OCID=$NEW_CONTAINER_INSTANCE_OCID" >> /tmp/deploy_vars
+
+  - type: Command
+    name: "Get Container IP and Update Load Balancer"
+    command: |
+      source /tmp/print_json.sh
+      source /tmp/deploy_vars
+
+      # Get IP Address of the new container instance
+      echo "Fetching IP address for new instance $NEW_CONTAINER_INSTANCE_OCID..."
+      sleep 5  # Give the instance a moment to stabilize
+
+      # Get full container instance details including VNICs
+      GET_IP_OUTPUT=$(oci container-instances container-instance get --container-instance-id "$NEW_CONTAINER_INSTANCE_OCID" --output json 2>/dev/null)
+      print_json_response "Container Instance Get IP" "$GET_IP_OUTPUT"
+
+      # Extract the VNIC ID from the response
+      VNIC_ID=$(echo "$GET_IP_OUTPUT" | jq -r '.data.vnics[0]."vnic-id" // ""')
+
+      if [ -z "$VNIC_ID" ] || [ "$VNIC_ID" == "null" ]; then
+          echo "Error: Failed to retrieve VNIC ID from container instance details."
+          exit 1
+      fi
+
+      echo "Found VNIC ID: $VNIC_ID"
+
+      # Use the VNIC ID to get the private IP address
+      echo "Retrieving IP address from VNIC details..."
+      VNIC_DETAILS=$(oci network vnic get --vnic-id "$VNIC_ID" --output json 2>/dev/null)
+      print_json_response "VNIC Details" "$VNIC_DETAILS"
+
+      NEW_IP_ADDRESS=$(echo "$VNIC_DETAILS" | jq -r '.data."private-ip" // ""')
+
+      # Retry loop in case the IP isn't available immediately
+      MAX_RETRY=10
+      RETRY_COUNT=0
+
+      while [ -z "$NEW_IP_ADDRESS" ] || [ "$NEW_IP_ADDRESS" == "null" ]; do
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          if [ $RETRY_COUNT -gt $MAX_RETRY ]; then
+              echo "Error: Failed to retrieve IP address after $MAX_RETRY attempts."
+              exit 1
+          fi
+          
+          echo "Waiting for IP address assignment (attempt $RETRY_COUNT of $MAX_RETRY)..."
+          sleep 10
+          
+          VNIC_DETAILS=$(oci network vnic get --vnic-id "$VNIC_ID" --output json 2>/dev/null)
+          print_json_response "VNIC Details Retry $RETRY_COUNT" "$VNIC_DETAILS"
+          
+          NEW_IP_ADDRESS=$(echo "$VNIC_DETAILS" | jq -r '.data."private-ip" // ""')
+      done
+
+      echo "Successfully retrieved private IP address: $NEW_IP_ADDRESS"
+
+      # Update Load Balancer Backend Set
+      echo "Updating Load Balancer $LOAD_BALANCER_OCID, Backend Set $BACKEND_SET_NAME to use IP $NEW_IP_ADDRESS:$CONTAINER_PORT..."
+
+      # Get the current backend set configuration
+      echo "Retrieving current backend set configuration..."
+      BACKEND_SET_DETAILS=$(oci lb backend-set get \
+          --load-balancer-id "$LOAD_BALANCER_OCID" \
+          --backend-set-name "$BACKEND_SET_NAME" \
+          --output json)
+
+      print_json_response "Current Backend Set Details" "$BACKEND_SET_DETAILS"
+
+      # Extract current health checker details and policy
+      HEALTH_CHECKER_JSON=$(echo "$BACKEND_SET_DETAILS" | jq -r '.data["health-checker"]')
+      HEALTH_CHECKER_PROTOCOL=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.protocol')
+      HEALTH_CHECKER_PORT=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.port')
+      HEALTH_CHECKER_RETRIES=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.retries')
+      HEALTH_CHECKER_TIMEOUT=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."timeout-in-millis"')
+      HEALTH_CHECKER_INTERVAL=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."interval-in-millis"')
+      HEALTH_CHECKER_URL_PATH=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."url-path"')
+      POLICY=$(echo "$BACKEND_SET_DETAILS" | jq -r '.data.policy')
+
+      # Create JSON for the backends update
+      BACKENDS_JSON="[{\"ipAddress\": \"$NEW_IP_ADDRESS\", \"port\": $CONTAINER_PORT, \"weight\": 1}]"
+      echo "Backend configuration: $BACKENDS_JSON"
+
+      echo "Updating load balancer backend set..."
+      LB_UPDATE_OUTPUT=$(oci lb backend-set update \
+          --load-balancer-id "$LOAD_BALANCER_OCID" \
+          --backend-set-name "$BACKEND_SET_NAME" \
+          --backends "$BACKENDS_JSON" \
+          --policy "$POLICY" \
+          --health-checker-protocol "$HEALTH_CHECKER_PROTOCOL" \
+          --health-checker-port "$HEALTH_CHECKER_PORT" \
+          --health-checker-retries "$HEALTH_CHECKER_RETRIES" \
+          --health-checker-timeout-in-ms "$HEALTH_CHECKER_TIMEOUT" \
+          --health-checker-interval-in-ms "$HEALTH_CHECKER_INTERVAL" \
+          --health-checker-url-path "$HEALTH_CHECKER_URL_PATH" \
+          --force \
+          --output json 2>&1)
+
+      # Check if there was an error
+      UPDATE_EXIT_CODE=$?
+      if [ $UPDATE_EXIT_CODE -ne 0 ]; then
+          echo "Error: Load balancer update failed with exit code $UPDATE_EXIT_CODE"
+          echo "Error output: $LB_UPDATE_OUTPUT"
+          
+          # Try alternative approach with backend create
+          echo "Attempting to add backend directly instead of updating the whole backend set..."
+          ADD_BACKEND_OUTPUT=$(oci lb backend create \
+              --load-balancer-id "$LOAD_BALANCER_OCID" \
+              --backend-set-name "$BACKEND_SET_NAME" \
+              --ip-address "$NEW_IP_ADDRESS" \
+              --port "$CONTAINER_PORT" \
+              --weight 1 \
+              --output json 2>&1)
+          
+          ADD_BACKEND_EXIT_CODE=$?
+          if [ $ADD_BACKEND_EXIT_CODE -ne 0 ]; then
+              echo "Error adding backend: $ADD_BACKEND_OUTPUT"
+              exit 1
+          fi
+          
+          print_json_response "Add Backend Directly" "$ADD_BACKEND_OUTPUT"
+          echo "Backend added directly. Please verify in the OCI console."
+      else
+          print_json_response "Load Balancer Backend Set Update" "$LB_UPDATE_OUTPUT"
+          
+          # Extract work request ID if available
+          WORK_REQUEST_ID=$(echo "$LB_UPDATE_OUTPUT" | grep -o "ocid1.loadbalancerworkrequest[^\"]*" || echo "")
+          
+          if [ -n "$WORK_REQUEST_ID" ]; then
+              echo "Monitoring work request: $WORK_REQUEST_ID"
+              
+              # Poll work request status
+              MAX_WAIT_WORK_REQUEST=30  # 5 minutes with 10-second intervals
+              for ((i=1; i<=MAX_WAIT_WORK_REQUEST; i++)); do
+                  echo "Checking work request status (attempt $i of $MAX_WAIT_WORK_REQUEST)..."
+                  
+                  WORK_REQUEST_OUTPUT=$(oci lb work-request get \
+                      --work-request-id "$WORK_REQUEST_ID" \
+                      --output json 2>&1)
+                      
+                  WORK_REQUEST_EXIT_CODE=$?
+                  if [ $WORK_REQUEST_EXIT_CODE -ne 0 ]; then
+                      echo "Error checking work request status: $WORK_REQUEST_OUTPUT"
+                      echo "Will try again..."
+                      sleep 10
+                      continue
+                  fi
+                      
+                  print_json_response "Load Balancer Work Request ($i)" "$WORK_REQUEST_OUTPUT"
+                  
+                  WORK_REQUEST_STATE=$(echo "$WORK_REQUEST_OUTPUT" | jq -r '.data."lifecycle-state" // "UNKNOWN"')
+                  echo "Current work request state: $WORK_REQUEST_STATE"
+                  
+                  if [ "$WORK_REQUEST_STATE" == "SUCCEEDED" ]; then
+                      echo "Load Balancer update completed successfully."
+                      break
+                  elif [ "$WORK_REQUEST_STATE" == "FAILED" ]; then
+                      echo "Load Balancer update failed."
+                      ERROR_MESSAGE=$(echo "$WORK_REQUEST_OUTPUT" | jq -r '.data."error-message" // "Unknown error"')
+                      echo "Error message: $ERROR_MESSAGE"
+                      exit 1
+                  fi
+                  
+                  if [ "$i" -lt "$MAX_WAIT_WORK_REQUEST" ]; then
+                      echo "Waiting 10 seconds before checking again..."
+                      sleep 10
+                  else
+                      echo "Timeout waiting for Load Balancer update to complete."
+                      echo "Last known state: $WORK_REQUEST_STATE"
+                      exit 1
+                  fi
+              done
+          else
+              echo "No work request ID received. Verifying backend configuration directly..."
+              
+              # Verify if the backend is already properly configured
+              VERIFY_BACKEND=$(oci lb backend-set get \
+                  --load-balancer-id "$LOAD_BALANCER_OCID" \
+                  --backend-set-name "$BACKEND_SET_NAME" \
+                  --output json 2>&1)
+              
+              BACKEND_IPS=$(echo "$VERIFY_BACKEND" | jq -r '.data.backends[].["ip-address"] // ""')
+              if echo "$BACKEND_IPS" | grep -q "$NEW_IP_ADDRESS"; then
+                  echo "Backend has been successfully updated with IP $NEW_IP_ADDRESS"
+              else
+                  echo "WARNING: Backend update verification failed. Current backends: $BACKEND_IPS"
+                  echo "Expected to find IP: $NEW_IP_ADDRESS"
+                  exit 1
+              fi
+          fi
+      fi
+
+      echo "===== DEPLOYMENT SUMMARY ====="
+      echo "Container Instance: $NEW_CONTAINER_INSTANCE_OCID"
+      echo "IP Address: $NEW_IP_ADDRESS"
+      echo "Port: $CONTAINER_PORT"
+      echo "Load Balancer Backend Set: $BACKEND_SET_NAME"
+      echo "Deployment completed successfully!"

@@ -18,7 +18,8 @@
 		<java.version>11</java.version>
 		<jdbi.version>3.48.0</jdbi.version>
 		<frontend-src-dir>${project.basedir}/frontend</frontend-src-dir>
-		<bun.version>v1.2.12</bun.version>
+		<node.version>v20.11.1</node.version>
+		<npm.version>10.2.4</npm.version>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot -->
@@ -132,36 +133,39 @@
 	</dependencies>
 	<build>
 		<plugins>
-			<!-- Builder de Frontend con Bun -->
+			<!-- Frontend Builder with Node.js -->
 			<plugin>
 				<groupId>com.github.eirslett</groupId>
 				<artifactId>frontend-maven-plugin</artifactId>
 				<version>1.15.0</version>
 				<configuration>
-					<bunVersion>${bun.version}</bunVersion>
 					<workingDirectory>${frontend-src-dir}</workingDirectory>
 					<installDirectory>${project.build.directory}</installDirectory>
 				</configuration>
 				<executions>
 					<execution>
-						<id>install-bun</id>
+						<id>install-node-and-npm</id>
 						<goals>
-							<goal>install-bun</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>bun install</id>
-						<goals>
-							<goal>bun</goal>
+							<goal>install-node-and-npm</goal>
 						</goals>
 						<configuration>
-							<arguments>install</arguments>
+							<nodeVersion>${node.version}</nodeVersion>
+							<!-- <npmVersion>${npm.version}</npmVersion> -->
 						</configuration>
 					</execution>
 					<execution>
-						<id>bun run build</id>
+						<id>npm-install</id>
 						<goals>
-							<goal>bun</goal>
+							<goal>npm</goal>
+						</goals>
+						<configuration>
+							<arguments>install --legacy-peer-deps</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>npm-run-build</id>
+						<goals>
+							<goal>npm</goal>
 						</goals>
 						<configuration>
 							<arguments>run build</arguments>

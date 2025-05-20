@@ -1,0 +1,37 @@
+# Stage 1: Build the application
+FROM maven:3.9-eclipse-temurin-24-alpine AS builder
+WORKDIR /app
+COPY pom.xml .
+# Download dependencies first to leverage Docker caching
+RUN mvn dependency:go-offline
+
+# Copy source code
+COPY src ./src
+COPY frontend ./frontend
+COPY mvnw .
+COPY mvnw.cmd .
+
+# The .mvn directory will be copied only if it exists
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Stage 2: Create the runtime container
+FROM eclipse-temurin:24-jre-alpine
+WORKDIR /app
+
+# Create wallet directory
+RUN mkdir -p /app/wallet
+
+# Copy the JAR file from the builder stage
+COPY --from=builder /app/target/MyTodoList-0.0.1-SNAPSHOT.jar app.jar
+
+# Copy wallet and .env file
+COPY wallet /app/wallet
+COPY .env .env
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Command to run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]

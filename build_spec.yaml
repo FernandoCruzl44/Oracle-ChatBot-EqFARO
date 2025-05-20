@@ -1,219 +1,247 @@
 version: 0.1
 component: build
-timeoutInSeconds: 1800 # 30 minutes
+timeoutInSeconds: 1800
 runAs: root
 shell: bash
 env:
   variables:
-    # Set environment variables used in the build
     REGISTRY: "mx-queretaro-1.ocir.io"
     NAMESPACE: "axco8elk7e3y"
     RUN_NAME: "faro"
     IMAGE_NAME: "oraclechatbot"
-    CONTAINER_PORT: "8080"
-    CONTAINER_INSTANCE_DISPLAY_NAME: "auth-wip"
-    SUBNET_OCID: "ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaaopics37peozj52bp7zdal2bp5bqooqmyahi36gsilqwfkbgegsua"
-    LOAD_BALANCER_OCID: "ocid1.loadbalancer.oc1.mx-queretaro-1.aaaaaaaafbcrdf64gyvvbmrfa4shnch56vkib5cqwyrckn5i4sii4tcqlhda"
-    BACKEND_SET_NAME: "bs_lb_2025-0408-2101"
+    COMPARTMENT_OCID: "ocid1.compartment.oc1..aaaaaaaaxtitswqnld7pbe2jep4aegof5f44dz63enrnqe4ypfx4gt2tqbpa"
 
 steps:
   - type: Command
     name: "Install dependencies"
     command: |
-      # Install required tools
-      apt-get update
-      apt-get install -y curl jq openssl
+      yum update -y
+      yum install -y curl jq openssl git
 
-  - type: Command
-    name: "Build application"
-    command: |
-      cd ${OCI_PRIMARY_SOURCE_DIR}
-      # Remove previous build if exists
-      rm -rf target
-      # Build using Maven
-      mvn verify
+      # Print environment info for debugging
+      echo "OCI Environment Variables:"
+      echo "COMPARTMENT_OCID=${COMPARTMENT_OCID}"
 
   - type: Command
     name: "Build Docker image"
     command: |
-      cd ${OCI_PRIMARY_SOURCE_DIR}
-      # Create timestamp tag
-      TAG=$(date +%s-auth-wip)
-      echo "Building with tag $TAG"
+      cd ${OCI_PRIMARY_SOURCE_DIR}/MtdrSpring/services
 
-      # Build Docker image
-      docker buildx build --platform linux/amd64 --provenance=false -f Dockerfile -t ${REGISTRY}/${NAMESPACE}/${RUN_NAME}/${IMAGE_NAME}:${TAG} .
+      echo "Current directory: $(pwd)"
+      echo "Directory contents:"
+      ls -la
 
-      # Save tag for later steps
-      echo "TAG=$TAG" >> $OCI_ENV_VARS_FILE
-
-  - type: Command
-    name: "Push Docker image to registry"
-    command: |
-      # Source variables from the previous step
-      source $OCI_ENV_VARS_FILE
-      FULL_IMAGE_PATH=${REGISTRY}/${NAMESPACE}/${RUN_NAME}/${IMAGE_NAME}:${TAG}
-
-      # Check and create repository if needed
-      REPO_PATH="${RUN_NAME}/${IMAGE_NAME}"
-
-      echo "Creating repository if it doesn't exist: $REPO_PATH"
-      oci artifacts container repository create \
-        --compartment-id ${OCI_COMPARTMENT_ID} \
-        --display-name "$REPO_PATH" \
-        --is-public true || echo "Repository might already exist"
-
-      # Push image
-      echo "Pushing image to OCI registry: $FULL_IMAGE_PATH"
-      docker push $FULL_IMAGE_PATH
-
-      # Save full image path for later steps
-      echo "FULL_IMAGE_PATH=$FULL_IMAGE_PATH" >> $OCI_ENV_VARS_FILE
-
-  - type: Command
-    name: "Update container instance and load balancer"
-    command: |
-      # Source variables
-      source $OCI_ENV_VARS_FILE
-
-      # Find existing container instance
-      echo "Searching for existing container instance named '${CONTAINER_INSTANCE_DISPLAY_NAME}'..."
-      CONTAINER_LIST_RESULT=$(oci container-instances container-instance list \
-        --compartment-id ${OCI_COMPARTMENT_ID} \
-        --display-name "${CONTAINER_INSTANCE_DISPLAY_NAME}" \
-        --lifecycle-state "ACTIVE")
-
-      OLD_CONTAINER_INSTANCE_OCID=$(echo "$CONTAINER_LIST_RESULT" | jq -r '.data.items[0].id // ""')
-
-      # Delete existing container instance if found
-      if [ -n "$OLD_CONTAINER_INSTANCE_OCID" ] && [ "$OLD_CONTAINER_INSTANCE_OCID" != "null" ]; then
-        echo "Deleting old container instance $OLD_CONTAINER_INSTANCE_OCID..."
-        oci container-instances container-instance delete --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" --force
-        
-        # Wait for deletion to complete
-        echo "Waiting for old instance to be deleted..."
-        while true; do
-          if ! oci container-instances container-instance get --container-instance-id "$OLD_CONTAINER_INSTANCE_OCID" > /dev/null 2>&1; then
-            echo "Old instance successfully deleted or confirmed gone."
-            break
-          fi
-          sleep 15
-        done
+      # Verify that Dockerfile.deploy exists
+      if [ ! -f "Dockerfile.deploy" ]; then
+        echo "ERROR: Dockerfile.deploy not found in current directory"
+        exit 1
       fi
 
-      # Create JSON configuration for new container instance
-      echo "Creating new container instance with image $FULL_IMAGE_PATH..."
+      echo "Using multi-stage Dockerfile.deploy for build process..."
 
-      SHAPE_CONFIG_JSON='{
-        "memoryInGBs": 4.0,
-        "ocpus": 1.0
-      }'
+      # Fetch .env file from Vault
+      echo "Fetching .env file from Vault secret..."
+      ENV_SECRET_OCID="ocid1.vaultsecret.oc1.mx-queretaro-1.amaaaaaag3xcsfyamygsyrldfwqd4hdg3dxedqlpwjoyxv24ua2ynxfaopfa"
 
-      CONTAINERS_JSON="[
-        {
-          \"displayName\": \"oracle-chatbot-container\",
-          \"imageUrl\": \"$FULL_IMAGE_PATH\",
-          \"ports\": [
-            {
-              \"port\": $CONTAINER_PORT,
-              \"protocol\": \"TCP\"
-            }
-          ]
+      # Use the correct command to get the secret
+      SECRET_CONTENT=$(oci secrets secret-bundle get \
+        --secret-id ${ENV_SECRET_OCID} \
+        --query "data.\"secret-bundle-content\".content" \
+        --raw-output | base64 -d)
+
+      if [ -z "$SECRET_CONTENT" ]; then
+        echo "ERROR: Failed to retrieve secret content"
+        exit 1
+      fi
+
+      # Write the content to .env file
+      echo "$SECRET_CONTENT" > .env
+      echo ".env file created with content length: $(wc -c < .env) bytes"
+
+      # Extract Docker credentials from .env file - using grep with better handling of special characters
+      OCI_REGION=$(grep -o 'oci_region="[^"]*"' .env | awk -F'"' '{print $2}' || echo "${REGISTRY}")
+      OCI_USERNAME=$(grep -o 'oci_username="[^"]*"' .env | awk -F'"' '{print $2}' || echo "axco8elk7e3y/a01285574@tec.mx")
+      OCI_TOKEN=$(grep -o 'oci_token="[^"]*"' .env | awk -F'"' '{print $2}' || echo "")
+
+      # Verify credentials were extracted
+      echo "OCI Registry: ${OCI_REGION#https://}" # Remove https:// if present
+      echo "OCI Username: ${OCI_USERNAME}"
+      if [ -n "$OCI_TOKEN" ]; then
+        echo "OCI Token: [Token Found - Length: ${#OCI_TOKEN} chars]"
+      else
+        echo "ERROR: OCI token not found in .env file"
+      fi
+
+      # Download wallet from Object Storage
+      echo "Downloading wallet from Object Storage..."
+      NAMESPACE="axco8elk7e3y"
+      BUCKET_NAME="reacttodo-1flb5"
+      WALLET_OBJECT_NAME="wallet.zip"
+
+      # Create wallet directory
+      mkdir -p wallet
+
+      # Download wallet zip using OCI CLI
+      echo "Executing OS object get command..."
+      oci os object get \
+        --namespace $NAMESPACE \
+        --bucket-name $BUCKET_NAME \
+        --name $WALLET_OBJECT_NAME \
+        --file wallet.zip
+
+      # Check if download was successful
+      if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to download wallet.zip from Object Storage"
+        # Continue without wallet (don't exit)
+      else
+        # Unzip the wallet if download was successful
+        echo "Unzipping wallet..."
+        unzip -o wallet.zip -d wallet/
+        
+        # Cleanup
+        rm wallet.zip
+        
+        echo "Wallet extracted to wallet/ directory"
+        ls -la wallet/
+      fi
+
+      # Set up variables for image and repository
+      REGISTRY_HOST=${OCI_REGION#https://}  # Remove https:// if present
+      REPO_PATH="${RUN_NAME}/${IMAGE_NAME}"
+      FULL_IMAGE_PATH="${REGISTRY_HOST}/${NAMESPACE}/${REPO_PATH}:latest"
+
+      echo "Repository path: ${REPO_PATH}"
+      echo "Full image path: ${FULL_IMAGE_PATH}"
+
+      # Build with Docker using Dockerfile.deploy
+      echo "Building Docker image using Dockerfile.deploy..."
+      docker build -f Dockerfile.deploy -t faroimage .
+
+      # Check if build was successful
+      if [ $? -ne 0 ]; then
+        echo "ERROR: Docker build failed"
+        exit 1
+      fi
+
+      # Tag with full path including 'latest' tag
+      echo "Tagging image: $FULL_IMAGE_PATH"
+      docker tag faroimage "${FULL_IMAGE_PATH}"
+
+      # Verify the image exists
+      docker images | grep faroimage
+
+      # Create a .docker/config.json file directly - this avoids the need for docker login
+      mkdir -p ~/.docker
+      # Create a base64 encoded auth string
+      AUTH_STRING=$(echo -n "${OCI_USERNAME}:${OCI_TOKEN}" | base64 | tr -d '\n')
+
+      # Create the Docker config JSON with proper escaping
+      cat > ~/.docker/config.json << EOF
+      {
+        "auths": {
+          "${REGISTRY_HOST}": {
+            "auth": "${AUTH_STRING}"
+          }
         }
-      ]"
+      }
+      EOF
 
-      VNICS_JSON="[
-        {
-          \"displayName\": \"primary-vnic\",
-          \"subnetId\": \"$SUBNET_OCID\",
-          \"isPublicIpAssigned\": true
-        }
-      ]"
+      echo "Created Docker auth config file"
 
-      # Create new container instance
-      CREATE_OUTPUT=$(oci container-instances container-instance create \
-        --compartment-id ${OCI_COMPARTMENT_ID} \
-        --availability-domain "fmAa:MX-QUERETARO-1-AD-1" \
-        --shape "CI.Standard.E4.Flex" \
-        --shape-config "$SHAPE_CONFIG_JSON" \
-        --display-name "$CONTAINER_INSTANCE_DISPLAY_NAME" \
-        --containers "$CONTAINERS_JSON" \
-        --vnics "$VNICS_JSON")
+      # Save variables for later steps (escaping special characters)
+      echo "FULL_IMAGE_PATH=\"$FULL_IMAGE_PATH\"" > env_vars_file
+      echo "COMPARTMENT_OCID=\"$COMPARTMENT_OCID\"" >> env_vars_file
+      echo "REGISTRY_HOST=\"$REGISTRY_HOST\"" >> env_vars_file
+      echo "REPO_PATH=\"$REPO_PATH\"" >> env_vars_file
+      echo "NAMESPACE=\"$NAMESPACE\"" >> env_vars_file
 
-      NEW_CONTAINER_INSTANCE_OCID=$(echo "$CREATE_OUTPUT" | jq -r '.data.id // ""')
+  - type: Command
+    name: "Delete, Recreate Repository and Push Image"
+    command: |
+      cd ${OCI_PRIMARY_SOURCE_DIR}/MtdrSpring/services
+      source env_vars_file
 
-      echo "New container instance creation initiated: $NEW_CONTAINER_INSTANCE_OCID"
+      echo "Working with repository: $REPO_PATH"
 
-      # Wait for container instance to become active
-      echo "Waiting for container instance to become ACTIVE..."
-      MAX_WAIT_ITERATIONS=30
-      WAIT_ITERATIONS=0
-      LIFECYCLE_STATE=""
+      # Check if the image exists locally
+      if ! docker inspect "${FULL_IMAGE_PATH}" &>/dev/null; then
+        echo "ERROR: Docker image ${FULL_IMAGE_PATH} does not exist locally"
+        docker images
+        exit 1
+      fi
 
-      while [ "$LIFECYCLE_STATE" != "ACTIVE" ] && [ $WAIT_ITERATIONS -lt $MAX_WAIT_ITERATIONS ]; do
-        WAIT_ITERATIONS=$((WAIT_ITERATIONS + 1))
-        
-        GET_STATE_OUTPUT=$(oci container-instances container-instance get \
-          --container-instance-id "$NEW_CONTAINER_INSTANCE_OCID")
-        
-        LIFECYCLE_STATE=$(echo "$GET_STATE_OUTPUT" | jq -r '.data."lifecycle-state" // ""')
-        echo "Current container instance state: $LIFECYCLE_STATE"
-        
-        if [ "$LIFECYCLE_STATE" != "ACTIVE" ] && [ $WAIT_ITERATIONS -lt $MAX_WAIT_ITERATIONS ]; then
-          sleep 10
-        fi
-      done
+      echo "============ REPOSITORY MANAGEMENT ============"
 
-      # Get IP address for the new container instance
-      echo "Fetching IP address for new instance..."
-      sleep 5  # Small delay to ensure IP assignment is complete
+      # Step 1: List repositories to find if it exists
+      echo "Checking if repository exists: ${REPO_PATH}"
+      REPO_LIST=$(oci artifacts container repository list \
+          --compartment-id "${COMPARTMENT_OCID}" \
+          --display-name "${REPO_PATH}" \
+          --output json)
 
-      GET_IP_OUTPUT=$(oci container-instances container-instance get --container-instance-id "$NEW_CONTAINER_INSTANCE_OCID")
-      VNIC_ID=$(echo "$GET_IP_OUTPUT" | jq -r '.data.vnics[0]."vnic-id" // ""')
+      # Extract OCID of matching repos
+      MATCHING_REPOS=$(echo "$REPO_LIST" | jq -r '.data.items[] | select(."display-name" == "'${REPO_PATH}'") | .id')
 
-      VNIC_DETAILS=$(oci network vnic get --vnic-id "$VNIC_ID")
-      NEW_IP_ADDRESS=$(echo "$VNIC_DETAILS" | jq -r '.data."private-ip" // ""')
+      # Step 2: Delete the repository if it exists
+      if [ -n "$MATCHING_REPOS" ]; then
+          echo "Found matching repository with OCID(s): $MATCHING_REPOS"
+          for REPO_OCID in $MATCHING_REPOS; do
+              echo "Deleting repository with OCID $REPO_OCID..."
+              oci artifacts container repository delete \
+                  --repository-id "$REPO_OCID" \
+                  --force || echo "Error deleting repository, continuing..."
+              
+              # Wait for deletion to complete
+              echo "Waiting for repository deletion to complete..."
+              sleep 15
+          done
+      else
+          echo "No existing repositories found matching $REPO_PATH."
+      fi
 
-      echo "Retrieved private IP address: $NEW_IP_ADDRESS"
+      # Step 3: Create the repository
+      echo "Creating new repository: ${REPO_PATH}"
+      oci artifacts container repository create \
+          --compartment-id "${COMPARTMENT_OCID}" \
+          --display-name "${REPO_PATH}" \
+          --is-public true
 
-      # Update load balancer backend set
-      echo "Updating Load Balancer to use IP $NEW_IP_ADDRESS:$CONTAINER_PORT..."
+      if [ $? -ne 0 ]; then
+          echo "Repository creation might have failed. Will attempt push anyway."
+      else
+          echo "Repository created successfully."
+      fi
 
-      # Get current backend set configuration
-      BACKEND_SET_DETAILS=$(oci lb backend-set get \
-        --load-balancer-id "$LOAD_BALANCER_OCID" \
-        --backend-set-name "$BACKEND_SET_NAME")
+      # Wait a moment for repository to be fully ready
+      sleep 5
 
-      # Extract health checker details
-      HEALTH_CHECKER_JSON=$(echo "$BACKEND_SET_DETAILS" | jq -r '.data["health-checker"]')
-      HEALTH_CHECKER_PROTOCOL=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.protocol')
-      HEALTH_CHECKER_PORT=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.port')
-      HEALTH_CHECKER_RETRIES=$(echo "$HEALTH_CHECKER_JSON" | jq -r '.retries')
-      HEALTH_CHECKER_TIMEOUT=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."timeout-in-millis"')
-      HEALTH_CHECKER_INTERVAL=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."interval-in-millis"')
-      HEALTH_CHECKER_URL_PATH=$(echo "$HEALTH_CHECKER_JSON" | jq -r '."url-path"')
-      POLICY=$(echo "$BACKEND_SET_DETAILS" | jq -r '.data.policy')
+      echo "============ IMAGE PUSH ============"
 
-      # Create backends JSON
-      BACKENDS_JSON="[{\"ipAddress\": \"$NEW_IP_ADDRESS\", \"port\": $CONTAINER_PORT, \"weight\": 1}]"
+      # Push the image with the latest tag
+      echo "Pushing image to OCI registry: $FULL_IMAGE_PATH"
+      docker push "${FULL_IMAGE_PATH}"
 
-      # Update backend set
-      oci lb backend-set update \
-        --load-balancer-id "$LOAD_BALANCER_OCID" \
-        --backend-set-name "$BACKEND_SET_NAME" \
-        --backends "$BACKENDS_JSON" \
-        --policy "$POLICY" \
-        --health-checker-protocol "$HEALTH_CHECKER_PROTOCOL" \
-        --health-checker-port "$HEALTH_CHECKER_PORT" \
-        --health-checker-retries "$HEALTH_CHECKER_RETRIES" \
-        --health-checker-timeout-in-ms "$HEALTH_CHECKER_TIMEOUT" \
-        --health-checker-interval-in-ms "$HEALTH_CHECKER_INTERVAL" \
-        --health-checker-url-path "$HEALTH_CHECKER_URL_PATH" \
-        --force
+      # Check push status
+      if [ $? -eq 0 ]; then
+        echo "Image successfully pushed to container repository"
+        echo "Repository: ${REPO_PATH}"
+        echo "Full image path: ${FULL_IMAGE_PATH}"
+      else
+        echo "ERROR: Failed to push image to container repository"
+        exit 1
+      fi
 
-      echo "Build and deployment completed successfully!"
-
-outputArtifacts:
-  - name: app_deployment_info
-    type: BINARY
-    location: ${OCI_WORKSPACE_DIR}/deployment_info.txt
+    onFailure:
+      - type: Command
+        command: |
+          echo "Docker image push failed. Printing debug information..."
+          docker images
+          echo "COMPARTMENT_OCID: ${COMPARTMENT_OCID}"
+          echo "Checking Docker authentication config:"
+          if [ -f ~/.docker/config.json ]; then
+            cat ~/.docker/config.json | grep -v auth | grep -v password
+          else
+            echo "No Docker config file found"
+          fi
+          echo "Attempting to list repositories to check permissions:"
+          oci artifacts container repository list --compartment-id "${COMPARTMENT_OCID}" --limit 5 --output table
