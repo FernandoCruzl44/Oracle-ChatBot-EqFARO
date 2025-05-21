@@ -14,28 +14,28 @@ spec:
     spec:
       serviceAccountName: telegram-bot-sa
       containers:
-      - name: telegram-bot
-        image: mx-queretaro-1.ocir.io/axco8elk7e3y/faro/oraclechatbot:1745349981-auth-wip
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        ports:
-        - containerPort: 8080
-        volumeMounts:
-        - name: wallet
-          mountPath: /app/wallet
-        - name: env-file
-          mountPath: /app/.env
-          subPath: .env
+        - name: telegram-bot
+          image: mx-queretaro-1.ocir.io/axco8elk7e3y/faro/oraclechatbot:latest
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: wallet
+              mountPath: /app/wallet
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
       volumes:
-      - name: wallet
-        secret:
-          secretName: db-wallet
-      - name: env-file
-        secret:
-          secretName: telegram-env
+        - name: wallet
+          secret:
+            secretName: db-wallet
+        - name: env-file
+          secret:
+            secretName: telegram-env
 ---
 apiVersion: v1
 kind: Service
@@ -45,7 +45,7 @@ spec:
   selector:
     app: telegram-bot
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8080
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
   type: LoadBalancer

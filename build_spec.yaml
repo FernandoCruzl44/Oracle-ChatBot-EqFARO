@@ -113,6 +113,11 @@ steps:
       echo "Repository path: ${REPO_PATH}"
       echo "Full image path: ${FULL_IMAGE_PATH}"
 
+      echo "Debugging wallet directory contents:"
+      find wallet -type f | sort
+      echo "Contents of a sample wallet file:"
+      head -n 5 wallet/wallet/tnsnames.ora || echo "File not found or empty"
+
       # Build with Docker using Dockerfile.deploy
       echo "Building Docker image using Dockerfile.deploy..."
       docker build -f Dockerfile.deploy -t faroimage .

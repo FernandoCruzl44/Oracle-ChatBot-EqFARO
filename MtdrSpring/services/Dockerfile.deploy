@@ -10,8 +10,8 @@ COPY src ./src
 COPY frontend ./frontend
 COPY mvnw .
 COPY mvnw.cmd .
-
-# The .mvn directory will be copied only if it exists
+# Copy wallet files to builder stage first
+COPY wallet ./wallet/
 
 # Build the application
 RUN mvn clean package -DskipTests
@@ -26,8 +26,8 @@ RUN mkdir -p /app/wallet
 # Copy the JAR file from the builder stage
 COPY --from=builder /app/target/MyTodoList-0.0.1-SNAPSHOT.jar app.jar
 
-# Copy wallet and .env file
-COPY wallet /app/wallet
+# Copy wallet from builder stage (not from build context)
+COPY --from=builder /app/wallet /app/wallet
 COPY .env .env
 
 # Expose the port the app runs on
