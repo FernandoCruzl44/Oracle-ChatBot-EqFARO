@@ -96,16 +96,39 @@ steps:
       else
         # Unzip the wallet if download was successful
         echo "Unzipping wallet..."
-        unzip -o wallet.zip -d wallet/
+        # Create a temporary directory for extraction
+        mkdir -p wallet_temp
+        unzip -o wallet.zip -d wallet_temp/
+        
+        # Debug the extracted structure
+        echo "Extracted wallet structure:"
+        find wallet_temp -type f | sort
+        
+        # Flatten the structure: if wallet/wallet exists, move files up one level
+        if [ -d "wallet_temp/wallet/wallet" ]; then
+          echo "Fixing nested wallet directory structure..."
+          mkdir -p wallet
+          cp -r wallet_temp/wallet/wallet/* wallet/
+        elif [ -d "wallet_temp/wallet" ]; then
+          echo "Copying wallet files to correct location..."
+          mkdir -p wallet
+          cp -r wallet_temp/wallet/* wallet/
+        else
+          echo "Using extracted structure as-is..."
+          mv wallet_temp wallet
+        fi
         
         # Cleanup
+        rm -rf wallet_temp
         rm wallet.zip
         
-        echo "Wallet extracted to wallet/ directory"
-        ls -la wallet/
+        echo "Final wallet directory structure:"
+        find wallet -type f | sort
+        echo "Contents of tnsnames.ora:"
+        head -n 5 wallet/tnsnames.ora 2>/dev/null || echo "tnsnames.ora not found or empty"
       fi
 
-      # Set up variables for image and repository
+        # Set up variables for image and repository
       REGISTRY_HOST=${OCI_REGION#https://}  # Remove https:// if present
       REPO_PATH="${RUN_NAME}/${IMAGE_NAME}"
       FULL_IMAGE_PATH="${REGISTRY_HOST}/${NAMESPACE}/${REPO_PATH}:latest"
@@ -113,10 +136,6 @@ steps:
       echo "Repository path: ${REPO_PATH}"
       echo "Full image path: ${FULL_IMAGE_PATH}"
 
-      echo "Debugging wallet directory contents:"
-      find wallet -type f | sort
-      echo "Contents of a sample wallet file:"
-      head -n 5 wallet/wallet/tnsnames.ora || echo "File not found or empty"
 
       # Build with Docker using Dockerfile.deploy
       echo "Building Docker image using Dockerfile.deploy..."
