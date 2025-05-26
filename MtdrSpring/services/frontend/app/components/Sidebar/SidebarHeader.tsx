@@ -22,7 +22,7 @@ export default function SidebarHeader({
         }`}
       >
         <div className="font-medium whitespace-nowrap">Faro</div>
-        <div className="text-xs whitespace-nowrap text-stone-300">Equipo 5</div>
+        <div className="text-xs whitespace-nowrap text-stone-300">Equipo</div>
       </div>
     </div>
   );

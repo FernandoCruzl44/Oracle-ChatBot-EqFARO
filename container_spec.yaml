@@ -5,17 +5,14 @@ runAs: root
 shell: bash
 env:
   variables:
-    # Container configuration
     COMPARTMENT_OCID: "ocid1.compartment.oc1..aaaaaaaaxtitswqnld7pbe2jep4aegof5f44dz63enrnqe4ypfx4gt2tqbpa"
     SUBNET_OCID: "ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaaopics37peozj52bp7zdal2bp5bqooqmyahi36gsilqwfkbgegsua"
     CONTAINER_INSTANCE_DISPLAY_NAME: "auth-wip"
     CONTAINER_PORT: "8080"
 
-    # Load balancer configuration
     LOAD_BALANCER_OCID: "ocid1.loadbalancer.oc1.mx-queretaro-1.aaaaaaaafbcrdf64gyvvbmrfa4shnch56vkib5cqwyrckn5i4sii4tcqlhda"
     BACKEND_SET_NAME: "bs_lb_2025-0408-2101"
 
-    # Registry configuration (read from build stage)
     REGISTRY: "mx-queretaro-1.ocir.io"
     NAMESPACE: "axco8elk7e3y"
     RUN_NAME: "faro"
