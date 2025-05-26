@@ -1,4 +1,5 @@
-// app/components/SidebarHeader.tsx
+import useTaskStore from "~/store";
+
 interface SidebarHeaderProps {
   isExpanded?: boolean;
 }
@@ -6,6 +7,8 @@ interface SidebarHeaderProps {
 export default function SidebarHeader({
   isExpanded = true,
 }: SidebarHeaderProps) {
+  const { currentUser } = useTaskStore();
+
   return (
     <div className="m-5 mt-3 ml-14 flex h-[40px] items-center rounded-md py-2">
       <img
@@ -21,8 +24,15 @@ export default function SidebarHeader({
           !isExpanded ? "w-0 opacity-0" : "opacity-100"
         }`}
       >
-        <div className="font-medium whitespace-nowrap">Faro</div>
-        <div className="text-xs whitespace-nowrap text-stone-300">Equipo 5</div>
+        <div className="font-medium whitespace-nowrap">
+          {currentUser?.teamName}
+        </div>
+        {/* <div className="text-xs whitespace-nowrap text-stone-300">
+          Placeholder
+        </div> */}
+        <div className="text-xs whitespace-nowrap text-stone-300">
+          {currentUser?.role === "manager" ? "Manager" : "Developer"}
+        </div>
       </div>
     </div>
   );
