@@ -1,0 +1,319 @@
+version: 0.1
+component: build
+timeoutInSeconds: 1200
+runAs: root
+shell: bash
+
+env:
+  variables:
+    USERS: "10"
+    RAMPUP: "30"
+    DURATION: "60"
+    TARGET_URL: "http://farochatbot.duckdns.org/"
+    JMETER_VERSION: "5.6.3"
+    JMETER_HOME: "/opt/jmeter"
+    TEST_FILE: "farochatbot_test.jmx"
+    JMETER_PROPERTIES: "-Jserver.rmi.ssl.disable=true"
+    MAX_ERROR_RATE: "5"
+    MAX_RESPONSE_TIME: "500"
+
+steps:
+  - type: Command
+    name: "Debug Workspace"
+    timeoutInSeconds: 60
+    command: |
+      echo "=== Debugging Workspace ==="
+      echo "Current directory: $(pwd)"
+      echo "Contents of workspace:"
+      ls -la
+
+      if [ -d "tests" ]; then
+        echo "Tests directory found. Contents:"
+        ls -la tests
+      else
+        echo "Tests directory NOT found."
+      fi
+
+      echo "OCI_WORKSPACE_DIR = ${OCI_WORKSPACE_DIR:-$(pwd)}"
+      echo "OCI_PRIMARY_SOURCE_DIR = ${OCI_PRIMARY_SOURCE_DIR:-$(pwd)}"
+
+  - type: Command
+    name: "Setup Workspace"
+    timeoutInSeconds: 60
+    command: |
+      echo "=== Setting up workspace directories ==="
+      mkdir -p reports
+      mkdir -p reports/html
+      mkdir -p reports/logs
+      mkdir -p reports/analysis
+      chmod -R 777 reports
+      echo "Workspace setup complete."
+
+  - type: Command
+    name: "Install Prerequisites"
+    timeoutInSeconds: 300
+    command: |
+      echo "=== Installing Prerequisites ==="
+      yum install -y java-11-openjdk-devel wget unzip bc zip
+      java -version
+      echo "Prerequisites installed successfully!"
+
+  - type: Command
+    name: "Setup JMeter"
+    timeoutInSeconds: 300
+    command: |
+      echo "=== Setting up JMeter ${JMETER_VERSION} ==="
+      mkdir -p ${JMETER_HOME}
+      JMETER_URL="https://dlcdn.apache.org//jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz"
+      echo "Downloading JMeter from: ${JMETER_URL}"
+      wget -q "${JMETER_URL}" -O apache-jmeter.tgz
+
+      if [ ! -f "apache-jmeter.tgz" ]; then
+        echo "ERROR: JMeter download failed"
+        exit 1
+      fi
+
+      FILESIZE=$(stat -c%s "apache-jmeter.tgz")
+      echo "Downloaded file size: ${FILESIZE} bytes"
+
+      if [ "${FILESIZE}" -lt 1000000 ]; then
+        echo "ERROR: Downloaded file is too small, likely corrupted"
+        exit 1
+      fi
+
+      echo "Extracting JMeter..."
+      tar -xf apache-jmeter.tgz
+      cp -r apache-jmeter-${JMETER_VERSION}/* ${JMETER_HOME}/
+      rm -f apache-jmeter.tgz
+      rm -rf apache-jmeter-${JMETER_VERSION}
+
+      echo "Verifying JMeter installation..."
+      ls -la ${JMETER_HOME}/bin/
+      ${JMETER_HOME}/bin/jmeter --version
+      echo "JMeter setup completed successfully!"
+
+  - type: Command
+    name: "Prepare Test Files"
+    timeoutInSeconds: 120
+    command: |
+      echo "=== Preparing Test Files ==="
+      TEST_FILE_PATH="tests/${TEST_FILE}"
+      echo "Looking for test file at: ${TEST_FILE_PATH}"
+
+      if [ ! -f "${TEST_FILE_PATH}" ]; then
+        echo "ERROR: Test file ${TEST_FILE_PATH} not found!"
+        exit 1
+      fi
+
+      mkdir -p lib
+      echo "Validating test file: ${TEST_FILE}"
+      if grep -q "<jmeterTestPlan" "${TEST_FILE_PATH}"; then
+        echo "Test file validation successful"
+      else
+        echo "ERROR: ${TEST_FILE_PATH} does not appear to be a valid JMeter test file"
+        exit 1
+      fi
+
+      echo "${TEST_FILE_PATH}" > test_file_path.txt
+      echo "Test files prepared successfully!"
+
+  - type: Command
+    name: "Run JMeter Test"
+    timeoutInSeconds: 3600
+    command: |
+      echo "=== Running JMeter Test ==="
+      TEST_FILE_PATH=$(cat test_file_path.txt)
+
+      echo "Test configuration:"
+      echo "- Target URL: ${TARGET_URL}"
+      echo "- Users: ${USERS}"
+      echo "- Ramp-up: ${RAMPUP} seconds"
+      echo "- Duration: ${DURATION} seconds"
+      echo "- Test File: ${TEST_FILE_PATH}"
+
+      START_TIME=$(date +%s)
+      echo "JMeter binary location:"
+      which ${JMETER_HOME}/bin/jmeter
+
+      echo "JMeter version:"
+      ${JMETER_HOME}/bin/jmeter --version
+
+      mkdir -p reports/logs
+
+      ${JMETER_HOME}/bin/jmeter -n \
+        -t "${TEST_FILE_PATH}" \
+        -l reports/results.jtl \
+        -j reports/logs/jmeter.log \
+        -e \
+        -o reports/html \
+        -Jusers=${USERS} \
+        -Jrampup=${RAMPUP} \
+        -Jduration=${DURATION} \
+        -Jtarget_url=${TARGET_URL} \
+        ${JMETER_PROPERTIES}
+
+      TEST_RESULT=$?
+      END_TIME=$(date +%s)
+      TEST_DURATION=$((END_TIME - START_TIME))
+      echo "Test completed in ${TEST_DURATION} seconds with exit code: ${TEST_RESULT}"
+
+      if [ -f "reports/logs/jmeter.log" ]; then
+        cp reports/logs/jmeter.log reports/
+      else
+        echo "Warning: JMeter log file not found"
+      fi
+
+  - type: Command
+    name: "Analyze Test Results"
+    timeoutInSeconds: 300
+    command: |
+      echo "=== Analyzing Test Results ==="
+
+      if [ ! -f "reports/results.jtl" ]; then
+        echo "ERROR: Test results file not found!"
+        echo "Directory contents:"
+        find reports -type f | sort
+        echo "JMeter exit code from previous step: ${TEST_RESULT:-unknown}"
+        exit 1
+      fi
+
+      echo "Extracting key performance metrics..."
+      TOTAL_REQUESTS=$(grep -c "<httpSample" reports/results.jtl || echo "0")
+      FAILED_REQUESTS=$(grep "<httpSample" reports/results.jtl | grep -c "s=\"false\"" || echo "0")
+
+      if [ ${TOTAL_REQUESTS} -gt 0 ]; then
+        ERROR_RATE=$(echo "scale=2; ${FAILED_REQUESTS} * 100 / ${TOTAL_REQUESTS}" | bc)
+      else
+        ERROR_RATE="0.00"
+      fi
+
+      echo "Calculating response time statistics..."
+      awk -F\" '/<httpSample/ {print $8}' reports/results.jtl > reports/analysis/response_times.txt
+
+      if [ -s "reports/analysis/response_times.txt" ]; then
+        MIN=$(sort -n reports/analysis/response_times.txt | head -1)
+        MAX=$(sort -n reports/analysis/response_times.txt | tail -1)
+        COUNT=$(wc -l reports/analysis/response_times.txt | awk '{print $1}')
+        SUM=$(awk '{sum+=$1} END {print sum}' reports/analysis/response_times.txt)
+        
+        if [ ${COUNT} -gt 0 ]; then
+          AVG=$(echo "scale=2; ${SUM} / ${COUNT}" | bc)
+          SORTED_FILE=reports/analysis/sorted_times.txt
+          sort -n reports/analysis/response_times.txt > ${SORTED_FILE}
+          P90_LINE=$(echo "scale=0; ${COUNT} * 0.9" | bc | awk '{printf "%d\n", $1+0.5}')
+          P95_LINE=$(echo "scale=0; ${COUNT} * 0.95" | bc | awk '{printf "%d\n", $1+0.5}')
+          P99_LINE=$(echo "scale=0; ${COUNT} * 0.99" | bc | awk '{printf "%d\n", $1+0.5}')
+          P90=$(sed -n "${P90_LINE}p" ${SORTED_FILE})
+          P95=$(sed -n "${P95_LINE}p" ${SORTED_FILE})
+          P99=$(sed -n "${P99_LINE}p" ${SORTED_FILE})
+        else
+          AVG="0"
+          P90="0"
+          P95="0"
+          P99="0"
+        fi
+      else
+        MIN="N/A"
+        MAX="N/A"
+        AVG="0"
+        P90="0"
+        P95="0"
+        P99="0"
+      fi
+
+      # Calculate throughput from the log file
+      if [ -f "reports/logs/jmeter.log" ]; then
+        THROUGHPUT_LINE=$(grep "summary =" reports/logs/jmeter.log | tail -1)
+        THROUGHPUT=$(echo ${THROUGHPUT_LINE} | grep -o '[0-9.]\+/s' | sed 's|/s||' || echo "N/A")
+      else
+        THROUGHPUT="N/A"
+      fi
+
+      # Generate summary report
+      echo "# JMeter Load Test Results Summary" > reports/summary.md
+      echo "" >> reports/summary.md
+      echo "## Test Configuration" >> reports/summary.md
+      echo "- Target: ${TARGET_URL}" >> reports/summary.md
+      echo "- Concurrent Users: ${USERS}" >> reports/summary.md
+      echo "- Ramp-up Period: ${RAMPUP} seconds" >> reports/summary.md
+      echo "- Test Duration: ${DURATION} seconds" >> reports/summary.md
+      echo "" >> reports/summary.md
+      echo "## Performance Metrics" >> reports/summary.md
+      echo "- Total Requests: ${TOTAL_REQUESTS}" >> reports/summary.md
+      echo "- Failed Requests: ${FAILED_REQUESTS}" >> reports/summary.md
+      echo "- Error Rate: ${ERROR_RATE}%" >> reports/summary.md
+      echo "- Throughput: ${THROUGHPUT} requests/second" >> reports/summary.md
+      echo "" >> reports/summary.md
+      echo "## Response Time (ms)" >> reports/summary.md
+      echo "- Minimum: ${MIN}" >> reports/summary.md
+      echo "- Average: ${AVG}" >> reports/summary.md
+      echo "- Maximum: ${MAX}" >> reports/summary.md
+      echo "- 90th Percentile: ${P90}" >> reports/summary.md
+      echo "- 95th Percentile: ${P95}" >> reports/summary.md
+      echo "- 99th Percentile: ${P99}" >> reports/summary.md
+      echo "" >> reports/summary.md
+
+      # Evaluate test result against thresholds
+      echo "## Test Result" >> reports/summary.md
+
+      # Check if error rate exceeds threshold
+      if [ $(echo "${ERROR_RATE} > ${MAX_ERROR_RATE}" | bc -l) -eq 1 ]; then
+        echo "- **Status: FAILED**" >> reports/summary.md
+        echo "- Error rate ${ERROR_RATE}% exceeds threshold of ${MAX_ERROR_RATE}%" >> reports/summary.md
+      elif [ "${P95}" != "N/A" ] && [ $(echo "${P95} > ${MAX_RESPONSE_TIME}" | bc -l) -eq 1 ]; then
+        echo "- **Status: FAILED**" >> reports/summary.md
+        echo "- 95th percentile response time ${P95}ms exceeds threshold of ${MAX_RESPONSE_TIME}ms" >> reports/summary.md
+      else
+        echo "- **Status: PASSED**" >> reports/summary.md
+        echo "- All metrics within acceptable thresholds" >> reports/summary.md
+      fi
+
+      # Print summary to console
+      cat reports/summary.md
+
+      echo "Test analysis completed!"
+
+  - type: Command
+    name: "Package HTML Report"
+    timeoutInSeconds: 120
+    command: |
+      echo "=== Packaging HTML Report ==="
+
+      # Check if HTML report directory exists
+      if [ -d "reports/html" ]; then
+        echo "HTML report directory found, creating zip file..."
+        
+        # Create zip file of the HTML report
+        cd reports
+        zip -r html_report.zip html/
+        cd ..
+        
+        echo "HTML report packaged as reports/html_report.zip"
+      else
+        echo "WARNING: HTML report directory not found!"
+        echo "Creating empty HTML report zip file..."
+        
+        # Create directory with a simple HTML file
+        mkdir -p reports/html
+        echo "<html><body><h1>No JMeter HTML Report Available</h1></body></html>" > reports/html/index.html
+        
+        # Create zip file
+        cd reports
+        zip -r html_report.zip html/
+        cd ..
+        
+        echo "Empty HTML report packaged as reports/html_report.zip"
+      fi
+
+outputArtifacts:
+  - name: jmeter-results-artifact
+    type: BINARY
+    location: reports/results.jtl
+
+  - name: jmeter-HTML-report-artifact
+    type: BINARY
+    location: reports/html_report.zip
+
+  - name: jmeter-summary-artifact
+    type: BINARY
+    location: reports/summary.md
