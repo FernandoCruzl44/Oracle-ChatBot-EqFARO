@@ -14,7 +14,8 @@ COPY mvnw.cmd .
 COPY wallet ./wallet/
 
 # Build the application
-RUN mvn clean package -DskipTests
+# RUN mvn clean package -DskipTests
+RUN mvn clean package
 
 # Stage 2: Create the runtime container
 FROM eclipse-temurin:24-jre-alpine
