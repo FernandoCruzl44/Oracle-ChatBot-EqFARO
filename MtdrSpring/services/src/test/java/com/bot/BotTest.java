@@ -495,6 +495,464 @@ public class BotTest {
 				.contains("Comentario agregado correctamente"));
 	}
 
+	//Aqui termina el "Happy path"
+
+	@Test
+	void handleCallback_LoginWithInvalidUserId_ShouldHandleNumberFormatException() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		// Callback con ID inválido (no numérico)
+		when(cq.getData()).thenReturn("login_user_invalid_id");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Error interno (formato de ID de usuario inválido)"));
+	}
+
+	// @Test
+	// void handleCallback_LoginWithValidIdButUserNotFound_ShouldHandleGracefully() throws Exception {
+	// 	setupLoggedInState();
+	// 	when(mockUpdate.hasMessage()).thenReturn(false);
+	// 	when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+	// 	CallbackQuery cq = mock(CallbackQuery.class);
+	// 	when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+	// 	when(cq.getMessage()).thenReturn(mockMessage);
+	// 	when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+	// 	when(cq.getData()).thenReturn("login_user_999");
+
+	// 	// Usuario no existe en base de datos
+	// 	when(mockUserRepository.findById(999L)).thenReturn(Optional.empty());
+
+	// 	botController.onUpdateReceived(mockUpdate);
+
+	// 	ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+	// 	verify(botController).execute(cap.capture());
+	// 	assertTrue(cap.getValue().getText().contains("Error al iniciar sesión: Usuario no encontrado"));
+	// }
+
+	@Test
+	void handleCallback_TaskWithInvalidTaskId_ShouldHandleNumberFormatException() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		// Task ID inválido
+		when(cq.getData()).thenReturn("task_not_a_number");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Error interno (formato de ID de tarea inválido)"));
+	}
+
+	@Test
+	void handleCallback_SelfAssignWithInvalidTaskId_ShouldCatchException() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("self_assign_invalid_id");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		// Debería capturar la excepción y no crashear
+		verify(mockTaskRepository, never()).addAssignee(anyLong(), anyLong());
+	}
+
+	@Test
+	void handleCallback_SelfAssignWhenAddAssigneeFails_ShouldHandleGracefully() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("self_assign_5");
+
+		// addAssignee retorna 0 (fallo)
+		when(mockTaskRepository.addAssignee(5L, TEST_APP_USER_ID)).thenReturn(0);
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		// Debe verificar que NO se envíe mensaje de éxito
+		assertFalse(cap.getValue().getText().contains("Tarea asignada con éxito"));
+	}
+
+	@Test
+	void handleCallback_ShowCommentsWithoutSelectedTask_ShouldPromptTaskSelection() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("showComments");
+
+		// Simular estado sin tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = null; // Sin tarea seleccionada
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Por favor, selecciona una tarea primero"));
+	}
+
+	@Test
+	void handleCallback_ShowFloatingTasksWhenUserNotFound_ShouldHandleGracefully() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("showFloatingTasks");
+
+		// Usuario no encontrado en base de datos
+		when(mockUserRepository.findById(TEST_APP_USER_ID)).thenReturn(Optional.empty());
+
+		botController.onUpdateReceived(mockUpdate);
+
+		// No debería crashear, método debería terminar temprano
+		verify(mockTaskRepository, never()).findTasksByTeamId(anyLong());
+	}
+
+	@Test
+	void handleCallback_AddCommentWithoutSelectedTask_ShouldPromptTaskSelection() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("addComment");
+
+		// Estado sin tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Por favor, selecciona una tarea primero"));
+	}
+
+	@Test
+	void handleCallback_SprintSelectInWrongState_ShouldResetAndWarn() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("sprint_select_5");
+
+		// Estado incorrecto - no está agregando tarea
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.currentAction = "NORMAL"; // No en estado de agregar tarea
+		state.NewTask = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Acción inesperada. Usa /cancel para reiniciar"));
+	}
+
+	@Test
+	void handleCallback_SprintSelectWithInvalidSprintId_ShouldHandleNumberFormatException() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("sprint_select_invalid_id");
+
+		// Estado correcto para agregar tarea
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.currentAction = "ADDING_TASK_SPRINT";
+		state.NewTask = new Task();
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Error interno (formato de ID de sprint inválido)"));
+	}
+
+	@Test
+	void handleCallback_ChangeStatusWithoutSelectedTask_ShouldPromptTaskSelection() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("change_status");
+
+		// Sin tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Por favor, selecciona una tarea primero"));
+	}
+
+	@Test
+	void handleCallback_StatusSelectWithoutSelectedTask_ShouldResetState() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("status_select_COMPLETED");
+
+		// Sin tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Error: No hay tarea seleccionada para cambiar estado"));
+	}
+
+	@Test
+	void handleCallback_StatusSelectWithInvalidStatus_ShouldHandleIllegalArgumentException() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("status_select_INVALID_STATUS");
+
+		// Con tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = 5L;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Error interno (nombre de estado inválido)"));
+	}
+
+	@Test
+	void handleCallback_TagSelectInWrongState_ShouldResetAndWarn() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("tag_select_FEATURE");
+
+		// Estado incorrecto
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.currentAction = "NORMAL"; // No agregando tarea
+		state.NewTask = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Acción inesperada. Usa /cancel para reiniciar"));
+	}
+
+	// @Test
+	// void handleCallback_TagSelectWithInvalidTag_ShouldRejectAndShowOptions() throws Exception {
+	// 	setupLoggedInState();
+	// 	when(mockUpdate.hasMessage()).thenReturn(false);
+	// 	when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+	// 	CallbackQuery cq = mock(CallbackQuery.class);
+	// 	when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+	// 	when(cq.getMessage()).thenReturn(mockMessage);
+	// 	when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+	// 	when(cq.getData()).thenReturn("tag_select_INVALID_TAG");
+
+	// 	// Estado correcto para agregar tarea
+	// 	BotController.UserState state = botController.userStates.computeIfAbsent(
+	// 		TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+	// 	state.loggedInUserId = TEST_APP_USER_ID;
+	// 	state.currentAction = "ADDING_TASK_DESCRIPTION";
+	// 	state.NewTask = new Task();
+
+	// 	botController.onUpdateReceived(mockUpdate);
+
+	// 	ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+	// 	verify(botController).execute(cap.capture());
+	// 	assertTrue(cap.getValue().getText().contains("Tag inválido seleccionado"));
+	// }
+
+	// @Test
+	// void handleCallback_TagSelectWhenUserHasNoTeam_ShouldHandleGracefully() throws Exception {
+	// 	setupLoggedInState();
+	// 	when(mockUpdate.hasMessage()).thenReturn(false);
+	// 	when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+	// 	CallbackQuery cq = mock(CallbackQuery.class);
+	// 	when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+	// 	when(cq.getMessage()).thenReturn(mockMessage);
+	// 	when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+	// 	when(cq.getData()).thenReturn("tag_select_FEATURE");
+
+	// 	// Estado correcto pero usuario sin equipo
+	// 	BotController.UserState state = botController.userStates.computeIfAbsent(
+	// 		TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+	// 	state.loggedInUserId = TEST_APP_USER_ID;
+	// 	state.currentAction = "ADDING_TASK_SPRINT";
+	// 	state.NewTask = new Task();
+
+	// 	// Usuario sin teamId
+	// 	com.springboot.MyTodoList.model.User userWithoutTeam = new com.springboot.MyTodoList.model.User();
+	// 	userWithoutTeam.setId(TEST_APP_USER_ID);
+	// 	userWithoutTeam.setTeamId(null);
+	// 	when(mockUserRepository.findById(TEST_APP_USER_ID)).thenReturn(Optional.of(userWithoutTeam));
+
+	// 	botController.onUpdateReceived(mockUpdate);
+
+	// 	ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+	// 	verify(botController, times(2)).execute(cap.capture());
+	// 	List<SendMessage> calls = cap.getAllValues();
+	// 	assertTrue(calls.get(1).getText().contains("No se pudo determinar tu equipo"));
+	// }
+
+	@Test
+	void handleCallback_ChangeRealHoursWithoutSelectedTask_ShouldPromptTaskSelection() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("real_hours");
+
+		// Sin tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Por favor, selecciona una tarea primero"));
+	}
+
+	@Test
+	void handleCallback_GeminiDivideTaskWithoutSelectedTask_ShouldInformNoTask() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("gemini_divide_task");
+
+		// Sin tarea seleccionada
+		BotController.UserState state = botController.userStates.computeIfAbsent(
+			TEST_CHAT_ID, id -> botController.findUserOrNewState(id));
+		state.loggedInUserId = TEST_APP_USER_ID;
+		state.selectedTaskId = null;
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController, times(2)).execute(cap.capture());
+		List<SendMessage> calls = cap.getAllValues();
+		assertTrue(calls.get(0).getText().contains("No hay tarea seleccionada"));
+	}
+
+	@Test
+	void handleCallback_UnrecognizedCallback_ShouldLogAndInformUser() throws Exception {
+		setupLoggedInState();
+		when(mockUpdate.hasMessage()).thenReturn(false);
+		when(mockUpdate.hasCallbackQuery()).thenReturn(true);
+
+		CallbackQuery cq = mock(CallbackQuery.class);
+		when(mockUpdate.getCallbackQuery()).thenReturn(cq);
+		when(cq.getMessage()).thenReturn(mockMessage);
+		when(mockMessage.getChatId()).thenReturn(TEST_CHAT_ID);
+		when(cq.getData()).thenReturn("unknown_callback_action");
+
+		botController.onUpdateReceived(mockUpdate);
+
+		ArgumentCaptor<SendMessage> cap = ArgumentCaptor.forClass(SendMessage.class);
+		verify(botController).execute(cap.capture());
+		assertTrue(cap.getValue().getText().contains("Acción no reconocida"));
+	}
+
 }
 
 // Conclusión: Estos tests aseguran que el bot maneja correctamente los comandos
