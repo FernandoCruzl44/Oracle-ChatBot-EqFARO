@@ -59,7 +59,6 @@ steps:
     name: "Execute OWASP ZAP Scan"
     timeoutInSeconds: 1200
     command: |
-      set -e
       echo "=== Executing OWASP ZAP Security Scan ==="
 
       # Load timestamp
@@ -67,15 +66,22 @@ steps:
 
       # Fix permissions for ZAP directory
       chmod -R 777 reports/zap
-      chown -R 1000:1000 reports/zap 2>/dev/null || true
 
       # Pull ZAP Docker image
+      echo "Pulling ZAP Docker image..."
       docker pull ghcr.io/zaproxy/zaproxy:stable
 
-      # Run ZAP quick scan and export XML directly
+      # Run ZAP quick scan with logging
       echo "Running ZAP quick scan on ${TARGET_URL}..."
-      docker run --user root -v $(pwd)/reports/zap:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable \
-        zap.sh -cmd -quickurl "${TARGET_URL}" -quickout /zap/wrk/zap-results.xml
+      echo "Command: docker run --user root -v $(pwd)/reports/zap:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap.sh -cmd -quickurl ${TARGET_URL} -quickout /zap/wrk/zap-results.xml"
+
+      # Capture both stdout and stderr
+      if ! docker run --user root -v $(pwd)/reports/zap:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable \
+        zap.sh -cmd -quickurl "${TARGET_URL}" -quickout /zap/wrk/zap-results.xml 2>&1; then
+        echo "ERROR: ZAP Docker command failed with exit code $?"
+      else
+        echo "ZAP scan command completed successfully"
+      fi
 
       # Verify ZAP results
       if [ -f "reports/zap/zap-results.xml" ]; then
