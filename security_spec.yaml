@@ -6,6 +6,7 @@ shell: bash
 
 env:
   variables:
+    # Target Configuration
     TARGET_URL: "http://farochatbot.duckdns.org/"
 
   exportedVariables:
@@ -64,12 +65,16 @@ steps:
       # Load timestamp
       export SCAN_TIMESTAMP=$(cat scan_timestamp.txt)
 
+      # Fix permissions for ZAP directory
+      chmod -R 777 reports/zap
+      chown -R 1000:1000 reports/zap 2>/dev/null || true
+
       # Pull ZAP Docker image
       docker pull ghcr.io/zaproxy/zaproxy:stable
 
       # Run ZAP quick scan and export XML directly
       echo "Running ZAP quick scan on ${TARGET_URL}..."
-      docker run -v $(pwd)/reports/zap:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable \
+      docker run --user root -v $(pwd)/reports/zap:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable \
         zap.sh -cmd -quickurl "${TARGET_URL}" -quickout /zap/wrk/zap-results.xml
 
       # Verify ZAP results
