@@ -7,7 +7,7 @@ shell: bash
 env:
   variables:
     # Target Configuration
-    TARGET_URL: "http://farochatbot.duckdns.org/"
+    TARGET_URL: "https://farochatbot.duckdns.org/"
 
   exportedVariables:
     - SCAN_TIMESTAMP
@@ -31,7 +31,6 @@ steps:
       echo "=== Setting up workspace directories ==="
       mkdir -p reports
       mkdir -p reports/zap
-      mkdir -p reports/sniper
       chmod -R 777 reports
 
       # Export timestamp for artifact naming
@@ -72,16 +71,16 @@ steps:
       echo "Pulling ZAP Docker image..."
       docker pull ghcr.io/zaproxy/zaproxy:stable
 
-      # Run ZAP quick scan using a different approach - output to stdout and redirect
+      # Run ZAP quick scan with logging
       echo "Running ZAP quick scan on ${TARGET_URL}..."
-      echo "Command: docker run --rm -t ghcr.io/zaproxy/zaproxy:stable zap.sh -cmd -quickurl ${TARGET_URL} -quickprogress"
+      echo "Command: docker run --user root -v $(pwd)/reports/zap:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap.sh -cmd -quickurl ${TARGET_URL} -quickout /zap/wrk/result.xml"
 
-      # Capture ZAP output and save to file
-      if docker run --rm -t ghcr.io/zaproxy/zaproxy:stable \
-        zap.sh -cmd -quickurl "${TARGET_URL}" -quickprogress > reports/zap/zap-console-output.txt 2>&1; then
-        echo "ZAP scan command completed successfully"
-      else
+      # Capture both stdout and stderr
+      if ! docker run --user root -v $(pwd)/reports/zap:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable \
+        zap.sh -cmd -quickurl "${TARGET_URL}" -quickout /zap/wrk/result.xml 2>&1; then
         echo "ERROR: ZAP Docker command failed with exit code $?"
+      else
+        echo "ZAP scan command completed successfully"
       fi
 
       # Check what we got
@@ -89,79 +88,12 @@ steps:
       echo "Contents of reports/zap/:"
       ls -la reports/zap/ || echo "Directory not found"
 
-      # Create a basic XML file from console output if available
-      if [ -f "reports/zap/zap-console-output.txt" ]; then
-        echo "ZAP console output captured successfully"
-        echo "Creating XML results from console output..."
-        cat > reports/zap/zap-results.xml << EOF
-      <?xml version="1.0"?>
-      <OWASPZAPReport>
-        <generated>$(date)</generated>
-        <target>${TARGET_URL}</target>
-        <summary>ZAP Quick Scan Results - See console output for details</summary>
-        <console-output><![CDATA[
-      $(cat reports/zap/zap-console-output.txt)
-        ]]></console-output>
-      </OWASPZAPReport>
-      EOF
-        echo "ZAP results XML created successfully"
-        echo "ZAP XML report size: $(du -h reports/zap/zap-results.xml)"
+      if [ -f "reports/zap/result.xml" ]; then
+        echo "ZAP scan completed successfully"
+        echo "ZAP XML report size: $(du -h reports/zap/result.xml)"
       else
-        echo "ERROR: ZAP scan failed to generate any output"
+        echo "ERROR: ZAP scan failed to generate results"
         exit 1
-      fi
-
-  - type: Command
-    name: "Install and Execute Sn1per"
-    timeoutInSeconds: 2400
-    command: |
-      set -e
-      echo "=== Installing and Executing Sn1per ==="
-
-      # Load timestamp
-      export SCAN_TIMESTAMP=$(cat scan_timestamp.txt)
-
-      # Pull BlackArch Linux with Sn1per
-      echo "Pulling BlackArch Linux with Sn1per..."
-      docker pull blackarchlinux/blackarch:latest
-
-      # Run Sn1per scan and capture console output
-      echo "Running Sn1per scan on ${TARGET_URL}..."
-      docker run --rm -v $(pwd)/reports/sniper:/output blackarchlinux/blackarch:latest bash -c "
-        # Update system
-        pacman -Syu --noconfirm
-        
-        # Install Sn1per
-        pacman -Sy sn1per --noconfirm
-        
-        # Extract domain from URL for Sn1per
-        TARGET_DOMAIN=\$(echo '${TARGET_URL}' | sed 's|http://||g' | sed 's|https://||g' | sed 's|/.*||g')
-        
-        # Run Sn1per and capture output
-        echo 'Starting Sn1per scan...' > /output/sniper-console-output.txt
-        echo 'Target: \$TARGET_DOMAIN' >> /output/sniper-console-output.txt
-        echo 'Scan started at: \$(date)' >> /output/sniper-console-output.txt
-        echo '================================' >> /output/sniper-console-output.txt
-        
-        # Run sn1per with output capture
-        sn1per -t \$TARGET_DOMAIN 2>&1 | tee -a /output/sniper-console-output.txt || echo 'Sn1per scan completed with warnings'
-        
-        echo '================================' >> /output/sniper-console-output.txt
-        echo 'Scan completed at: \$(date)' >> /output/sniper-console-output.txt
-        
-        # Copy any generated reports
-        if [ -d '/usr/share/sniper/loot' ]; then
-          cp -r /usr/share/sniper/loot/* /output/ 2>/dev/null || echo 'No loot directory found'
-        fi
-      "
-
-      # Verify Sn1per output
-      if [ -f "reports/sniper/sniper-console-output.txt" ]; then
-        echo "Sn1per scan completed successfully"
-        echo "Console output captured: $(wc -l reports/sniper/sniper-console-output.txt)"
-      else
-        echo "WARNING: Sn1per console output not captured"
-        echo "Sn1per scan failed or produced no output" > reports/sniper/sniper-console-output.txt
       fi
 
   - type: Command
@@ -173,15 +105,14 @@ steps:
       # Load timestamp
       export SCAN_TIMESTAMP=$(cat scan_timestamp.txt)
 
-      # Create comprehensive package
+      # Create package
       cd reports
-      zip -r security-scan-results-${SCAN_TIMESTAMP}.zip zap/ sniper/
+      zip -r security-scan-results-${SCAN_TIMESTAMP}.zip zap/
       cd ..
 
       # Verify all artifacts exist
       echo "Generated artifacts:"
-      ls -la reports/zap/zap-results.xml || echo "ZAP results missing"
-      ls -la reports/sniper/sniper-console-output.txt || echo "Sniper output missing"
+      ls -la reports/zap/result.xml || echo "ZAP results missing"
       ls -la reports/security-scan-results-${SCAN_TIMESTAMP}.zip || echo "Package missing"
 
       echo "Results packaging completed"
@@ -203,11 +134,7 @@ steps:
 outputArtifacts:
   - name: zap-xml-results
     type: BINARY
-    location: reports/zap/zap-results.xml
-
-  - name: sniper-console-output
-    type: BINARY
-    location: reports/sniper/sniper-console-output.txt
+    location: reports/zap/result.xml
 
   - name: comprehensive-security-package
     type: BINARY
