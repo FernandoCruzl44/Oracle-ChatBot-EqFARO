@@ -1,0 +1,184 @@
+version: 0.1
+component: build
+timeoutInSeconds: 3600
+runAs: root
+shell: bash
+
+env:
+  variables:
+    TARGET_URL: "http://farochatbot.duckdns.org/"
+
+  exportedVariables:
+    - SCAN_TIMESTAMP
+
+steps:
+  - type: Command
+    name: "Debug Workspace"
+    timeoutInSeconds: 60
+    command: |
+      echo "=== Debugging Workspace ==="
+      echo "Current directory: $(pwd)"
+      echo "Contents of workspace:"
+      ls -la
+      echo "OCI_WORKSPACE_DIR = ${OCI_WORKSPACE_DIR:-$(pwd)}"
+      echo "OCI_PRIMARY_SOURCE_DIR = ${OCI_PRIMARY_SOURCE_DIR:-$(pwd)}"
+
+  - type: Command
+    name: "Setup Workspace"
+    timeoutInSeconds: 60
+    command: |
+      echo "=== Setting up workspace directories ==="
+      mkdir -p reports
+      mkdir -p reports/zap
+      mkdir -p reports/sniper
+      chmod -R 777 reports
+
+      # Export timestamp for artifact naming
+      export SCAN_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+      echo "SCAN_TIMESTAMP=${SCAN_TIMESTAMP}" > scan_timestamp.txt
+      echo "Workspace setup complete."
+
+  - type: Command
+    name: "Install Prerequisites"
+    timeoutInSeconds: 300
+    command: |
+      echo "=== Installing Prerequisites ==="
+      yum update -y
+      yum install -y epel-release
+      yum install -y wget curl git unzip python3 python3-pip java-11-openjdk-devel
+      yum install -y docker
+
+      # Start Docker service
+      systemctl start docker
+      systemctl enable docker
+
+      echo "Prerequisites installed successfully!"
+
+  - type: Command
+    name: "Execute OWASP ZAP Scan"
+    timeoutInSeconds: 1200
+    command: |
+      set -e
+      echo "=== Executing OWASP ZAP Security Scan ==="
+
+      # Load timestamp
+      export SCAN_TIMESTAMP=$(cat scan_timestamp.txt)
+
+      # Pull ZAP Docker image
+      docker pull ghcr.io/zaproxy/zaproxy:stable
+
+      # Run ZAP quick scan and export XML directly
+      echo "Running ZAP quick scan on ${TARGET_URL}..."
+      docker run -v $(pwd)/reports/zap:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable \
+        zap.sh -cmd -quickurl "${TARGET_URL}" -quickout /zap/wrk/zap-results.xml
+
+      # Verify ZAP results
+      if [ -f "reports/zap/zap-results.xml" ]; then
+        echo "ZAP scan completed successfully"
+        echo "ZAP XML report size: $(du -h reports/zap/zap-results.xml)"
+      else
+        echo "ERROR: ZAP scan failed to generate results"
+        exit 1
+      fi
+
+  - type: Command
+    name: "Install and Execute Sn1per"
+    timeoutInSeconds: 2400
+    command: |
+      set -e
+      echo "=== Installing and Executing Sn1per ==="
+
+      # Load timestamp
+      export SCAN_TIMESTAMP=$(cat scan_timestamp.txt)
+
+      # Pull BlackArch Linux with Sn1per
+      echo "Pulling BlackArch Linux with Sn1per..."
+      docker pull blackarchlinux/blackarch:latest
+
+      # Run Sn1per scan and capture console output
+      echo "Running Sn1per scan on ${TARGET_URL}..."
+      docker run --rm -v $(pwd)/reports/sniper:/output blackarchlinux/blackarch:latest bash -c "
+        # Update system
+        pacman -Syu --noconfirm
+        
+        # Install Sn1per
+        pacman -Sy sn1per --noconfirm
+        
+        # Extract domain from URL for Sn1per
+        TARGET_DOMAIN=\$(echo '${TARGET_URL}' | sed 's|http://||g' | sed 's|https://||g' | sed 's|/.*||g')
+        
+        # Run Sn1per and capture output
+        echo 'Starting Sn1per scan...' > /output/sniper-console-output.txt
+        echo 'Target: \$TARGET_DOMAIN' >> /output/sniper-console-output.txt
+        echo 'Scan started at: \$(date)' >> /output/sniper-console-output.txt
+        echo '================================' >> /output/sniper-console-output.txt
+        
+        # Run sn1per with output capture
+        sn1per -t \$TARGET_DOMAIN 2>&1 | tee -a /output/sniper-console-output.txt || echo 'Sn1per scan completed with warnings'
+        
+        echo '================================' >> /output/sniper-console-output.txt
+        echo 'Scan completed at: \$(date)' >> /output/sniper-console-output.txt
+        
+        # Copy any generated reports
+        if [ -d '/usr/share/sniper/loot' ]; then
+          cp -r /usr/share/sniper/loot/* /output/ 2>/dev/null || echo 'No loot directory found'
+        fi
+      "
+
+      # Verify Sn1per output
+      if [ -f "reports/sniper/sniper-console-output.txt" ]; then
+        echo "Sn1per scan completed successfully"
+        echo "Console output captured: $(wc -l reports/sniper/sniper-console-output.txt)"
+      else
+        echo "WARNING: Sn1per console output not captured"
+        echo "Sn1per scan failed or produced no output" > reports/sniper/sniper-console-output.txt
+      fi
+
+  - type: Command
+    name: "Package Results"
+    timeoutInSeconds: 120
+    command: |
+      echo "=== Packaging Security Results ==="
+
+      # Load timestamp
+      export SCAN_TIMESTAMP=$(cat scan_timestamp.txt)
+
+      # Create comprehensive package
+      cd reports
+      zip -r security-scan-results-${SCAN_TIMESTAMP}.zip zap/ sniper/
+      cd ..
+
+      # Verify all artifacts exist
+      echo "Generated artifacts:"
+      ls -la reports/zap/zap-results.xml || echo "ZAP results missing"
+      ls -la reports/sniper/sniper-console-output.txt || echo "Sniper output missing"
+      ls -la reports/security-scan-results-${SCAN_TIMESTAMP}.zip || echo "Package missing"
+
+      echo "Results packaging completed"
+
+  - type: Command
+    name: "Cleanup"
+    timeoutInSeconds: 300
+    command: |
+      echo "=== Cleanup ==="
+
+      # Remove temporary files
+      rm -f scan_timestamp.txt || true
+
+      # Clean up Docker
+      docker system prune -f || true
+
+      echo "Cleanup completed"
+
+outputArtifacts:
+  - name: zap-xml-results
+    type: BINARY
+    location: reports/zap/zap-results.xml
+
+  - name: sniper-console-output
+    type: BINARY
+    location: reports/sniper/sniper-console-output.txt
+
+  - name: comprehensive-security-package
+    type: BINARY
+    location: reports/security-scan-results-${SCAN_TIMESTAMP}.zip
