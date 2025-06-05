@@ -84,11 +84,17 @@ steps:
       fi
 
       # Verify ZAP results
+      echo "Checking for ZAP results..."
+      echo "Contents of reports/zap/:"
+      ls -la reports/zap/ || echo "Directory not found"
+
       if [ -f "reports/zap/zap-results.xml" ]; then
         echo "ZAP scan completed successfully"
         echo "ZAP XML report size: $(du -h reports/zap/zap-results.xml)"
       else
         echo "ERROR: ZAP scan failed to generate results"
+        echo "Looking for any files in reports/zap/:"
+        find reports/zap/ -type f 2>/dev/null || echo "No files found"
         exit 1
       fi
 
